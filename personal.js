@@ -1,0 +1,25 @@
+module.exports = 
+`brexit
+rulebook
+taoiseach
+Rees-Mogg
+Brexiters
+Qur'an
+NHS
+SNP
+MPs
+NEC
+transformative
+onwards
+leftwing
+sanitaire
+Blairite
+reselected
+reselection
+célèbre
+deselections
+disaggregating
+wellbeing
+YouGov
+GMB
+`
