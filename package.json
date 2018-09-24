@@ -18,7 +18,7 @@
   "homepage": "https://github.com/fmacpro/horseman-article-parser#readme",
   "dependencies": {
     "clean-html": "^1.5.0",
-    "compromise": "https://github.com/fmacdonald/compromise.git",
+    "compromise": "^11.12.0",
     "dictionary-en-gb": "^2.0.0",
     "html-to-text": "^4.0.0",
     "htmldom": "^3.0.6",
