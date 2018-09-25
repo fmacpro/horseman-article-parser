@@ -70,6 +70,33 @@ Lint the index.js file with:
 yarn lint
 ```
 
+## Dependencies
+
+- [clean-html](https://ghub.io/clean-html): HTML cleaner and beautifier
+- [compromise](https://ghub.io/compromise): natural language processing in the browser
+- [dictionary-en-gb](https://ghub.io/dictionary-en-gb): English (United Kingdom) spelling dictionary in UTF-8
+- [html-to-text](https://ghub.io/html-to-text): Advanced html to plain text converter
+- [htmldom](https://ghub.io/htmldom): Simplified html handle in nodejs
+- [lodash](https://ghub.io/lodash): Lodash modular utilities.
+- [node-horseman](https://ghub.io/node-horseman): Run PhantomJS from Node
+- [nlcst-to-string](https://ghub.io/nlcst-to-string): Stringify NLCST
+- [node-readability](https://ghub.io/node-readability): Turning any web page into a clean view.
+- [phantomjs-prebuilt](https://ghub.io/phantomjs-prebuilt): Headless WebKit with JS API
+- [retext](https://ghub.io/retext): Natural language processor powered by plugins
+- [retext-keywords](https://ghub.io/retext-keywords): Keyword extraction with Retext
+- [retext-spell](https://ghub.io/retext-spell): Spelling checker for retext
+- [sentiment](https://ghub.io/sentiment): AFINN-based sentiment analysis for Node.js
+- [vfile-reporter-json](https://ghub.io/vfile-reporter-json): JSON reporter for virtual files
+
+## Dev Dependencies
+
+- [eslint](https://ghub.io/eslint): An AST-based pattern checker for JavaScript.
+- [eslint-config-standard](https://ghub.io/eslint-config-standard): JavaScript Standard Style - ESLint Shareable Config
+- [eslint-plugin-import](https://ghub.io/eslint-plugin-import): Import with sanity.
+- [eslint-plugin-node](https://ghub.io/eslint-plugin-node): Additional ESLint&#39;s rules for Node.js
+- [eslint-plugin-promise](https://ghub.io/eslint-plugin-promise): Enforce best practices for JavaScript promises
+- [eslint-plugin-standard](https://ghub.io/eslint-plugin-standard): ESlint Plugin for the Standard Linter
+
 ## License
 
 This project is licensed under the GNU GENERAL PUBLIC LICENSE Version 3 - see the [LICENSE.md](LICENSE.md) file for details
