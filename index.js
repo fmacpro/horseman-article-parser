@@ -309,7 +309,6 @@ var spellCheck = function (text, topics) {
       .process(text, function (err, file) {
         var results = JSON.parse(report(err || file))
         results = results[0].messages
-        console.error(results)
         resolve(results)
       })
   })

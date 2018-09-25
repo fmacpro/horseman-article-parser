@@ -30,7 +30,7 @@ parser.parseArticle(params)
       title: article.title.text,
       metadescription: article.meta.description.text,
       url: article.url,
-      sentiment: article.sentiment,
+      sentiment: { score: article.sentiment.score, comparative: article.sentiment.comparative },
       keyphrases: article.processed.keyphrases,
       people: article.people,
       orgs: article.orgs,
@@ -39,16 +39,14 @@ parser.parseArticle(params)
         formatted: article.processed.formattedText,
         html: article.processed.html
       },
-      image: article.meta['og:image'],
-      screenshot: article.mobile,
       spelling: article.spelling
     }
 
     console.log(response);
   })
   .catch(function (error) {
-		console.log(error.message)
-		console.log(error.stack);
+    console.log(error.message)
+    console.log(error.stack);
   })
 ```
 
