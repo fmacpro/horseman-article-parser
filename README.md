@@ -50,6 +50,12 @@ parser.parseArticle(params)
   })
 ```
 
+
+`parseArticle(params, <socket>)` accepts an option socket for pipeing status messages and errors to a front end UI. 
+
+See [horseman-article-parser-ui](https://github.com/fmacpro/horseman-article-parser-ui) as an example.
+
+
 ## Development
 
 Please feel free to fork the repo or open pull requests to the development branch. I've used [eslint](https://eslint.org/) for linting & [yarn](https://yarnpkg.com/en/) for dependency management. 
