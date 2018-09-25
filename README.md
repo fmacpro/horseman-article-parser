@@ -76,7 +76,6 @@ yarn lint
 - [compromise](https://ghub.io/compromise): natural language processing in the browser
 - [dictionary-en-gb](https://ghub.io/dictionary-en-gb): English (United Kingdom) spelling dictionary in UTF-8
 - [html-to-text](https://ghub.io/html-to-text): Advanced html to plain text converter
-- [htmldom](https://ghub.io/htmldom): Simplified html handle in nodejs
 - [lodash](https://ghub.io/lodash): Lodash modular utilities.
 - [node-horseman](https://ghub.io/node-horseman): Run PhantomJS from Node
 - [nlcst-to-string](https://ghub.io/nlcst-to-string): Stringify NLCST
