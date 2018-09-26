@@ -51,7 +51,7 @@ parser.parseArticle(options)
 ```
 
 
-`parseArticle(params, <socket>)` accepts an optional socket for pipeing status messages and errors to a front end UI. 
+`parseArticle(options, <socket>)` accepts an optional socket for pipeing status messages and errors to a front end UI. 
 
 
 ### Options
