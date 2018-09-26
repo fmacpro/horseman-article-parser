@@ -53,6 +53,7 @@ parser.parseArticle(options)
 
 `parseArticle(options, <socket>)` accepts an optional socket for pipeing status messages and errors to a front end UI. 
 
+See [horseman-article-parser-ui](https://github.com/fmacpro/horseman-article-parser-ui) as an example.
 
 ### Options
 
@@ -90,8 +91,6 @@ var options = {
   url: "https://www.theguardian.com/politics/2018/sep/24/theresa-may-calls-for-immigration-based-on-skills-and-wealth"
 }
 ```
-
-See [horseman-article-parser-ui](https://github.com/fmacpro/horseman-article-parser-ui) as an example.
 
 
 ## Development
