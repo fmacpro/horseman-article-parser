@@ -208,7 +208,6 @@ var articleParser = function (options, socket) {
         // Formatted Text (spans on each line for spell check line numbers)
         article.processed.text.html = '<span>' + title + '</span>\n<span></span>\n' + text.html
 
-        console.log(article.processed.text);
       })
 
       // Sentiment

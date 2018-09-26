@@ -17,40 +17,44 @@ npm install horseman-article-parser --save
 ```
 var parser = require('horseman-article-parser');
 
-var params = {
+var options = {
   userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36',
-  config: { timeout: 10000, cookies: './cookies.json', bluebirdDebug: false, injectJquery: true },
   url: "https://www.theguardian.com/politics/2018/sep/24/theresa-may-calls-for-immigration-based-on-skills-and-wealth"
 }
 
-parser.parseArticle(params)
+parser.parseArticle(options)
   .then(function (article) {
 
     var response = {
       title: article.title.text,
       metadescription: article.meta.description.text,
       url: article.url,
-      sentiment: article.sentiment,
+      sentiment: { score: article.sentiment.score, comparative: article.sentiment.comparative },
       keyphrases: article.processed.keyphrases,
       people: article.people,
       orgs: article.orgs,
       places: article.places,
       text: {
-        formatted: article.processed.formattedText,
-        html: article.processed.html
+        raw: article.processed.text.raw,
+        formatted: article.processed.text.formatted,
+        html: article.processed.text.html
       },
-      image: article.meta['og:image'],
-      screenshot: article.mobile,
       spelling: article.spelling
     }
 
     console.log(response);
   })
   .catch(function (error) {
-		console.log(error.message)
-		console.log(error.stack);
+    console.log(error.message)
+    console.log(error.stack);
   })
 ```
+
+
+`parseArticle(params, <socket>)` accepts an option socket for pipeing status messages and errors to a front end UI. 
+
+See [horseman-article-parser-ui](https://github.com/fmacpro/horseman-article-parser-ui) as an example.
+
 
 ## Development
 
@@ -65,6 +69,32 @@ Lint the index.js file with:
 ```
 yarn lint
 ```
+
+## Dependencies
+
+- [clean-html](https://ghub.io/clean-html): HTML cleaner and beautifier
+- [compromise](https://ghub.io/compromise): natural language processing in the browser
+- [dictionary-en-gb](https://ghub.io/dictionary-en-gb): English (United Kingdom) spelling dictionary in UTF-8
+- [html-to-text](https://ghub.io/html-to-text): Advanced html to plain text converter
+- [lodash](https://ghub.io/lodash): Lodash modular utilities.
+- [node-horseman](https://ghub.io/node-horseman): Run PhantomJS from Node
+- [nlcst-to-string](https://ghub.io/nlcst-to-string): Stringify NLCST
+- [node-readability](https://ghub.io/node-readability): Turning any web page into a clean view.
+- [phantomjs-prebuilt](https://ghub.io/phantomjs-prebuilt): Headless WebKit with JS API
+- [retext](https://ghub.io/retext): Natural language processor powered by plugins
+- [retext-keywords](https://ghub.io/retext-keywords): Keyword extraction with Retext
+- [retext-spell](https://ghub.io/retext-spell): Spelling checker for retext
+- [sentiment](https://ghub.io/sentiment): AFINN-based sentiment analysis for Node.js
+- [vfile-reporter-json](https://ghub.io/vfile-reporter-json): JSON reporter for virtual files
+
+## Dev Dependencies
+
+- [eslint](https://ghub.io/eslint): An AST-based pattern checker for JavaScript.
+- [eslint-config-standard](https://ghub.io/eslint-config-standard): JavaScript Standard Style - ESLint Shareable Config
+- [eslint-plugin-import](https://ghub.io/eslint-plugin-import): Import with sanity.
+- [eslint-plugin-node](https://ghub.io/eslint-plugin-node): Additional ESLint&#39;s rules for Node.js
+- [eslint-plugin-promise](https://ghub.io/eslint-plugin-promise): Enforce best practices for JavaScript promises
+- [eslint-plugin-standard](https://ghub.io/eslint-plugin-standard): ESlint Plugin for the Standard Linter
 
 ## License
 
