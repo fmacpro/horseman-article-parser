@@ -51,7 +51,7 @@ parser.parseArticle(options)
 ```
 
 
-`parseArticle(params, <socket>)` accepts an option socket for pipeing status messages and errors to a front end UI. 
+`parseArticle(params, <socket>)` accepts an optional socket for pipeing status messages and errors to a front end UI. 
 
 See [horseman-article-parser-ui](https://github.com/fmacpro/horseman-article-parser-ui) as an example.
 
