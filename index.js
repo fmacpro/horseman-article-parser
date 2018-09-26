@@ -15,33 +15,44 @@ var nlp = require('compromise')
 var personalDictionary = require('./personal.js')
 
 module.exports = {
-  parseArticle: function (params, socket) {
+  parseArticle: function (options, socket) {
     if (typeof socket === 'undefined') {
       socket = { emit: function (type, status) { console.log(status) } }
     }
 
-    return articleParser(params, socket)
+    return articleParser(options, socket)
   }
 }
 
-var articleParser = function (params, socket) {
+var articleParser = function (options, socket) {
   var article = {}
   article.meta = {}
   article.meta.title = {}
   article.links = []
   article.title = {}
   article.processed = {}
-  params.config.phantomPath = phantomjs.path
+  article.processed.text = {}
+
+  if (typeof options.horseman === 'undefined') {
+    options.horsman = {
+      timeout: 10000,
+      cookies: './cookies.json'
+    }
+  } else if (typeof options.horseman.phantomPath === 'undefined') {
+    options.horseman.phantomPath = phantomjs.path
+  } else if (typeof options.userAgent === 'undefined') {
+    options.userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36'
+  }
 
   return new Promise(function (resolve, reject) {
-    var horseman = new Horseman(params.config)
+    var horseman = new Horseman(options.horseman)
 
     // Init horseman
     horseman
-      .userAgent(params.userAgent)
+      .userAgent(options.userAgent)
       .viewport(540, 800)
-      .open(params.url)
-      .then(socket.emit('parse:status', 'Fetch ' + params.url))
+      .open(options.url)
+      .then(socket.emit('parse:status', 'Fetch ' + options.url))
 
       // Evaluate status
       .status()
@@ -150,13 +161,13 @@ var articleParser = function (params, socket) {
 
       // More HTML Cleaning
       .then(function (html) {
-        return htmlCleaner(html)
+        return htmlCleaner(html, options.cleanhtml)
       })
 
       // Body Content Identification
       .then(function (html) {
         socket.emit('parse:status', 'Evaluating Content')
-        return contentParser(html)
+        return contentParser(html, options.readability)
       })
 
       // Plain Text
@@ -167,24 +178,37 @@ var articleParser = function (params, socket) {
         article.title.text = content.title
         article.source = content.content
 
-        return getPlainText(content.content)
+        return getPlainText(content.content, options.texttohtml)
       })
-      .then(function (data) {
+      .then(function (text) {
         // Proccessed Text (including new lines and spacing for spell check)
-        article.processed.text = article.title.text + '\n\n' + data.text
+        article.processed.text.formatted = article.title.text + '\n\n' + text.formatted
+
         // Normalised Text (https://beta.observablehq.com/@spencermountain/compromise-normalization)
-        var text = nlp(article.title.text + '\n\n' + data.text)
-        text.normalize()
-        article.processed.normalisedText = text.out('text')
+        var normalisedText = nlp(article.title.text + '\n\n' + text.raw)
+        normalisedText.normalize()
+        article.processed.text.raw = normalisedText.out('text')
+
+        if (typeof options.texttohtml === 'undefined') {
+          options.texttohtml = {}
+          options.texttohtml.uppercaseHeadings = true
+        }
+
+        if (options.texttohtml.uppercaseHeadings === true) {
+          var title = article.title.text.toUpperCase()
+        } else {
+          title = article.title.text
+        }
+
         // Formatted Text (spans on each line for spell check line numbers)
-        article.processed.formattedText = '<span>' + article.title.text.toUpperCase() + '</span>\n<span></span>\n' + data.formattedText
+        article.processed.text.html = '<span>' + title + '</span>\n<span></span>\n' + text.html
       })
 
       // Sentiment
       .then(function () {
         socket.emit('parse:status', 'Sentiment Analysis')
         var sentiment = new Sentiment()
-        article.sentiment = sentiment.analyze(article.processed.normalisedText)
+        article.sentiment = sentiment.analyze(article.processed.text.raw)
         if (article.sentiment.score > 0.05) {
           article.sentiment.result = 'Positive'
         } else if (article.sentiment.score < 0.05) {
@@ -199,28 +223,28 @@ var articleParser = function (params, socket) {
         socket.emit('parse:status', 'Named Entity Recognition')
 
         // People
-        article.people = nlp(article.processed.normalisedText).people().out('topk')
+        article.people = nlp(article.processed.text.raw).people().out('topk')
 
         article.people.sort(function (a, b) {
           return (a.percent > b.percent) ? -1 : 1
         })
 
         // Places
-        article.places = nlp(article.processed.normalisedText).places().out('topk')
+        article.places = nlp(article.processed.text.raw).places().out('topk')
 
         article.places.sort(function (a, b) {
           return (a.percent > b.percent) ? -1 : 1
         })
 
         // Orgs & Places
-        article.orgs = nlp(article.processed.normalisedText).organizations().out('topk')
+        article.orgs = nlp(article.processed.text.raw).organizations().out('topk')
 
         article.orgs.sort(function (a, b) {
           return (a.percent > b.percent) ? -1 : 1
         })
 
         // Topics
-        article.topics = nlp(article.processed.normalisedText).topics().out('topk')
+        article.topics = nlp(article.processed.text.raw).topics().out('topk')
 
         article.topics.sort(function (a, b) {
           return (a.percent > b.percent) ? -1 : 1
@@ -230,7 +254,7 @@ var articleParser = function (params, socket) {
       // Spelling
       .then(function () {
         socket.emit('parse:status', 'Check Spelling')
-        return spellCheck(article.processed.text, article.topics)
+        return spellCheck(article.processed.text.formatted, article.topics, options.retextspell)
       })
       .then(function (data) {
         article.spelling = data
@@ -243,7 +267,7 @@ var articleParser = function (params, socket) {
 
       // Evaluate meta title keywords & keyphrases
       .then(function () {
-        return keywordParser(article.meta.title.text)
+        return keywordParser(article.meta.title.text, options.retextkeywords)
       })
       .then(function (keywords) {
         Object.assign(article.meta.title, keywords)
@@ -251,7 +275,7 @@ var articleParser = function (params, socket) {
 
       // Evaluate derived title keywords & keyphrases
       .then(function () {
-        return keywordParser(article.title.text)
+        return keywordParser(article.title.text, options.retextkeywords)
       })
       .then(function (keywords) {
         Object.assign(article.title, keywords)
@@ -259,7 +283,7 @@ var articleParser = function (params, socket) {
 
       // Evaluate meta description keywords & keyphrases
       .then(function () {
-        return keywordParser(article.meta.description.text)
+        return keywordParser(article.meta.description.text, options.retextkeywords)
       })
       .then(function (keywords) {
         Object.assign(article.meta.description, keywords)
@@ -267,7 +291,7 @@ var articleParser = function (params, socket) {
 
       // Evaluate processed content keywords & keyphrases
       .then(function () {
-        return keywordParser(article.processed.normalisedText)
+        return keywordParser(article.processed.text.raw, options.retextkeywords)
       })
       .then(function (keywords) {
         Object.assign(article.processed, keywords)
@@ -285,7 +309,7 @@ var articleParser = function (params, socket) {
   })
 }
 
-var spellCheck = function (text, topics) {
+var spellCheck = function (text, topics, options) {
   text = text.replace(/[0-9]{1,}[a-zA-Z]{1,}/gi, '')
 
   function toTitleCase (str) {
@@ -297,44 +321,60 @@ var spellCheck = function (text, topics) {
   return new Promise(function (resolve, reject) {
     var ignoreList = _.map(topics, 'normal')
     ignoreList = ignoreList.join(' ')
-    ignoreList = toTitleCase(ignoreList)
+    ignoreList = toTitleCase(ignoreList) + ' ' + ignoreList.toUpperCase()
     ignoreList = ignoreList.split(' ')
 
-    retext()
-      .use(spell, {
+    if (typeof options === 'undefined') {
+      options = {
         dictionary: dictionary,
         personal: personalDictionary,
         ignore: ignoreList
-      })
-      .process(text, function (err, file) {
-        var results = JSON.parse(report(err || file))
+      }
+    }
+
+    retext()
+      .use(spell, options)
+      .process(text, function (error, file) {
+        if (error) {
+          reject(error)
+        }
+
+        var results = JSON.parse(report(file))
         results = results[0].messages
         resolve(results)
       })
   })
 }
 
-var getPlainText = function (html) {
+var getPlainText = function (html, options) {
   return new Promise(function (resolve, reject) {
-    // HTML > Text
-    var text = htmlToText.fromString(html, {
+    if (typeof options === 'undefined') {
+      options = {
+        wordwrap: 100,
+        noLinkBrackets: true,
+        ignoreHref: true,
+        tables: true,
+        uppercaseHeadings: true
+      }
+    }
+
+    // Lowercase for analysis
+    var copy = {
       wordwrap: 100,
       noLinkBrackets: true,
       ignoreHref: true,
+      ignoreImage: true,
       tables: true,
       uppercaseHeadings: false
-    })
+    }
 
     // HTML > Text
-    var formattedText = htmlToText.fromString(html, {
-      wordwrap: 100,
-      noLinkBrackets: true,
-      ignoreHref: true,
-      tables: true
-    })
+    var rawText = htmlToText.fromString(html, copy)
+    var formattedText = htmlToText.fromString(html, options)
+    var htmlText = formattedText
 
     // Replace windows line breaks with linux line breaks & split each line into array
-    var textArray = formattedText.replace('\r\n', '\n').split('\n')
+    var textArray = htmlText.replace('\r\n', '\n').split('\n')
 
     // Check length of text array (no of lines)
     var codeLength = textArray.length
@@ -347,19 +387,21 @@ var getPlainText = function (html) {
     })
 
     // Join each line back into a string
-    formattedText = textArray.join('\n')
+    htmlText = textArray.join('\n')
 
     // return both raw & formatted text
-    resolve({ text: text, formattedText: formattedText })
+    resolve({ raw: rawText, formatted: formattedText, html: htmlText })
   })
 }
 
-var htmlCleaner = function (html) {
+var htmlCleaner = function (html, options) {
   return new Promise(function (resolve, reject) {
-    var options = {
-      'add-remove-tags': ['blockquote', 'span'],
-      'remove-empty-tags': ['span'],
-      'replace-nbsp': true
+    if (typeof options === 'undefined') {
+      options = {
+        'add-remove-tags': ['blockquote', 'span'],
+        'remove-empty-tags': ['span'],
+        'replace-nbsp': true
+      }
     }
 
     cleaner.clean(html, options, function (html) {
@@ -368,10 +410,15 @@ var htmlCleaner = function (html) {
   })
 }
 
-var contentParser = function (html) {
+var contentParser = function (html, options) {
   return new Promise(function (resolve, reject) {
     // https://github.com/luin/readability
-    read(html, function (error, article, meta) {
+
+    if (typeof options === 'undefined') {
+      options = {}
+    }
+
+    read(html, options, function (error, article, meta) {
       if (error) {
         article.close()
         reject(error)
@@ -387,9 +434,13 @@ var contentParser = function (html) {
   })
 }
 
-var keywordParser = function (html) {
+var keywordParser = function (html, options) {
   return new Promise(function (resolve, reject) {
-    retext().use(keywords, { maximum: 10 }).process(html,
+    if (typeof options === 'undefined') {
+      options = { maximum: 10 }
+    }
+
+    retext().use(keywords, options).process(html,
       function (error, file) {
         if (error) {
           reject(error)
