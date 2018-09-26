@@ -53,6 +53,44 @@ parser.parseArticle(options)
 
 `parseArticle(params, <socket>)` accepts an optional socket for pipeing status messages and errors to a front end UI. 
 
+
+### Options
+
+The options below are set by default
+
+```
+var options = {
+  userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36',
+  horseman: {
+    timeout: 10000, 
+    cookies: './cookies.json'
+  },
+  htmlcleaner: {
+    'add-remove-tags': ['blockquote', 'span'],
+    'remove-empty-tags': ['span'],
+    'replace-nbsp': true
+  },
+  readability: {},
+  texttohtml: {
+    wordwrap: 100,
+    noLinkBrackets: true,
+    ignoreHref: true,
+    tables: true,
+    uppercaseHeadings: true
+  },
+  retextkeywords: { maximum: 10 },
+  retextspell: {}
+}
+```
+
+At a minimum you should pass a url
+
+```
+var options = {
+  url: "https://www.theguardian.com/politics/2018/sep/24/theresa-may-calls-for-immigration-based-on-skills-and-wealth"
+}
+```
+
 See [horseman-article-parser-ui](https://github.com/fmacpro/horseman-article-parser-ui) as an example.
 
 
