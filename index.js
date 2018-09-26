@@ -31,23 +31,20 @@ var articleParser = function (options, socket) {
   article.links = []
   article.title = {}
   article.processed = {}
-  article.processed.text = {};
+  article.processed.text = {}
 
   if (typeof options.horseman === 'undefined') {
-    options.horsman = { 
-      timeout: 10000, 
-      cookies: './cookies.json',
+    options.horsman = {
+      timeout: 10000,
+      cookies: './cookies.json'
     }
-  }
-  else if (typeof options.horseman.phantomPath === 'undefined') {
+  } else if (typeof options.horseman.phantomPath === 'undefined') {
     options.horseman.phantomPath = phantomjs.path
-  }
-  else if (typeof options.userAgent === 'undefined') {
+  } else if (typeof options.userAgent === 'undefined') {
     options.userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36'
   }
 
   return new Promise(function (resolve, reject) {
-
     var horseman = new Horseman(options.horseman)
 
     // Init horseman
@@ -184,10 +181,9 @@ var articleParser = function (options, socket) {
         return getPlainText(content.content, options.texttohtml)
       })
       .then(function (text) {
-        
         // Proccessed Text (including new lines and spacing for spell check)
         article.processed.text.formatted = article.title.text + '\n\n' + text.formatted
-        
+
         // Normalised Text (https://beta.observablehq.com/@spencermountain/compromise-normalization)
         var normalisedText = nlp(article.title.text + '\n\n' + text.raw)
         normalisedText.normalize()
@@ -195,19 +191,17 @@ var articleParser = function (options, socket) {
 
         if (typeof options.texttohtml === 'undefined') {
           options.texttohtml = {}
-          options.texttohtml.uppercaseHeadings === true
+          options.texttohtml.uppercaseHeadings = true
         }
 
-        if ( options.texttohtml.uppercaseHeadings === true ) {
-          var title = article.title.text.toUpperCase();
-        }
-        else {
-          var title = article.title.text;
+        if (options.texttohtml.uppercaseHeadings === true) {
+          var title = article.title.text.toUpperCase()
+        } else {
+          title = article.title.text
         }
 
         // Formatted Text (spans on each line for spell check line numbers)
         article.processed.text.html = '<span>' + title + '</span>\n<span></span>\n' + text.html
-
       })
 
       // Sentiment
@@ -327,17 +321,15 @@ var spellCheck = function (text, topics, options) {
   return new Promise(function (resolve, reject) {
     var ignoreList = _.map(topics, 'normal')
     ignoreList = ignoreList.join(' ')
-    ignoreList = toTitleCase(ignoreList) + " " + ignoreList.toUpperCase();
+    ignoreList = toTitleCase(ignoreList) + ' ' + ignoreList.toUpperCase()
     ignoreList = ignoreList.split(' ')
 
     if (typeof options === 'undefined') {
-
       options = {
         dictionary: dictionary,
         personal: personalDictionary,
         ignore: ignoreList
       }
-
     }
 
     retext()
@@ -356,9 +348,7 @@ var spellCheck = function (text, topics, options) {
 
 var getPlainText = function (html, options) {
   return new Promise(function (resolve, reject) {
-
     if (typeof options === 'undefined') {
-
       options = {
         wordwrap: 100,
         noLinkBrackets: true,
@@ -366,7 +356,6 @@ var getPlainText = function (html, options) {
         tables: true,
         uppercaseHeadings: true
       }
-
     }
 
     // Lowercase for analysis
@@ -407,15 +396,12 @@ var getPlainText = function (html, options) {
 
 var htmlCleaner = function (html, options) {
   return new Promise(function (resolve, reject) {
-
     if (typeof options === 'undefined') {
-
       options = {
         'add-remove-tags': ['blockquote', 'span'],
         'remove-empty-tags': ['span'],
         'replace-nbsp': true
       }
-      
     }
 
     cleaner.clean(html, options, function (html) {
@@ -429,7 +415,7 @@ var contentParser = function (html, options) {
     // https://github.com/luin/readability
 
     if (typeof options === 'undefined') {
-      options = {};
+      options = {}
     }
 
     read(html, options, function (error, article, meta) {
@@ -448,11 +434,10 @@ var contentParser = function (html, options) {
   })
 }
 
-var keywordParser = function (html) {
+var keywordParser = function (html, options) {
   return new Promise(function (resolve, reject) {
-
     if (typeof options === 'undefined') {
-      options = { maximum: 10 };
+      options = { maximum: 10 }
     }
 
     retext().use(keywords, options).process(html,
