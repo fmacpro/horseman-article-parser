@@ -15,33 +15,34 @@ var nlp = require('compromise')
 var personalDictionary = require('./personal.js')
 
 module.exports = {
-  parseArticle: function (params, socket) {
+  parseArticle: function (config, socket) {
     if (typeof socket === 'undefined') {
       socket = { emit: function (type, status) { console.log(status) } }
     }
 
-    return articleParser(params, socket)
+    return articleParser(config, socket)
   }
 }
 
-var articleParser = function (params, socket) {
+var articleParser = function (config, socket) {
   var article = {}
   article.meta = {}
   article.meta.title = {}
   article.links = []
   article.title = {}
   article.processed = {}
-  params.config.phantomPath = phantomjs.path
+
+  config.horseman.phantomPath = phantomjs.path
 
   return new Promise(function (resolve, reject) {
-    var horseman = new Horseman(params.config)
+    var horseman = new Horseman(config.horseman)
 
     // Init horseman
     horseman
-      .userAgent(params.userAgent)
+      .userAgent(config.userAgent)
       .viewport(540, 800)
-      .open(params.url)
-      .then(socket.emit('parse:status', 'Fetch ' + params.url))
+      .open(config.url)
+      .then(socket.emit('parse:status', 'Fetch ' + config.url))
 
       // Evaluate status
       .status()
@@ -306,10 +307,13 @@ var spellCheck = function (text, topics) {
         personal: personalDictionary,
         ignore: ignoreList
       })
-      .process(text, function (err, file) {
-        var results = JSON.parse(report(err || file))
+      .process(text, function (error, file) {
+        if (error) {
+          reject(error)
+        }
+
+        var results = JSON.parse(report(file))
         results = results[0].messages
-        console.error(results)
         resolve(results)
       })
   })
