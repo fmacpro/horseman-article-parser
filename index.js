@@ -182,30 +182,12 @@ var articleParser = function (options, socket) {
         article.title.text = content.title
         article.source = content.content
 
-        return getPlainText(content.content, options.texttohtml)
+        return getPlainText(content.content, content.title, options.texttohtml)
       })
       .then(function (text) {
-        // Proccessed Text (including new lines and spacing for spell check)
-        article.processed.text.formatted = article.title.text + '\n\n' + text.formatted
-
-        // Normalised Text (https://beta.observablehq.com/@spencermountain/compromise-normalization)
-        var normalisedText = nlp(article.title.text + '\n\n' + text.raw)
-        normalisedText.normalize()
-        article.processed.text.raw = normalisedText.out('text')
-
-        if (typeof options.texttohtml === 'undefined') {
-          options.texttohtml = {}
-          options.texttohtml.uppercaseHeadings = true
-        }
-
-        if (options.texttohtml.uppercaseHeadings === true) {
-          var title = article.title.text.toUpperCase()
-        } else {
-          title = article.title.text
-        }
-
-        // Formatted Text (spans on each line for spell check line numbers)
-        article.processed.text.html = '<span>' + title + '</span>\n<span></span>\n' + text.html
+        article.processed.text.formatted = text.formatted
+        article.processed.text.raw = text.raw
+        article.processed.text.html = text.html
       })
 
       // Sentiment
@@ -350,7 +332,7 @@ var spellCheck = function (text, topics, options) {
   })
 }
 
-var getPlainText = function (html, options) {
+var getPlainText = function (html, title, options) {
   return new Promise(function (resolve, reject) {
     if (typeof options === 'undefined') {
       options = {
@@ -373,27 +355,39 @@ var getPlainText = function (html, options) {
     }
 
     // HTML > Text
-    var rawText = htmlToText.fromString(html, copy)
-    var formattedText = htmlToText.fromString(html, options)
-    var htmlText = formattedText
+    var text = htmlToText.fromString(html, options)
 
+    // Normalised (Raw) Text (https://beta.observablehq.com/@spencermountain/compromise-normalization)
+    var rawText = htmlToText.fromString(html, copy)
+    rawText = nlp(title + '\n\n' + rawText)
+    rawText.normalize()
+    rawText = rawText.out('text')
+
+    // Formatted Text (including new lines and spacing for spell check)
+    var formattedText = title + '\n\n' + text
+
+    // HTML Text (spans on each line for spell check line numbers)
+    var htmlText = text
     // Replace windows line breaks with linux line breaks & split each line into array
     var textArray = htmlText.replace('\r\n', '\n').split('\n')
-
     // Check length of text array (no of lines)
     var codeLength = textArray.length
-
     // Wrap each line in a span
     textArray.forEach(function (line, index, array) {
       if (codeLength === index) return
       if (index === 0) line = line.trim()
       array[index] = '<span>' + line + '</span>'
     })
-
     // Join each line back into a string
     htmlText = textArray.join('\n')
+    // If uppercase is set uppercase the title
+    if (options.uppercaseHeadings === true) {
+      title = title.toUpperCase()
+    }
+    // Add the title to the html text
+    htmlText = '<span>' + title + '</span>\n<span></span>\n' + htmlText
 
-    // return both raw & formatted text
+    // return raw, formatted & html text
     resolve({ raw: rawText, formatted: formattedText, html: htmlText })
   })
 }
