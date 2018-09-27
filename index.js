@@ -383,7 +383,7 @@ var getPlainText = function (html, title, options) {
     // Wrap each line in a span
     textArray.forEach(function (line, index, array) {
       if (codeLength === index) return
-      if (index === 0) line = line.trim()
+      if (index === 2) line = line.trim()
       array[index] = '<span>' + line + '</span>'
     })
     // Join each line back into a string
