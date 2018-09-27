@@ -363,13 +363,17 @@ var getPlainText = function (html, title, options) {
     rawText.normalize()
     rawText = rawText.out('text')
 
+    // If uppercase is set uppercase the title
+    if (options.uppercaseHeadings === true) {
+      title = title.toUpperCase()
+    }
+
     // Formatted Text (including new lines and spacing for spell check)
     var formattedText = title + '\n\n' + text
 
     // HTML Text (spans on each line for spell check line numbers)
-    var htmlText = text
     // Replace windows line breaks with linux line breaks & split each line into array
-    var textArray = htmlText.replace('\r\n', '\n').split('\n')
+    var textArray = formattedText.replace('\r\n', '\n').split('\n')
     // Check length of text array (no of lines)
     var codeLength = textArray.length
     // Wrap each line in a span
@@ -380,12 +384,6 @@ var getPlainText = function (html, title, options) {
     })
     // Join each line back into a string
     htmlText = textArray.join('\n')
-    // If uppercase is set uppercase the title
-    if (options.uppercaseHeadings === true) {
-      title = title.toUpperCase()
-    }
-    // Add the title to the html text
-    htmlText = '<span>' + title + '</span>\n<span></span>\n' + htmlText
 
     // return raw, formatted & html text
     resolve({ raw: rawText, formatted: formattedText, html: htmlText })
