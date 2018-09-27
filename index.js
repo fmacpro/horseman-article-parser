@@ -48,6 +48,24 @@ var articleParser = function (options, socket) {
     options.userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36'
   }
 
+
+  if (typeof options.striptags === 'undefined') {
+    options.striptags = [
+      "img",
+      "noscript",
+      "style",
+      "script",
+      "figure",
+      ".ayl-text",
+      ".affiliate-text",
+      ".mol-video",
+      ".mol-img-group",
+      ".artSplitter",
+      "#ayl-wrapper",
+      "h3.sharing-bar__title",
+    ]
+  }
+
   return new Promise(function (resolve, reject) {
     var horseman = new Horseman(options.horseman)
 
@@ -95,7 +113,7 @@ var articleParser = function (options, socket) {
       .then(function () {
         socket.emit('parse:status', 'Evaluating Meta Data')
       })
-      .evaluate(function (selector) {
+      .evaluate(function () {
         var arr = $('meta')
         var meta = {}
         var i = 0
@@ -110,7 +128,7 @@ var articleParser = function (options, socket) {
           }
         }
         return meta
-      }, 'head')
+      })
 
       // Evaluate links
       .then(function (meta) {
@@ -122,7 +140,7 @@ var articleParser = function (options, socket) {
 
         socket.emit('parse:status', 'Evaluating Links')
       })
-      .evaluate(function (selector) {
+      .evaluate(function () {
         var arr = $('a')
         var links = []
         var i = 0
@@ -132,35 +150,20 @@ var articleParser = function (options, socket) {
           links.push(link)
         }
         return links
-      }, 'body')
+      })
       .then(function (links) {
         Object.assign(article.links, links)
         socket.emit('parse:status', 'Cleaning HTML')
       })
 
       // HTML Cleaning
-      .evaluate(function (selector) {
-        $('img').remove()
-        $('noscript').remove()
-        $('body').find('style').remove()
-        $('body').find('script').remove()
+      .evaluate(function (options) {
 
-        // Evening Telegraph (dundee)
-        $('body').find('#ayl-wrapper').remove()
-        $('body').find('h3').remove('.sharing-bar__title')
-        $('body').find('.ayl-text').remove()
+        for (i = 0; i < options.length; i++) {
+          $(options[i]).remove();
+        }
 
-        // Extreme Tech
-        $('.affiliate-text').remove()
-
-        // BBC News
-        $('figure').remove()
-
-        // Daily Mail
-        $('.mol-video').remove()
-        $('.mol-img-group').remove()
-        $('.artSplitter').remove()
-      }, 'body')
+      }, options.striptags)
       .html('html')
 
       // More HTML Cleaning
