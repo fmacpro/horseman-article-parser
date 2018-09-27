@@ -12,7 +12,8 @@ var dictionary = require('dictionary-en-gb')
 var report = require('vfile-reporter-json')
 var htmlToText = require('html-to-text')
 var nlp = require('compromise')
-var personalDictionary = require('./personal.js')
+var personalDictionary = require('./personalDictionary.js')
+var htmlTags = require('./stripTags.js')
 
 module.exports = {
   parseArticle: function (options, socket) {
@@ -49,20 +50,7 @@ var articleParser = function (options, socket) {
   }
 
   if (typeof options.striptags === 'undefined') {
-    options.striptags = [
-      'img',
-      'noscript',
-      'style',
-      'script',
-      'figure',
-      '.ayl-text',
-      '.affiliate-text',
-      '.mol-video',
-      '.mol-img-group',
-      '.artSplitter',
-      '#ayl-wrapper',
-      'h3.sharing-bar__title'
-    ]
+    options.striptags = htmlTags
   }
 
   return new Promise(function (resolve, reject) {
@@ -182,7 +170,7 @@ var articleParser = function (options, socket) {
         article.title.text = content.title
         article.source = content.content
 
-        return getPlainText(content.content, content.title, options.texttohtml)
+        return getPlainText(content.content, content.title, options.htmltotext)
       })
       .then(function (text) {
         article.processed.text.formatted = text.formatted
