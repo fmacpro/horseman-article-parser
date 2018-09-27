@@ -48,21 +48,20 @@ var articleParser = function (options, socket) {
     options.userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36'
   }
 
-
   if (typeof options.striptags === 'undefined') {
     options.striptags = [
-      "img",
-      "noscript",
-      "style",
-      "script",
-      "figure",
-      ".ayl-text",
-      ".affiliate-text",
-      ".mol-video",
-      ".mol-img-group",
-      ".artSplitter",
-      "#ayl-wrapper",
-      "h3.sharing-bar__title",
+      'img',
+      'noscript',
+      'style',
+      'script',
+      'figure',
+      '.ayl-text',
+      '.affiliate-text',
+      '.mol-video',
+      '.mol-img-group',
+      '.artSplitter',
+      '#ayl-wrapper',
+      'h3.sharing-bar__title'
     ]
   }
 
@@ -158,11 +157,9 @@ var articleParser = function (options, socket) {
 
       // HTML Cleaning
       .evaluate(function (options) {
-
-        for (i = 0; i < options.length; i++) {
-          $(options[i]).remove();
+        for (var i = 0; i < options.length; i++) {
+          $(options[i]).remove()
         }
-
       }, options.striptags)
       .html('html')
 
@@ -321,6 +318,10 @@ var spellCheck = function (text, topics, options) {
       }
     }
 
+    if (typeof options.dictionary === 'undefined') {
+      options.dictionary = dictionary
+    }
+
     retext()
       .use(spell, options)
       .process(text, function (error, file) {
@@ -386,7 +387,7 @@ var getPlainText = function (html, title, options) {
       array[index] = '<span>' + line + '</span>'
     })
     // Join each line back into a string
-    htmlText = textArray.join('\n')
+    var htmlText = textArray.join('\n')
 
     // return raw, formatted & html text
     resolve({ raw: rawText, formatted: formattedText, html: htmlText })
