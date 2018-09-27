@@ -80,7 +80,21 @@ var options = {
     uppercaseHeadings: true
   },
   retextkeywords: { maximum: 10 },
-  retextspell: {}
+  retextspell: {},
+  striptags: [
+    "img",
+    "noscript",
+    "style",
+    "script",
+    "figure",
+    ".ayl-text",
+    ".affiliate-text",
+    ".mol-video",
+    ".mol-img-group",
+    ".artSplitter",
+    "#ayl-wrapper",
+    "h3.sharing-bar__title",
+  ]
 }
 ```
 

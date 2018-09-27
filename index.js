@@ -48,6 +48,23 @@ var articleParser = function (options, socket) {
     options.userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36'
   }
 
+  if (typeof options.striptags === 'undefined') {
+    options.striptags = [
+      'img',
+      'noscript',
+      'style',
+      'script',
+      'figure',
+      '.ayl-text',
+      '.affiliate-text',
+      '.mol-video',
+      '.mol-img-group',
+      '.artSplitter',
+      '#ayl-wrapper',
+      'h3.sharing-bar__title'
+    ]
+  }
+
   return new Promise(function (resolve, reject) {
     var horseman = new Horseman(options.horseman)
 
@@ -95,7 +112,7 @@ var articleParser = function (options, socket) {
       .then(function () {
         socket.emit('parse:status', 'Evaluating Meta Data')
       })
-      .evaluate(function (selector) {
+      .evaluate(function () {
         var arr = $('meta')
         var meta = {}
         var i = 0
@@ -110,7 +127,7 @@ var articleParser = function (options, socket) {
           }
         }
         return meta
-      }, 'head')
+      })
 
       // Evaluate links
       .then(function (meta) {
@@ -122,7 +139,7 @@ var articleParser = function (options, socket) {
 
         socket.emit('parse:status', 'Evaluating Links')
       })
-      .evaluate(function (selector) {
+      .evaluate(function () {
         var arr = $('a')
         var links = []
         var i = 0
@@ -132,35 +149,18 @@ var articleParser = function (options, socket) {
           links.push(link)
         }
         return links
-      }, 'body')
+      })
       .then(function (links) {
         Object.assign(article.links, links)
         socket.emit('parse:status', 'Cleaning HTML')
       })
 
       // HTML Cleaning
-      .evaluate(function (selector) {
-        $('img').remove()
-        $('noscript').remove()
-        $('body').find('style').remove()
-        $('body').find('script').remove()
-
-        // Evening Telegraph (dundee)
-        $('body').find('#ayl-wrapper').remove()
-        $('body').find('h3').remove('.sharing-bar__title')
-        $('body').find('.ayl-text').remove()
-
-        // Extreme Tech
-        $('.affiliate-text').remove()
-
-        // BBC News
-        $('figure').remove()
-
-        // Daily Mail
-        $('.mol-video').remove()
-        $('.mol-img-group').remove()
-        $('.artSplitter').remove()
-      }, 'body')
+      .evaluate(function (options) {
+        for (var i = 0; i < options.length; i++) {
+          $(options[i]).remove()
+        }
+      }, options.striptags)
       .html('html')
 
       // More HTML Cleaning
@@ -182,30 +182,12 @@ var articleParser = function (options, socket) {
         article.title.text = content.title
         article.source = content.content
 
-        return getPlainText(content.content, options.texttohtml)
+        return getPlainText(content.content, content.title, options.texttohtml)
       })
       .then(function (text) {
-        // Proccessed Text (including new lines and spacing for spell check)
-        article.processed.text.formatted = article.title.text + '\n\n' + text.formatted
-
-        // Normalised Text (https://beta.observablehq.com/@spencermountain/compromise-normalization)
-        var normalisedText = nlp(article.title.text + '\n\n' + text.raw)
-        normalisedText.normalize()
-        article.processed.text.raw = normalisedText.out('text')
-
-        if (typeof options.texttohtml === 'undefined') {
-          options.texttohtml = {}
-          options.texttohtml.uppercaseHeadings = true
-        }
-
-        if (options.texttohtml.uppercaseHeadings === true) {
-          var title = article.title.text.toUpperCase()
-        } else {
-          title = article.title.text
-        }
-
-        // Formatted Text (spans on each line for spell check line numbers)
-        article.processed.text.html = '<span>' + title + '</span>\n<span></span>\n' + text.html
+        article.processed.text.formatted = text.formatted
+        article.processed.text.raw = text.raw
+        article.processed.text.html = text.html
       })
 
       // Sentiment
@@ -336,6 +318,10 @@ var spellCheck = function (text, topics, options) {
       }
     }
 
+    if (typeof options.dictionary === 'undefined') {
+      options.dictionary = dictionary
+    }
+
     retext()
       .use(spell, options)
       .process(text, function (error, file) {
@@ -350,7 +336,7 @@ var spellCheck = function (text, topics, options) {
   })
 }
 
-var getPlainText = function (html, options) {
+var getPlainText = function (html, title, options) {
   return new Promise(function (resolve, reject) {
     if (typeof options === 'undefined') {
       options = {
@@ -373,27 +359,37 @@ var getPlainText = function (html, options) {
     }
 
     // HTML > Text
+    var text = htmlToText.fromString(html, options)
+
+    // Normalised (Raw) Text (https://beta.observablehq.com/@spencermountain/compromise-normalization)
     var rawText = htmlToText.fromString(html, copy)
-    var formattedText = htmlToText.fromString(html, options)
-    var htmlText = formattedText
+    rawText = nlp(title + '\n\n' + rawText)
+    rawText.normalize()
+    rawText = rawText.out('text')
 
+    // If uppercase is set uppercase the title
+    if (options.uppercaseHeadings === true) {
+      title = title.toUpperCase()
+    }
+
+    // Formatted Text (including new lines and spacing for spell check)
+    var formattedText = title + '\n\n' + text
+
+    // HTML Text (spans on each line for spell check line numbers)
     // Replace windows line breaks with linux line breaks & split each line into array
-    var textArray = htmlText.replace('\r\n', '\n').split('\n')
-
+    var textArray = formattedText.replace('\r\n', '\n').split('\n')
     // Check length of text array (no of lines)
     var codeLength = textArray.length
-
     // Wrap each line in a span
     textArray.forEach(function (line, index, array) {
       if (codeLength === index) return
       if (index === 0) line = line.trim()
       array[index] = '<span>' + line + '</span>'
     })
-
     // Join each line back into a string
-    htmlText = textArray.join('\n')
+    var htmlText = textArray.join('\n')
 
-    // return both raw & formatted text
+    // return raw, formatted & html text
     resolve({ raw: rawText, formatted: formattedText, html: htmlText })
   })
 }
