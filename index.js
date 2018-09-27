@@ -34,13 +34,17 @@ var articleParser = function (options, socket) {
   article.processed.text = {}
 
   if (typeof options.horseman === 'undefined') {
-    options.horsman = {
+    options.horseman = {
       timeout: 10000,
       cookies: './cookies.json'
     }
-  } else if (typeof options.horseman.phantomPath === 'undefined') {
+  }
+
+  if (typeof options.horseman.phantomPath === 'undefined') {
     options.horseman.phantomPath = phantomjs.path
-  } else if (typeof options.userAgent === 'undefined') {
+  }
+
+  if (typeof options.userAgent === 'undefined') {
     options.userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36'
   }
 
