@@ -51,7 +51,7 @@ parser.parseArticle(options)
 ```
 
 
-`parseArticle(options, <socket>)` accepts an optional socket for pipeing status messages and errors to a front end UI. 
+`parseArticle(options, <socket>)` accepts an optional socket for pipeing the response object, status messages and errors to a front end UI. 
 
 See [horseman-article-parser-ui](https://github.com/fmacpro/horseman-article-parser-ui) as an example.
 
@@ -62,39 +62,27 @@ The options below are set by default
 ```
 var options = {
   userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36',
+  // node-horsman options (https://ghub.io/node-horseman)
   horseman: {
     timeout: 10000, 
     cookies: './cookies.json'
   },
-  htmlcleaner: {
+  // clean-html options (https://ghub.io/clean-html)
+  cleanhtml: {
     'add-remove-tags': ['blockquote', 'span'],
     'remove-empty-tags': ['span'],
     'replace-nbsp': true
   },
-  readability: {},
-  texttohtml: {
+  // html-to-text options (https://ghub.io/html-to-text)
+  htmltotext: {
     wordwrap: 100,
     noLinkBrackets: true,
     ignoreHref: true,
     tables: true,
     uppercaseHeadings: true
   },
-  retextkeywords: { maximum: 10 },
-  retextspell: {},
-  striptags: [
-    "img",
-    "noscript",
-    "style",
-    "script",
-    "figure",
-    ".ayl-text",
-    ".affiliate-text",
-    ".mol-video",
-    ".mol-img-group",
-    ".artSplitter",
-    "#ayl-wrapper",
-    "h3.sharing-bar__title",
-  ]
+  // retext-keywords options (https://ghub.io/retext-keywords)
+  retextkeywords: { maximum: 10 }
 }
 ```
 
@@ -106,6 +94,18 @@ var options = {
 }
 ```
 
+there are some additional "complex" options available
+
+```
+var options = {
+  // array of html elements to stip before anaysis
+  striptags: [],
+  // readability options (https://ghub.io/node-readability)
+  readability: {},
+  // retext spell options (https://ghub.io/retext-spell)
+  retextspell: {}
+}
+```
 
 ## Development
 
