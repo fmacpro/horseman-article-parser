@@ -101,15 +101,16 @@ var articleParser = function (options, socket) {
         socket.emit('parse:status', 'Evaluating Meta Data')
       })
       .evaluate(function () {
-        var arr = $('meta')
+        var j = jQuery.noConflict()
+        var arr = j('meta')
         var meta = {}
         var i = 0
 
         for (i = 0; i < arr.length; i++) {
-          if ($(arr[i]).attr('name')) {
-            meta[$(arr[i]).attr('name')] = $(arr[i]).attr('content')
-          } else if ($(arr[i]).attr('property')) {
-            meta[$(arr[i]).attr('property')] = $(arr[i]).attr('content')
+          if (j(arr[i]).attr('name')) {
+            meta[j(arr[i]).attr('name')] = j(arr[i]).attr('content')
+          } else if (j(arr[i]).attr('property')) {
+            meta[j(arr[i]).attr('property')] = j(arr[i]).attr('content')
           } else {
             // do nothing for now
           }
@@ -128,12 +129,13 @@ var articleParser = function (options, socket) {
         socket.emit('parse:status', 'Evaluating Links')
       })
       .evaluate(function () {
-        var arr = $('a')
+        var j = jQuery.noConflict()
+        var arr = j('a')
         var links = []
         var i = 0
 
         for (i = 0; i < arr.length; i++) {
-          var link = { href: $(arr[i]).attr('href'), text: $(arr[i]).text() }
+          var link = { href: j(arr[i]).attr('href'), text: j(arr[i]).text() }
           links.push(link)
         }
         return links
@@ -145,8 +147,9 @@ var articleParser = function (options, socket) {
 
       // HTML Cleaning
       .evaluate(function (options) {
+        var j = jQuery.noConflict()
         for (var i = 0; i < options.length; i++) {
-          $(options[i]).remove()
+          j(options[i]).remove()
         }
       }, options.striptags)
       .html('html')
