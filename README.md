@@ -98,7 +98,7 @@ there are some additional "complex" options available
 
 ```
 var options = {
-  // array of html elements to stip before anaysis
+  // array of html elements to stip before analysis
   striptags: [],
   // readability options (https://ghub.io/node-readability)
   readability: {},
