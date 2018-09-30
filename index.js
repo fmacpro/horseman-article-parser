@@ -12,6 +12,7 @@ var dictionary = require('dictionary-en-gb')
 var report = require('vfile-reporter-json')
 var htmlToText = require('html-to-text')
 var nlp = require('compromise')
+var absolutify = require('absolutify')
 var personalDictionary = require('./personalDictionary.js')
 var htmlTags = require('./stripTags.js')
 
@@ -78,6 +79,12 @@ var articleParser = function (options, socket) {
       .url()
       .then(function (url) {
         article.url = url
+
+        var pathArray = article.url.split('/')
+        var protocol = pathArray[0]
+        var host = pathArray[2]
+
+        article.baseurl = protocol + '//' + host
       })
       .waitForSelector('head')
 
@@ -165,14 +172,14 @@ var articleParser = function (options, socket) {
         return contentParser(html, options.readability)
       })
       .then(function (content) {
-        article.processed.html = content.content
+        // Turn relative links into absolute links
+        article.processed.html = absolutify(content.content, article.baseurl)
         article.title.text = content.title
-        article.source = content.content
       })
 
       // Formatted Text (including new lines and spacing for spell check)
       .then(function () {
-        return getFormattedText(article.processed.html, article.title.text, options.htmltotext)
+        return getFormattedText(article.processed.html, article.title.text, article.baseurl, options.htmltotext)
       })
       .then(function (formattedText) {
         article.processed.text.formatted = formattedText
@@ -365,7 +372,7 @@ var getRawText = function (html, title, options) {
   })
 }
 
-var getFormattedText = function (html, title, options) {
+var getFormattedText = function (html, title, baseurl, options) {
   return new Promise(function (resolve, reject) {
     if (typeof options === 'undefined') {
       options = {
@@ -373,8 +380,13 @@ var getFormattedText = function (html, title, options) {
         noLinkBrackets: true,
         ignoreHref: true,
         tables: true,
-        uppercaseHeadings: true
+        uppercaseHeadings: true,
+        linkHrefBaseUrl: baseurl
       }
+    }
+
+    if (typeof options.linkHrefBaseUrl === 'undefined') {
+      options.linkHrefBaseUrl = baseurl
     }
 
     // HTML > Text
