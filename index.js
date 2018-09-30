@@ -164,21 +164,34 @@ var articleParser = function (options, socket) {
         socket.emit('parse:status', 'Evaluating Content')
         return contentParser(html, options.readability)
       })
-
-      // Plain Text
       .then(function (content) {
-        socket.emit('parse:status', 'HTML > TEXT')
-
         article.processed.html = content.content
         article.title.text = content.title
         article.source = content.content
-
-        return getPlainText(content.content, content.title, options.htmltotext)
       })
-      .then(function (text) {
-        article.processed.text.formatted = text.formatted
-        article.processed.text.raw = text.raw
-        article.processed.text.html = text.html
+
+      // Formatted Text (including new lines and spacing for spell check)
+      .then(function () {
+        return getFormattedText(article.processed.html, article.title.text, options.htmltotext)
+      })
+      .then(function (formattedText) {
+        article.processed.text.formatted = formattedText
+      })
+
+      // HTML Text (spans on each line for spell check line numbers)
+      .then(function () {
+        return getHtmlText(article.processed.text.formatted)
+      })
+      .then(function (htmlText) {
+        article.processed.text.html = htmlText
+      })
+
+      // Raw Text (text prepared for keyword analysis & named entity recongnition)
+      .then(function () {
+        return getRawText(article.processed.html, article.title.text)
+      })
+      .then(function (rawText) {
+        article.processed.text.raw = rawText
       })
 
       // Sentiment
@@ -327,7 +340,31 @@ var spellCheck = function (text, topics, options) {
   })
 }
 
-var getPlainText = function (html, title, options) {
+var getRawText = function (html, title, options) {
+  return new Promise(function (resolve, reject) {
+    // Lowercase for analysis
+    var options = {
+      wordwrap: 100,
+      noLinkBrackets: true,
+      ignoreHref: true,
+      ignoreImage: true,
+      tables: true,
+      uppercaseHeadings: false
+    }
+
+    // HTML > Text
+    var rawText = htmlToText.fromString(html, options)
+
+    // Normalise
+    rawText = nlp(title + '\n\n' + rawText)
+    rawText.normalize()
+    rawText = rawText.out('text')
+
+    resolve(rawText)
+  })
+}
+
+var getFormattedText = function (html, title, options) {
   return new Promise(function (resolve, reject) {
     if (typeof options === 'undefined') {
       options = {
@@ -339,36 +376,24 @@ var getPlainText = function (html, title, options) {
       }
     }
 
-    // Lowercase for analysis
-    var copy = {
-      wordwrap: 100,
-      noLinkBrackets: true,
-      ignoreHref: true,
-      ignoreImage: true,
-      tables: true,
-      uppercaseHeadings: false
-    }
-
     // HTML > Text
     var text = htmlToText.fromString(html, options)
-
-    // Normalised (Raw) Text (https://beta.observablehq.com/@spencermountain/compromise-normalization)
-    var rawText = htmlToText.fromString(html, copy)
-    rawText = nlp(title + '\n\n' + rawText)
-    rawText.normalize()
-    rawText = rawText.out('text')
 
     // If uppercase is set uppercase the title
     if (options.uppercaseHeadings === true) {
       title = title.toUpperCase()
     }
 
-    // Formatted Text (including new lines and spacing for spell check)
     var formattedText = title + '\n\n' + text
 
-    // HTML Text (spans on each line for spell check line numbers)
+    resolve(formattedText)
+  })
+}
+
+var getHtmlText = function (text) {
+  return new Promise(function (resolve, reject) {
     // Replace windows line breaks with linux line breaks & split each line into array
-    var textArray = formattedText.replace('\r\n', '\n').split('\n')
+    var textArray = text.replace('\r\n', '\n').split('\n')
     // Check length of text array (no of lines)
     var codeLength = textArray.length
     // Wrap each line in a span
@@ -381,7 +406,7 @@ var getPlainText = function (html, title, options) {
     var htmlText = textArray.join('\n')
 
     // return raw, formatted & html text
-    resolve({ raw: rawText, formatted: formattedText, html: htmlText })
+    resolve(htmlText)
   })
 }
 
