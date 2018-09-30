@@ -13,5 +13,6 @@ module.exports = [
   'h3.sharing-bar__title',
   '.inline-audio_container',
   '.mw-editsection',
-  '.mw-cite-backlink'
+  '.mw-cite-backlink',
+  'ul.gallery'
 ]
