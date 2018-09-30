@@ -344,12 +344,13 @@ var getRawText = function (html, title, options) {
   return new Promise(function (resolve, reject) {
     // Lowercase for analysis
     var options = {
-      wordwrap: 100,
+      wordwrap: null,
       noLinkBrackets: true,
       ignoreHref: true,
       ignoreImage: true,
       tables: true,
-      uppercaseHeadings: false
+      uppercaseHeadings: false,
+      unorderedListItemPrefix: ''
     }
 
     // HTML > Text
