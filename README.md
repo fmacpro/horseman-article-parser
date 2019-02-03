@@ -109,7 +109,7 @@ var options = {
 
 ## Development
 
-Please feel free to fork the repo or open pull requests to the development branch. I've used [eslint](https://eslint.org/) for linting & [yarn](https://yarnpkg.com/en/) for dependency management. 
+Please feel free to fork the repo or open pull requests to the development branch. I've used [eslint](https://eslint.org/) for linting. 
 
 Build the dependencies with:
 ```
