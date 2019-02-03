@@ -16,6 +16,10 @@
     esutils "^2.0.2"
     js-tokens "^4.0.0"
 
+absolutify@^0.1.0:
+  version "0.1.0"
+  resolved "https://registry.npmjs.org/absolutify/-/absolutify-0.1.0.tgz#1b86f89d8803f6f1dd8e42306d6e30a5ad4f6be7"
+
 acorn-globals@^1.0.4:
   version "1.0.9"
   resolved "http://registry.npmjs.org/acorn-globals/-/acorn-globals-1.0.9.tgz#55bb5e98691507b74579d0513413217c380c54cf"

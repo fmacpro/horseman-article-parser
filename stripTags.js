@@ -11,5 +11,8 @@ module.exports = [
   '.artSplitter',
   '#ayl-wrapper',
   'h3.sharing-bar__title',
-  '.inline-audio_container'
+  '.inline-audio_container',
+  '.mw-editsection',
+  '.mw-cite-backlink',
+  'ul.gallery'
 ]

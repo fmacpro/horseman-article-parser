@@ -12,6 +12,7 @@ var dictionary = require('dictionary-en-gb')
 var report = require('vfile-reporter-json')
 var htmlToText = require('html-to-text')
 var nlp = require('compromise')
+var absolutify = require('absolutify')
 var personalDictionary = require('./personalDictionary.js')
 var htmlTags = require('./stripTags.js')
 
@@ -78,6 +79,12 @@ var articleParser = function (options, socket) {
       .url()
       .then(function (url) {
         article.url = url
+
+        var pathArray = article.url.split('/')
+        var protocol = pathArray[0]
+        var host = pathArray[2]
+
+        article.baseurl = protocol + '//' + host
       })
       .waitForSelector('head')
 
@@ -101,15 +108,16 @@ var articleParser = function (options, socket) {
         socket.emit('parse:status', 'Evaluating Meta Data')
       })
       .evaluate(function () {
-        var arr = $('meta')
+        var j = jQuery.noConflict()
+        var arr = j('meta')
         var meta = {}
         var i = 0
 
         for (i = 0; i < arr.length; i++) {
-          if ($(arr[i]).attr('name')) {
-            meta[$(arr[i]).attr('name')] = $(arr[i]).attr('content')
-          } else if ($(arr[i]).attr('property')) {
-            meta[$(arr[i]).attr('property')] = $(arr[i]).attr('content')
+          if (j(arr[i]).attr('name')) {
+            meta[j(arr[i]).attr('name')] = j(arr[i]).attr('content')
+          } else if (j(arr[i]).attr('property')) {
+            meta[j(arr[i]).attr('property')] = j(arr[i]).attr('content')
           } else {
             // do nothing for now
           }
@@ -128,12 +136,13 @@ var articleParser = function (options, socket) {
         socket.emit('parse:status', 'Evaluating Links')
       })
       .evaluate(function () {
-        var arr = $('a')
+        var j = jQuery.noConflict()
+        var arr = j('a')
         var links = []
         var i = 0
 
         for (i = 0; i < arr.length; i++) {
-          var link = { href: $(arr[i]).attr('href'), text: $(arr[i]).text() }
+          var link = { href: j(arr[i]).attr('href'), text: j(arr[i]).text() }
           links.push(link)
         }
         return links
@@ -145,8 +154,9 @@ var articleParser = function (options, socket) {
 
       // HTML Cleaning
       .evaluate(function (options) {
+        var j = jQuery.noConflict()
         for (var i = 0; i < options.length; i++) {
-          $(options[i]).remove()
+          j(options[i]).remove()
         }
       }, options.striptags)
       .html('html')
@@ -161,21 +171,34 @@ var articleParser = function (options, socket) {
         socket.emit('parse:status', 'Evaluating Content')
         return contentParser(html, options.readability)
       })
-
-      // Plain Text
       .then(function (content) {
-        socket.emit('parse:status', 'HTML > TEXT')
-
-        article.processed.html = content.content
+        // Turn relative links into absolute links
+        article.processed.html = absolutify(content.content, article.baseurl)
         article.title.text = content.title
-        article.source = content.content
-
-        return getPlainText(content.content, content.title, options.htmltotext)
       })
-      .then(function (text) {
-        article.processed.text.formatted = text.formatted
-        article.processed.text.raw = text.raw
-        article.processed.text.html = text.html
+
+      // Formatted Text (including new lines and spacing for spell check)
+      .then(function () {
+        return getFormattedText(article.processed.html, article.title.text, article.baseurl, options.htmltotext)
+      })
+      .then(function (formattedText) {
+        article.processed.text.formatted = formattedText
+      })
+
+      // HTML Text (spans on each line for spell check line numbers)
+      .then(function () {
+        return getHtmlText(article.processed.text.formatted)
+      })
+      .then(function (htmlText) {
+        article.processed.text.html = htmlText
+      })
+
+      // Raw Text (text prepared for keyword analysis & named entity recongnition)
+      .then(function () {
+        return getRawText(article.processed.html, article.title.text)
+      })
+      .then(function (rawText) {
+        article.processed.text.raw = rawText
       })
 
       // Sentiment
@@ -324,7 +347,32 @@ var spellCheck = function (text, topics, options) {
   })
 }
 
-var getPlainText = function (html, title, options) {
+var getRawText = function (html, title, options) {
+  return new Promise(function (resolve, reject) {
+    // Lowercase for analysis
+    var options = {
+      wordwrap: null,
+      noLinkBrackets: true,
+      ignoreHref: true,
+      ignoreImage: true,
+      tables: true,
+      uppercaseHeadings: false,
+      unorderedListItemPrefix: ''
+    }
+
+    // HTML > Text
+    var rawText = htmlToText.fromString(html, options)
+
+    // Normalise
+    rawText = nlp(title + '\n\n' + rawText)
+    rawText.normalize()
+    rawText = rawText.out('text')
+
+    resolve(rawText)
+  })
+}
+
+var getFormattedText = function (html, title, baseurl, options) {
   return new Promise(function (resolve, reject) {
     if (typeof options === 'undefined') {
       options = {
@@ -332,40 +380,33 @@ var getPlainText = function (html, title, options) {
         noLinkBrackets: true,
         ignoreHref: true,
         tables: true,
-        uppercaseHeadings: true
+        uppercaseHeadings: true,
+        linkHrefBaseUrl: baseurl
       }
     }
 
-    // Lowercase for analysis
-    var copy = {
-      wordwrap: 100,
-      noLinkBrackets: true,
-      ignoreHref: true,
-      ignoreImage: true,
-      tables: true,
-      uppercaseHeadings: false
+    if (typeof options.linkHrefBaseUrl === 'undefined') {
+      options.linkHrefBaseUrl = baseurl
     }
 
     // HTML > Text
     var text = htmlToText.fromString(html, options)
-
-    // Normalised (Raw) Text (https://beta.observablehq.com/@spencermountain/compromise-normalization)
-    var rawText = htmlToText.fromString(html, copy)
-    rawText = nlp(title + '\n\n' + rawText)
-    rawText.normalize()
-    rawText = rawText.out('text')
 
     // If uppercase is set uppercase the title
     if (options.uppercaseHeadings === true) {
       title = title.toUpperCase()
     }
 
-    // Formatted Text (including new lines and spacing for spell check)
     var formattedText = title + '\n\n' + text
 
-    // HTML Text (spans on each line for spell check line numbers)
+    resolve(formattedText)
+  })
+}
+
+var getHtmlText = function (text) {
+  return new Promise(function (resolve, reject) {
     // Replace windows line breaks with linux line breaks & split each line into array
-    var textArray = formattedText.replace('\r\n', '\n').split('\n')
+    var textArray = text.replace('\r\n', '\n').split('\n')
     // Check length of text array (no of lines)
     var codeLength = textArray.length
     // Wrap each line in a span
@@ -378,7 +419,7 @@ var getPlainText = function (html, title, options) {
     var htmlText = textArray.join('\n')
 
     // return raw, formatted & html text
-    resolve({ raw: rawText, formatted: formattedText, html: htmlText })
+    resolve(htmlText)
   })
 }
 
