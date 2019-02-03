@@ -19,27 +19,27 @@
   "dependencies": {
     "absolutify": "^0.1.0",
     "clean-html": "^1.5.0",
-    "compromise": "^11.12.0",
+    "compromise": "^11.13.0",
     "dictionary-en-gb": "^2.0.0",
     "html-to-text": "^4.0.0",
     "lodash": "^4.17.4",
     "nlcst-to-string": "^2.0.2",
     "node-horseman": "^3.3.0",
-    "node-readability": "^2.2.0",
+    "node-readability": "^3.0.0",
     "phantomjs-prebuilt": "^2.1.14",
     "retext": "^5.0.0",
-    "retext-keywords": "^4.0.0",
-    "retext-spell": "^2.3.1",
+    "retext-keywords": "^4.0.2",
+    "retext-spell": "^2.4.0",
     "sentiment": "^5.0.1",
-    "vfile-reporter-json": "^1.0.2"
+    "vfile-reporter-json": "^1.0.3"
   },
   "engines": {
     "yarn": ">= 1.0.0"
   },
   "devDependencies": {
-    "eslint": "^5.6.0",
+    "eslint": "^5.13.0",
     "eslint-config-standard": "^12.0.0",
-    "eslint-plugin-import": "^2.14.0",
+    "eslint-plugin-import": "^2.16.0",
     "eslint-plugin-node": "^7.0.1",
     "eslint-plugin-promise": "^4.0.1",
     "eslint-plugin-standard": "^4.0.0"

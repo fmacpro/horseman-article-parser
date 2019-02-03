@@ -113,12 +113,12 @@ Please feel free to fork the repo or open pull requests to the development branc
 
 Build the dependencies with:
 ```
-yarn
+npm install
 ```
 
 Lint the index.js file with:
 ```
-yarn lint
+npm lint
 ```
 
 ## Dependencies
