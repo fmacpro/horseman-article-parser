@@ -1,4 +1,5 @@
 var parser = require('./index.js')
+var fs = require('fs');
 
 var options = {
   userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36',
@@ -21,10 +22,14 @@ parser.parseArticle(options)
         formatted: article.processed.text.formatted,
         html: article.processed.text.html
       },
-      spelling: article.spelling
+      spelling: article.spelling,
+      lighthouse: article.lighthouse
     }
-
-    console.log(response)
+    var json = JSON.stringify(response, null, 4);
+    fs.writeFile('testresults.json', json, 'utf8', function(err) {
+      if (err) throw err;
+      console.log('Results written to testresults.json');
+    });
   })
   .catch(function (error) {
     console.log(error.message)
