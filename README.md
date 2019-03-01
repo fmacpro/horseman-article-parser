@@ -4,7 +4,7 @@ A web page article parser which returns an object containing the article's forma
 
 ### Prerequisites
 
-Node.js & NPM
+Node.js, NPM & Chrome / Chromium
 
 ### Install
 
@@ -39,7 +39,8 @@ parser.parseArticle(options)
         formatted: article.processed.text.formatted,
         html: article.processed.text.html
       },
-      spelling: article.spelling
+      spelling: article.spelling,
+      lighthouse: article.lighthouse
     }
 
     console.log(response);
@@ -82,7 +83,9 @@ var options = {
     uppercaseHeadings: true
   },
   // retext-keywords options (https://ghub.io/retext-keywords)
-  retextkeywords: { maximum: 10 }
+  retextkeywords: { maximum: 10 },
+  // lighthouse options (https://github.com/GoogleChrome/lighthouse)
+  lighthouse: { chromeFlags: ['--headless'] }
 }
 ```
 
