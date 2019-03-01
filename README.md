@@ -4,7 +4,7 @@ A web page article parser which returns an object containing the article's forma
 
 ### Prerequisites
 
-Node.js & NPM
+Node.js, NPM & Chrome / Chromium
 
 ### Install
 
