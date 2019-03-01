@@ -122,7 +122,7 @@ npm install
 
 Lint the index.js file with:
 ```
-npm lint
+npm run lint --fix
 ```
 
 ## Dependencies

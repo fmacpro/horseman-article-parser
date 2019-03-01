@@ -1,5 +1,5 @@
 const parser = require('./index.js')
-const fs = require('fs');
+const fs = require('fs')
 
 let options = {
   userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36',
@@ -26,11 +26,11 @@ parser.parseArticle(options)
       spelling: article.spelling,
       lighthouse: article.lighthouse
     }
-    let json = JSON.stringify(response, null, 4);
-    fs.writeFile('testresults.json', json, 'utf8', function(err) {
-      if (err) throw err;
-      console.log('Results written to testresults.json');
-    });
+    let json = JSON.stringify(response, null, 4)
+    fs.writeFile('testresults.json', json, 'utf8', function (err) {
+      if (err) throw err
+      console.log('Results written to testresults.json')
+    })
   })
   .catch(function (error) {
     console.log(error.message)

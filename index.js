@@ -15,24 +15,24 @@ const nlp = require('compromise')
 const absolutify = require('absolutify')
 const personalDictionary = require('./personalDictionary.js')
 const htmlTags = require('./stripTags.js')
-const lighthouse = require('lighthouse');
-const chromeLauncher = require('chrome-launcher');
+const lighthouse = require('lighthouse')
+const chromeLauncher = require('chrome-launcher')
 
-function launchChromeAndRunLighthouse(url, opts, config = null) {
-  return chromeLauncher.launch({chromeFlags: opts.chromeFlags}).then(chrome => {
-    opts.port = chrome.port;
+function launchChromeAndRunLighthouse (url, opts, config = null) {
+  return chromeLauncher.launch({ chromeFlags: opts.chromeFlags }).then(chrome => {
+    opts.port = chrome.port
     return lighthouse(url, opts, config).then(results => {
       // use results.lhr for the JS-consumeable output
       // https://github.com/GoogleChrome/lighthouse/blob/master/types/lhr.d.ts
       // use results.report for the HTML/JSON/CSV output as a string
       // use results.artifacts for the trace/screenshots/other specific case you need (rarer)
       return chrome.kill().then(() => results.lhr)
-    });
-  });
+    })
+  })
 }
 
-function capitalizeFirstLetter(string) {
-    return string.charAt(0).toUpperCase() + string.slice(1);
+function capitalizeFirstLetter (string) {
+  return string.charAt(0).toUpperCase() + string.slice(1)
 }
 
 module.exports = {
@@ -51,7 +51,7 @@ const articleParser = function (options, socket) {
   article.meta.title = {}
   article.links = []
   article.title = {}
-  article.excerpt = "";
+  article.excerpt = ''
   article.processed = {}
   article.processed.text = {}
   article.lighthouse = {}
@@ -223,7 +223,7 @@ const articleParser = function (options, socket) {
 
       // Excerpt
       .then(function () {
-        article.excerpt = capitalizeFirstLetter(article.processed.text.raw.replace(/^(.{200}[^\s]*).*/, "$1"))
+        article.excerpt = capitalizeFirstLetter(article.processed.text.raw.replace(/^(.{200}[^\s]*).*/, '$1'))
       })
 
       // Sentiment
@@ -319,8 +319,8 @@ const articleParser = function (options, socket) {
         Object.assign(article.processed, keywords)
       })
       .then(function () {
-      	socket.emit('parse:status', 'Doing Lighthouse Analysis')
-        return lighthouseAnalysis(options.url, options.lighthouse);
+        socket.emit('parse:status', 'Doing Lighthouse Analysis')
+        return lighthouseAnalysis(options.url, options.lighthouse)
       })
       .then(function (results) {
         Object.assign(article.lighthouse, results)
@@ -542,18 +542,15 @@ const keywordParser = function (html, options) {
 }
 
 const lighthouseAnalysis = function (url, options) {
-
   return new Promise(function (resolve, reject) {
-
     if (typeof options === 'undefined') {
       options = {
-		chromeFlags: ['--headless']
+        chromeFlags: ['--headless']
       }
     }
 
-	launchChromeAndRunLighthouse(url, options).then(results => {
-	  resolve(results);
-	});
-
+    launchChromeAndRunLighthouse(url, options).then(results => {
+      resolve(results)
+    })
   })
 }
