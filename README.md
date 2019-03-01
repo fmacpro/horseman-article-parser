@@ -86,7 +86,7 @@ var options = {
   retextkeywords: { maximum: 10 },
   // lighthouse options (https://github.com/GoogleChrome/lighthouse)
   lighthouse: { chromeFlags: ['--headless'] }
-  }
+}
 ```
 
 At a minimum you should pass a url
