@@ -1,34 +1,38 @@
-var phantomjs = require('phantomjs-prebuilt')
-var Horseman = require('node-horseman')
-var read = require('node-readability')
-var retext = require('retext')
-var nlcstToString = require('nlcst-to-string')
-var keywords = require('retext-keywords')
-var _ = require('lodash')
-var cleaner = require('clean-html')
-var Sentiment = require('sentiment')
-var spell = require('retext-spell')
-var dictionary = require('dictionary-en-gb')
-var report = require('vfile-reporter-json')
-var htmlToText = require('html-to-text')
-var nlp = require('compromise')
-var absolutify = require('absolutify')
-var personalDictionary = require('./personalDictionary.js')
-var htmlTags = require('./stripTags.js')
-const lighthouse = require('lighthouse');
-const chromeLauncher = require('chrome-launcher');
+const phantomjs = require('phantomjs-prebuilt')
+const Horseman = require('node-horseman')
+const read = require('node-readability')
+const retext = require('retext')
+const nlcstToString = require('nlcst-to-string')
+const keywords = require('retext-keywords')
+const _ = require('lodash')
+const cleaner = require('clean-html')
+const Sentiment = require('sentiment')
+const spell = require('retext-spell')
+const dictionary = require('dictionary-en-gb')
+const report = require('vfile-reporter-json')
+const htmlToText = require('html-to-text')
+const nlp = require('compromise')
+const absolutify = require('absolutify')
+const personalDictionary = require('./personalDictionary.js')
+const htmlTags = require('./stripTags.js')
+const lighthouse = require('lighthouse')
+const chromeLauncher = require('chrome-launcher')
 
-function launchChromeAndRunLighthouse(url, opts, config = null) {
-  return chromeLauncher.launch({chromeFlags: opts.chromeFlags}).then(chrome => {
-    opts.port = chrome.port;
+function launchChromeAndRunLighthouse (url, opts, config = null) {
+  return chromeLauncher.launch({ chromeFlags: opts.chromeFlags }).then(chrome => {
+    opts.port = chrome.port
     return lighthouse(url, opts, config).then(results => {
       // use results.lhr for the JS-consumeable output
       // https://github.com/GoogleChrome/lighthouse/blob/master/types/lhr.d.ts
       // use results.report for the HTML/JSON/CSV output as a string
       // use results.artifacts for the trace/screenshots/other specific case you need (rarer)
       return chrome.kill().then(() => results.lhr)
-    });
-  });
+    })
+  })
+}
+
+function capitalizeFirstLetter (string) {
+  return string.charAt(0).toUpperCase() + string.slice(1)
 }
 
 module.exports = {
@@ -41,12 +45,13 @@ module.exports = {
   }
 }
 
-var articleParser = function (options, socket) {
-  var article = {}
+const articleParser = function (options, socket) {
+  let article = {}
   article.meta = {}
   article.meta.title = {}
   article.links = []
   article.title = {}
+  article.excerpt = ''
   article.processed = {}
   article.processed.text = {}
   article.lighthouse = {}
@@ -71,7 +76,7 @@ var articleParser = function (options, socket) {
   }
 
   return new Promise(function (resolve, reject) {
-    var horseman = new Horseman(options.horseman)
+    let horseman = new Horseman(options.horseman)
 
     // Init horseman
     horseman
@@ -96,9 +101,9 @@ var articleParser = function (options, socket) {
       .then(function (url) {
         article.url = url
 
-        var pathArray = article.url.split('/')
-        var protocol = pathArray[0]
-        var host = pathArray[2]
+        let pathArray = article.url.split('/')
+        let protocol = pathArray[0]
+        let host = pathArray[2]
 
         article.baseurl = protocol + '//' + host
       })
@@ -109,7 +114,6 @@ var articleParser = function (options, socket) {
       .then(function (title) {
         article.meta.title.text = title
       })
-
       // Take mobile screenshot
       .then(function () {
         socket.emit('parse:status', 'Taking Mobile Screenshot')
@@ -145,7 +149,7 @@ var articleParser = function (options, socket) {
       .then(function (meta) {
         Object.assign(article.meta, meta)
 
-        var metaDescription = article.meta.description
+        let metaDescription = article.meta.description
         article.meta.description = {}
         article.meta.description.text = metaDescription
 
@@ -217,10 +221,15 @@ var articleParser = function (options, socket) {
         article.processed.text.raw = rawText
       })
 
+      // Excerpt
+      .then(function () {
+        article.excerpt = capitalizeFirstLetter(article.processed.text.raw.replace(/^(.{200}[^\s]*).*/, '$1'))
+      })
+
       // Sentiment
       .then(function () {
         socket.emit('parse:status', 'Sentiment Analysis')
-        var sentiment = new Sentiment()
+        let sentiment = new Sentiment()
         article.sentiment = sentiment.analyze(article.processed.text.raw)
         if (article.sentiment.score > 0.05) {
           article.sentiment.result = 'Positive'
@@ -310,8 +319,8 @@ var articleParser = function (options, socket) {
         Object.assign(article.processed, keywords)
       })
       .then(function () {
-      	socket.emit('parse:status', 'Doing Lighthouse Analysis')
-        return lighthouseAnalysis(options.url, options.lighthouse);
+        socket.emit('parse:status', 'Doing Lighthouse Analysis')
+        return lighthouseAnalysis(options.url, options.lighthouse)
       })
       .then(function (results) {
         Object.assign(article.lighthouse, results)
@@ -329,7 +338,7 @@ var articleParser = function (options, socket) {
   })
 }
 
-var spellCheck = function (text, topics, options) {
+const spellCheck = function (text, topics, options) {
   text = text.replace(/[0-9]{1,}[a-zA-Z]{1,}/gi, '')
 
   function toTitleCase (str) {
@@ -339,7 +348,7 @@ var spellCheck = function (text, topics, options) {
   }
 
   return new Promise(function (resolve, reject) {
-    var ignoreList = _.map(topics, 'normal')
+    let ignoreList = _.map(topics, 'normal')
     ignoreList = ignoreList.join(' ')
     ignoreList = toTitleCase(ignoreList) + ' ' + ignoreList.toUpperCase()
     ignoreList = ignoreList.split(' ')
@@ -363,17 +372,17 @@ var spellCheck = function (text, topics, options) {
           reject(error)
         }
 
-        var results = JSON.parse(report(file))
+        let results = JSON.parse(report(file))
         results = results[0].messages
         resolve(results)
       })
   })
 }
 
-var getRawText = function (html, title, options) {
+const getRawText = function (html, title, options) {
   return new Promise(function (resolve, reject) {
     // Lowercase for analysis
-    var options = {
+    let options = {
       wordwrap: null,
       noLinkBrackets: true,
       ignoreHref: true,
@@ -384,7 +393,7 @@ var getRawText = function (html, title, options) {
     }
 
     // HTML > Text
-    var rawText = htmlToText.fromString(html, options)
+    let rawText = htmlToText.fromString(html, options)
 
     // Normalise
     rawText = nlp(title + '\n\n' + rawText)
@@ -395,7 +404,7 @@ var getRawText = function (html, title, options) {
   })
 }
 
-var getFormattedText = function (html, title, baseurl, options) {
+const getFormattedText = function (html, title, baseurl, options) {
   return new Promise(function (resolve, reject) {
     if (typeof options === 'undefined') {
       options = {
@@ -413,25 +422,25 @@ var getFormattedText = function (html, title, baseurl, options) {
     }
 
     // HTML > Text
-    var text = htmlToText.fromString(html, options)
+    let text = htmlToText.fromString(html, options)
 
     // If uppercase is set uppercase the title
     if (options.uppercaseHeadings === true) {
       title = title.toUpperCase()
     }
 
-    var formattedText = title + '\n\n' + text
+    let formattedText = title + '\n\n' + text
 
     resolve(formattedText)
   })
 }
 
-var getHtmlText = function (text) {
+const getHtmlText = function (text) {
   return new Promise(function (resolve, reject) {
     // Replace windows line breaks with linux line breaks & split each line into array
-    var textArray = text.replace('\r\n', '\n').split('\n')
+    let textArray = text.replace('\r\n', '\n').split('\n')
     // Check length of text array (no of lines)
-    var codeLength = textArray.length
+    let codeLength = textArray.length
     // Wrap each line in a span
     textArray.forEach(function (line, index, array) {
       if (codeLength === index) return
@@ -439,14 +448,14 @@ var getHtmlText = function (text) {
       array[index] = '<span>' + line + '</span>'
     })
     // Join each line back into a string
-    var htmlText = textArray.join('\n')
+    let htmlText = textArray.join('\n')
 
     // return raw, formatted & html text
     resolve(htmlText)
   })
 }
 
-var htmlCleaner = function (html, options) {
+const htmlCleaner = function (html, options) {
   return new Promise(function (resolve, reject) {
     if (typeof options === 'undefined') {
       options = {
@@ -462,7 +471,7 @@ var htmlCleaner = function (html, options) {
   })
 }
 
-var contentParser = function (html, options) {
+const contentParser = function (html, options) {
   return new Promise(function (resolve, reject) {
     // https://github.com/luin/readability
 
@@ -476,8 +485,8 @@ var contentParser = function (html, options) {
         reject(error)
       }
 
-      var title = article.title
-      var content = article.content
+      let title = article.title
+      let content = article.content
 
       article.close()
 
@@ -486,7 +495,7 @@ var contentParser = function (html, options) {
   })
 }
 
-var keywordParser = function (html, options) {
+const keywordParser = function (html, options) {
   return new Promise(function (resolve, reject) {
     if (typeof options === 'undefined') {
       options = { maximum: 10 }
@@ -498,8 +507,8 @@ var keywordParser = function (html, options) {
           reject(error)
         }
 
-        var keywords = []
-        var keyphrases = []
+        let keywords = []
+        let keyphrases = []
 
         file.data.keywords.forEach(function (keyword) {
           keywords.push({
@@ -509,8 +518,8 @@ var keywordParser = function (html, options) {
         })
 
         file.data.keyphrases.forEach(function (phrase) {
-          var nodes = phrase.matches[0].nodes
-          var tree = _.map(nodes)
+          let nodes = phrase.matches[0].nodes
+          let tree = _.map(nodes)
 
           keyphrases.push({
             keyphrase: nlcstToString(tree, ''),
@@ -532,19 +541,16 @@ var keywordParser = function (html, options) {
   })
 }
 
-var lighthouseAnalysis = function (url, options) {
-
+const lighthouseAnalysis = function (url, options) {
   return new Promise(function (resolve, reject) {
-
     if (typeof options === 'undefined') {
       options = {
-		chromeFlags: ['--headless']
+        chromeFlags: ['--headless']
       }
     }
 
-	launchChromeAndRunLighthouse(url, options).then(results => {
-	  resolve(results);
-	});
-
+    launchChromeAndRunLighthouse(url, options).then(results => {
+      resolve(results)
+    })
   })
 }

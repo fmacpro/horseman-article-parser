@@ -27,6 +27,7 @@ parser.parseArticle(options)
 
     var response = {
       title: article.title.text,
+      excerpt: article.excerpt,
       metadescription: article.meta.description.text,
       url: article.url,
       sentiment: { score: article.sentiment.score, comparative: article.sentiment.comparative },
@@ -121,7 +122,7 @@ npm install
 
 Lint the index.js file with:
 ```
-npm lint
+npm run lint --fix
 ```
 
 ## Dependencies
