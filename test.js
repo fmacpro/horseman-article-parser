@@ -10,6 +10,7 @@ parser.parseArticle(options)
   .then(function (article) {
     var response = {
       title: article.title.text,
+      excerpt: article.excerpt,
       metadescription: article.meta.description.text,
       url: article.url,
       sentiment: { score: article.sentiment.score, comparative: article.sentiment.comparative },

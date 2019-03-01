@@ -31,6 +31,10 @@ function launchChromeAndRunLighthouse(url, opts, config = null) {
   });
 }
 
+function capitalizeFirstLetter(string) {
+    return string.charAt(0).toUpperCase() + string.slice(1);
+}
+
 module.exports = {
   parseArticle: function (options, socket) {
     if (typeof socket === 'undefined') {
@@ -47,6 +51,7 @@ var articleParser = function (options, socket) {
   article.meta.title = {}
   article.links = []
   article.title = {}
+  article.excerpt = "";
   article.processed = {}
   article.processed.text = {}
   article.lighthouse = {}
@@ -109,7 +114,6 @@ var articleParser = function (options, socket) {
       .then(function (title) {
         article.meta.title.text = title
       })
-
       // Take mobile screenshot
       .then(function () {
         socket.emit('parse:status', 'Taking Mobile Screenshot')
@@ -215,6 +219,11 @@ var articleParser = function (options, socket) {
       })
       .then(function (rawText) {
         article.processed.text.raw = rawText
+      })
+
+      // Excerpt
+      .then(function () {
+        article.excerpt = capitalizeFirstLetter(article.processed.text.raw.replace(/^(.{200}[^\s]*).*/, "$1"))
       })
 
       // Sentiment
