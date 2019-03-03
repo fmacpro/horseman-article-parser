@@ -32,6 +32,7 @@ parser.parseArticle(options)
       url: article.url,
       sentiment: { score: article.sentiment.score, comparative: article.sentiment.comparative },
       keyphrases: article.processed.keyphrases,
+      keywords: article.processed.keywords,
       people: article.people,
       orgs: article.orgs,
       places: article.places,
@@ -41,6 +42,8 @@ parser.parseArticle(options)
         html: article.processed.text.html
       },
       spelling: article.spelling,
+      meta: article.meta,
+      links: article.links,
       lighthouse: article.lighthouse
     }
 
