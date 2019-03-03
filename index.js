@@ -17,6 +17,8 @@ const personalDictionary = require('./personalDictionary.js')
 const htmlTags = require('./stripTags.js')
 const lighthouse = require('lighthouse')
 const chromeLauncher = require('chrome-launcher')
+const jsdom = require('jsdom')
+const { JSDOM } = jsdom
 
 function launchChromeAndRunLighthouse (url, opts, config = null) {
   return chromeLauncher.launch({ chromeFlags: opts.chromeFlags }).then(chrome => {
@@ -35,14 +37,32 @@ function capitalizeFirstLetter (string) {
   return string.charAt(0).toUpperCase() + string.slice(1)
 }
 
+function toTitleCase (str) {
+  return str.replace(/\w\S*/g, function (txt) {
+    return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
+  })
+}
+
 module.exports = {
   parseArticle: function (options, socket) {
     if (typeof socket === 'undefined') {
       socket = { emit: function (type, status) { console.log(status) } }
     }
 
-    return articleParser(options, socket)
+    return run(options, socket)
   }
+}
+
+const run = function (options, socket) {
+  return new Promise(function (resolve, reject) {
+    let article = {}
+
+    Promise.all([articleParser(options, socket), lighthouseAnalysis(options.url, options.lighthouse, socket)]).then(function (results) {
+      Object.assign(article, results[0])
+      Object.assign(article.lighthouse, results[1])
+      resolve(article)
+    })
+  })
 }
 
 const articleParser = function (options, socket) {
@@ -77,6 +97,8 @@ const articleParser = function (options, socket) {
 
   return new Promise(function (resolve, reject) {
     let horseman = new Horseman(options.horseman)
+
+    socket.emit('parse:status', 'Starting Horseman')
 
     // Init horseman
     horseman
@@ -144,32 +166,12 @@ const articleParser = function (options, socket) {
         }
         return meta
       })
-
-      // Evaluate links
       .then(function (meta) {
         Object.assign(article.meta, meta)
-
+        // Assign description
         let metaDescription = article.meta.description
         article.meta.description = {}
         article.meta.description.text = metaDescription
-
-        socket.emit('parse:status', 'Evaluating Links')
-      })
-      .evaluate(function () {
-        var j = jQuery.noConflict()
-        var arr = j('a')
-        var links = []
-        var i = 0
-
-        for (i = 0; i < arr.length; i++) {
-          var link = { href: j(arr[i]).attr('href'), text: j(arr[i]).text() }
-          links.push(link)
-        }
-        return links
-      })
-      .then(function (links) {
-        Object.assign(article.links, links)
-        socket.emit('parse:status', 'Cleaning HTML')
       })
 
       // HTML Cleaning
@@ -195,8 +197,26 @@ const articleParser = function (options, socket) {
         // Turn relative links into absolute links
         article.processed.html = absolutify(content.content, article.baseurl)
         article.title.text = content.title
-      })
 
+        // Get in article links
+        socket.emit('parse:status', 'Evaluating Links')
+
+        let { window } = new JSDOM(article.processed.html)
+        let $ = require('jquery')(window)
+
+        let arr = window.$('a')
+        let links = []
+        let i = 0
+
+        for (i = 0; i < arr.length; i++) {
+          let link = { href: $(arr[i]).attr('href'), text: $(arr[i]).text() }
+          links.push(link)
+        }
+        return links
+      })
+      .then(function (links) {
+        Object.assign(article.links, links)
+      })
       // Formatted Text (including new lines and spacing for spell check)
       .then(function () {
         return getFormattedText(article.processed.html, article.title.text, article.baseurl, options.htmltotext)
@@ -319,14 +339,7 @@ const articleParser = function (options, socket) {
         Object.assign(article.processed, keywords)
       })
       .then(function () {
-        socket.emit('parse:status', 'Doing Lighthouse Analysis')
-        return lighthouseAnalysis(options.url, options.lighthouse)
-      })
-      .then(function (results) {
-        Object.assign(article.lighthouse, results)
-      })
-      .then(function () {
-        socket.emit('parse:status', 'Done')
+        socket.emit('parse:status', 'Horseman Anaysis Complete')
         resolve(article)
       })
       .close()
@@ -340,12 +353,6 @@ const articleParser = function (options, socket) {
 
 const spellCheck = function (text, topics, options) {
   text = text.replace(/[0-9]{1,}[a-zA-Z]{1,}/gi, '')
-
-  function toTitleCase (str) {
-    return str.replace(/\w\S*/g, function (txt) {
-      return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
-    })
-  }
 
   return new Promise(function (resolve, reject) {
     let ignoreList = _.map(topics, 'normal')
@@ -541,8 +548,10 @@ const keywordParser = function (html, options) {
   })
 }
 
-const lighthouseAnalysis = function (url, options) {
+const lighthouseAnalysis = function (url, options, socket) {
   return new Promise(function (resolve, reject) {
+    socket.emit('parse:status', 'Starting Lighthouse')
+
     if (typeof options === 'undefined') {
       options = {
         chromeFlags: ['--headless']
@@ -550,6 +559,8 @@ const lighthouseAnalysis = function (url, options) {
     }
 
     launchChromeAndRunLighthouse(url, options).then(results => {
+      socket.emit('parse:status', 'Lighthouse Analysis Complete')
+
       resolve(results)
     })
   })

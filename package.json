@@ -1,6 +1,6 @@
 {
   "name": "horseman-article-parser",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Web Page Inspection Tool. Sentiment Analysis, Keyword Extraction, Named Entity Recognition & Spell Check",
   "main": "index.js",
   "scripts": {
@@ -22,6 +22,8 @@
     "compromise": "^11.13.0",
     "dictionary-en-gb": "^2.0.0",
     "html-to-text": "^4.0.0",
+    "jquery": "^3.3.1",
+    "jsdom": "^13.2.0",
     "lighthouse": "^4.1.0",
     "lodash": "^4.17.4",
     "nlcst-to-string": "^2.0.2",
