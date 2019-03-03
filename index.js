@@ -17,7 +17,8 @@ const personalDictionary = require('./personalDictionary.js')
 const htmlTags = require('./stripTags.js')
 const lighthouse = require('lighthouse')
 const chromeLauncher = require('chrome-launcher')
-const jsdom = require('jsdom').jsdom
+const jsdom = require('jsdom')
+const { JSDOM } = jsdom
 
 function launchChromeAndRunLighthouse (url, opts, config = null) {
   return chromeLauncher.launch({ chromeFlags: opts.chromeFlags }).then(chrome => {
@@ -200,8 +201,7 @@ const articleParser = function (options, socket) {
         // Get in article links
         socket.emit('parse:status', 'Evaluating Links')
 
-        let document = jsdom(article.processed.html, {})
-        let window = document.defaultView
+        let { window } = new JSDOM(article.processed.html)
         let $ = require('jquery')(window)
 
         let arr = window.$('a')
