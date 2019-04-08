@@ -1,6 +1,6 @@
 # Horseman Article Parser
 
-A web page article parser which returns an object containing the article's formatted text & other attributes including sentiment, keyphrases, people, places, organisations and spelling suggestions. 
+A web page article parser which returns an object containing the article's formatted text and other attributes including sentiment, keyphrases, people, places, organisations, spelling suggestions, in-article links, meta data & lighthouse audit results. 
 
 ### Prerequisites
 
@@ -123,20 +123,29 @@ Build the dependencies with:
 npm install
 ```
 
-Lint the index.js file with:
+Lint the project files with:
 ```
-npm run lint --fix
+npm run lint
+```
+
+Test the package with:
+```
+npm run test
 ```
 
 ## Dependencies
 
+- [absolutify](https://ghub.io/absolutify): Relative to Absolute URL Replacer
 - [clean-html](https://ghub.io/clean-html): HTML cleaner and beautifier
 - [compromise](https://ghub.io/compromise): natural language processing in the browser
 - [dictionary-en-gb](https://ghub.io/dictionary-en-gb): English (United Kingdom) spelling dictionary in UTF-8
 - [html-to-text](https://ghub.io/html-to-text): Advanced html to plain text converter
+- [jquery](https://ghub.io/jquery): JavaScript library for DOM operations
+- [jsdom](https://ghub.io/jsdom): A JavaScript implementation of many web standards
+- [lighthouse](https://ghub.io/lighthouse): Lighthouse
 - [lodash](https://ghub.io/lodash): Lodash modular utilities.
-- [node-horseman](https://ghub.io/node-horseman): Run PhantomJS from Node
 - [nlcst-to-string](https://ghub.io/nlcst-to-string): Stringify NLCST
+- [node-horseman](https://ghub.io/node-horseman): Run PhantomJS from Node
 - [node-readability](https://ghub.io/node-readability): Turning any web page into a clean view.
 - [phantomjs-prebuilt](https://ghub.io/phantomjs-prebuilt): Headless WebKit with JS API
 - [retext](https://ghub.io/retext): Natural language processor powered by plugins
@@ -145,14 +154,17 @@ npm run lint --fix
 - [sentiment](https://ghub.io/sentiment): AFINN-based sentiment analysis for Node.js
 - [vfile-reporter-json](https://ghub.io/vfile-reporter-json): JSON reporter for virtual files
 
+
 ## Dev Dependencies
 
 - [eslint](https://ghub.io/eslint): An AST-based pattern checker for JavaScript.
 - [eslint-config-standard](https://ghub.io/eslint-config-standard): JavaScript Standard Style - ESLint Shareable Config
 - [eslint-plugin-import](https://ghub.io/eslint-plugin-import): Import with sanity.
+- [eslint-plugin-json](https://ghub.io/eslint-plugin-json): Lint JSON files
 - [eslint-plugin-node](https://ghub.io/eslint-plugin-node): Additional ESLint&#39;s rules for Node.js
 - [eslint-plugin-promise](https://ghub.io/eslint-plugin-promise): Enforce best practices for JavaScript promises
 - [eslint-plugin-standard](https://ghub.io/eslint-plugin-standard): ESlint Plugin for the Standard Linter
+
 
 ## License
 
