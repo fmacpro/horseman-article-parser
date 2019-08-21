@@ -56,6 +56,7 @@ module.exports = {
 const run = function (options, socket) {
   return new Promise(function (resolve, reject) {
     let article = {}
+    let actions = [];
 
     Promise.all([articleParser(options, socket), lighthouseAnalysis(options.url, options.lighthouse, socket)]).then(function (results) {
       Object.assign(article, results[0])
@@ -550,18 +551,28 @@ const keywordParser = function (html, options) {
 
 const lighthouseAnalysis = function (url, options, socket) {
   return new Promise(function (resolve, reject) {
-    socket.emit('parse:status', 'Starting Lighthouse')
 
     if (typeof options === 'undefined') {
       options = {
-        chromeFlags: ['--headless']
+        chromeFlags: ['--headless'],
+        enabled: false
       }
     }
 
-    launchChromeAndRunLighthouse(url, options).then(results => {
-      socket.emit('parse:status', 'Lighthouse Analysis Complete')
+    if ( options.enabled ) {
 
-      resolve(results)
-    })
+      socket.emit('parse:status', 'Starting Lighthouse')
+
+      if (typeof options.chromeFlags === 'undefined') {
+        options.chromeFlags = ['--headless'];
+      }
+
+      launchChromeAndRunLighthouse(url, options).then(results => {
+        socket.emit('parse:status', 'Lighthouse Analysis Complete')
+
+        resolve(results)
+      })
+    }
+
   })
 }
