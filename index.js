@@ -1,5 +1,4 @@
-const phantomjs = require('phantomjs-prebuilt')
-const Horseman = require('node-horseman')
+const puppeteer = require('puppeteer');
 const read = require('node-readability')
 const retext = require('retext')
 const nlcstToString = require('nlcst-to-string')
@@ -85,7 +84,7 @@ const articleParser = function (options, socket) {
   }
 
   if (typeof options.horseman.phantomPath === 'undefined') {
-    options.horseman.phantomPath = phantomjs.path
+    //options.horseman.phantomPath = phantomjs.path
   }
 
   if (typeof options.userAgent === 'undefined') {
@@ -97,258 +96,56 @@ const articleParser = function (options, socket) {
   }
 
   return new Promise(function (resolve, reject) {
-    const horseman = new Horseman(options.horseman)
 
-    socket.emit('parse:status', 'Starting Horseman')
+    (async () => {
 
-    // Init horseman
-    horseman
-      .userAgent(options.userAgent)
-      .viewport(540, 800)
-      .open(options.url)
-      .then(socket.emit('parse:status', 'Fetch ' + options.url))
+      // Init puppeteer
+      const browser = await puppeteer.launch();
+      
+      const page = await browser.newPage();
+
+      const response = await page.goto(options.url)
+      
+      socket.emit('parse:status', 'Fetch ' + options.url)
 
       // Evaluate status
-      .status()
-      .then(function (status) {
-        article.status = status
-        socket.emit('parse:status', 'Status ' + status)
-        if (status === 403 || status === 404) {
-          reject(status)
-          return horseman.close()
-        }
-      })
+      article.status = response.request().response().status()
+      
+      socket.emit('parse:status', 'Status ' + article.status)
+
+      if (article.status === 403 || article.status === 404) {
+          reject(article.status)
+          await browser.close();
+      }
 
       // Evaluate URL
-      .url()
-      .then(function (url) {
-        article.url = url
+      article.url = response.request().response().url()
 
-        const pathArray = article.url.split('/')
-        const protocol = pathArray[0]
-        const host = pathArray[2]
+      const pathArray = article.url.split('/')
+      const protocol = pathArray[0]
+      const host = pathArray[2]
 
-        article.baseurl = protocol + '//' + host
-      })
-      .waitForSelector('head')
+      article.baseurl = protocol + '//' + host
+
+      console.log(article.baseurl);
 
       // Evaluate title
-      .title()
-      .then(function (title) {
-        article.meta.title.text = title
-      })
+      article.meta.title.text = await page.title();
+
+      console.log(article.meta.title.text);
+
       // Take mobile screenshot
-      .then(function () {
-        socket.emit('parse:status', 'Taking Mobile Screenshot')
-      })
-      .screenshotBase64('JPEG')
-      .then(function (screenshot) {
-        article.mobile = screenshot
-      })
+      article.mobile = await page.screenshot({ encoding: 'base64', type: 'jpeg', quality: 60 });
+
+      console.log(article.mobile);
 
       // Evaluate meta
-      .then(function () {
-        socket.emit('parse:status', 'Evaluating Meta Data')
-      })
-      .evaluate(function () {
-        var j = jQuery.noConflict()
-        var arr = j('meta')
-        var meta = {}
-        var i = 0
 
-        for (i = 0; i < arr.length; i++) {
-          if (j(arr[i]).attr('name')) {
-            meta[j(arr[i]).attr('name')] = j(arr[i]).attr('content')
-          } else if (j(arr[i]).attr('property')) {
-            meta[j(arr[i]).attr('property')] = j(arr[i]).attr('content')
-          } else {
-            // do nothing for now
-          }
-        }
-        return meta
-      })
-      .then(function (meta) {
-        Object.assign(article.meta, meta)
-        // Assign description
-        const metaDescription = article.meta.description
-        article.meta.description = {}
-        article.meta.description.text = metaDescription
-      })
 
-      // HTML Cleaning
-      .evaluate(function (options) {
-        var j = jQuery.noConflict()
-        for (var i = 0; i < options.length; i++) {
-          j(options[i]).remove()
-        }
-      }, options.striptags)
-      .html('html')
+      await browser.close();
 
-      // More HTML Cleaning
-      .then(function (html) {
-        return htmlCleaner(html, options.cleanhtml)
-      })
+    })();
 
-      // Body Content Identification
-      .then(function (html) {
-        socket.emit('parse:status', 'Evaluating Content')
-        return contentParser(html, options.readability)
-      })
-      .then(function (content) {
-        // Turn relative links into absolute links
-        article.processed.html = absolutify(content.content, article.baseurl)
-        article.title.text = content.title
-
-        // Get in article links
-        socket.emit('parse:status', 'Evaluating Links')
-
-        const { window } = new JSDOM(article.processed.html)
-        const $ = require('jquery')(window)
-
-        const arr = window.$('a')
-        const links = []
-        let i = 0
-
-        for (i = 0; i < arr.length; i++) {
-          const link = { href: $(arr[i]).attr('href'), text: $(arr[i]).text() }
-          links.push(link)
-        }
-        return links
-      })
-      .then(function (links) {
-        Object.assign(article.links, links)
-      })
-      // Formatted Text (including new lines and spacing for spell check)
-      .then(function () {
-        return getFormattedText(article.processed.html, article.title.text, article.baseurl, options.htmltotext)
-      })
-      .then(function (formattedText) {
-        article.processed.text.formatted = formattedText
-      })
-
-      // HTML Text (spans on each line for spell check line numbers)
-      .then(function () {
-        return getHtmlText(article.processed.text.formatted)
-      })
-      .then(function (htmlText) {
-        article.processed.text.html = htmlText
-      })
-
-      // Raw Text (text prepared for keyword analysis & named entity recongnition)
-      .then(function () {
-        return getRawText(article.processed.html, article.title.text)
-      })
-      .then(function (rawText) {
-        article.processed.text.raw = rawText
-      })
-
-      // Excerpt
-      .then(function () {
-        article.excerpt = capitalizeFirstLetter(article.processed.text.raw.replace(/^(.{200}[^\s]*).*/, '$1'))
-      })
-
-      // Sentiment
-      .then(function () {
-        socket.emit('parse:status', 'Sentiment Analysis')
-        const sentiment = new Sentiment()
-        article.sentiment = sentiment.analyze(article.processed.text.raw)
-        if (article.sentiment.score > 0.05) {
-          article.sentiment.result = 'Positive'
-        } else if (article.sentiment.score < 0.05) {
-          article.sentiment.result = 'Negative'
-        } else {
-          article.sentiment.result = 'Neutral'
-        }
-      })
-
-      // Named Entity Recognition
-      .then(function () {
-        socket.emit('parse:status', 'Named Entity Recognition')
-
-        // People
-        article.people = nlp(article.processed.text.raw).people().out('topk')
-
-        article.people.sort(function (a, b) {
-          return (a.percent > b.percent) ? -1 : 1
-        })
-
-        // Places
-        article.places = nlp(article.processed.text.raw).places().out('topk')
-
-        article.places.sort(function (a, b) {
-          return (a.percent > b.percent) ? -1 : 1
-        })
-
-        // Orgs & Places
-        article.orgs = nlp(article.processed.text.raw).organizations().out('topk')
-
-        article.orgs.sort(function (a, b) {
-          return (a.percent > b.percent) ? -1 : 1
-        })
-
-        // Topics
-        article.topics = nlp(article.processed.text.raw).topics().out('topk')
-
-        article.topics.sort(function (a, b) {
-          return (a.percent > b.percent) ? -1 : 1
-        })
-      })
-
-      // Spelling
-      .then(function () {
-        socket.emit('parse:status', 'Check Spelling')
-        return spellCheck(article.processed.text.formatted, article.topics, options.retextspell)
-      })
-      .then(function (data) {
-        article.spelling = data
-      })
-
-      // Evaluate keywords & keyphrases
-      .then(function () {
-        socket.emit('parse:status', 'Evaluating Keywords')
-      })
-
-      // Evaluate meta title keywords & keyphrases
-      .then(function () {
-        return keywordParser(article.meta.title.text, options.retextkeywords)
-      })
-      .then(function (keywords) {
-        Object.assign(article.meta.title, keywords)
-      })
-
-      // Evaluate derived title keywords & keyphrases
-      .then(function () {
-        return keywordParser(article.title.text, options.retextkeywords)
-      })
-      .then(function (keywords) {
-        Object.assign(article.title, keywords)
-      })
-
-      // Evaluate meta description keywords & keyphrases
-      .then(function () {
-        return keywordParser(article.meta.description.text, options.retextkeywords)
-      })
-      .then(function (keywords) {
-        Object.assign(article.meta.description, keywords)
-      })
-
-      // Evaluate processed content keywords & keyphrases
-      .then(function () {
-        return keywordParser(article.processed.text.raw, options.retextkeywords)
-      })
-      .then(function (keywords) {
-        Object.assign(article.processed, keywords)
-      })
-      .then(function () {
-        socket.emit('parse:status', 'Horseman Anaysis Complete')
-        resolve(article)
-      })
-      .close()
-
-      // Catch and emit errors
-      .catch(function (error) {
-        reject(error)
-      })
   })
 }
 
