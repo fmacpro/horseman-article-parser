@@ -135,14 +135,187 @@ const articleParser = function (options, socket) {
       console.log(article.meta.title.text);
 
       // Take mobile screenshot
+      socket.emit('parse:status', 'Taking Mobile Screenshot')
+
       article.mobile = await page.screenshot({ encoding: 'base64', type: 'jpeg', quality: 60 });
 
-      console.log(article.mobile);
+      //console.log(article.mobile);
 
       // Evaluate meta
+      await page.addScriptTag({ url: 'https://code.jquery.com/jquery-3.2.1.min.js' });
 
+      socket.emit('parse:status', 'Evaluating Meta Data')
+
+      const meta = await page.evaluate(() => {
+        
+        const j = window.$;
+
+        var arr = j('meta')
+        var meta = {}
+        var i = 0
+
+        for (i = 0; i < arr.length; i++) {
+          if (j(arr[i]).attr('name')) {
+            meta[j(arr[i]).attr('name')] = j(arr[i]).attr('content')
+          } else if (j(arr[i]).attr('property')) {
+            meta[j(arr[i]).attr('property')] = j(arr[i]).attr('content')
+          } else {
+            // do nothing for now
+          }
+        }
+        return meta
+
+      });
+
+      // Assign meta
+      Object.assign(article.meta, meta)
+
+      // Assign meta description
+      const metaDescription = article.meta.description
+      article.meta.description = {}
+      article.meta.description.text = metaDescription
+
+      console.log(article.meta.description.text);
+
+      // HTML Cleaning
+      let html = await page.evaluate((options) => {
+
+        const j = window.$;
+
+        for (var i = 0; i < options.length; i++) {
+          j(options[i]).remove()
+        }
+
+        return j("html").html();
+
+      }, options.striptags);
+
+      // More HTML Cleaning
+      html = await htmlCleaner(html, options.cleanhtml);
+
+      // Body Content Identification
+      socket.emit('parse:status', 'Evaluating Content')
+
+      let content = await contentParser(html, options.readability)
+
+      // Turn relative links into absolute links
+      article.processed.html = await absolutify(content.content, article.baseurl)
+      article.title.text = content.title
+
+      //console.log(article.processed.html);
+
+      // Get in article links
+      socket.emit('parse:status', 'Evaluating Links')
+
+      const { window } = new JSDOM(article.processed.html)
+      const $ = require('jquery')(window)
+
+      const arr = window.$('a')
+      const links = []
+      let i = 0
+
+      for (i = 0; i < arr.length; i++) {
+        const link = { href: $(arr[i]).attr('href'), text: $(arr[i]).text() }
+        links.push(link)
+      }
+
+      Object.assign(article.links, links)
+
+      console.log(article.links);
+
+      // Formatted Text (including new lines and spacing for spell check)
+      article.processed.text.formatted = await getFormattedText(article.processed.html, article.title.text, article.baseurl, options.htmltotext)
+      console.log(article.processed.text.formatted);
+
+      // HTML Text (spans on each line for spell check line numbers)
+      article.processed.text.html = await getHtmlText(article.processed.text.formatted)
+      console.log(article.processed.text.html);
+
+      // Raw Text (text prepared for keyword analysis & named entity recongnition)
+      article.processed.text.raw = await getRawText(article.processed.html, article.title.text)
+      console.log(article.processed.text.raw);
+
+      // Excerpt
+      article.excerpt = capitalizeFirstLetter(article.processed.text.raw.replace(/^(.{200}[^\s]*).*/, '$1'))
+      console.log(article.excerpt);
+
+      // Sentiment
+      socket.emit('parse:status', 'Sentiment Analysis')
+      const sentiment = new Sentiment()
+      article.sentiment = sentiment.analyze(article.processed.text.raw)
+      if (article.sentiment.score > 0.05) {
+        article.sentiment.result = 'Positive'
+      } else if (article.sentiment.score < 0.05) {
+        article.sentiment.result = 'Negative'
+      } else {
+        article.sentiment.result = 'Neutral'
+      }
+
+      console.log(article.sentiment);
+
+      // Named Entity Recognition
+      socket.emit('parse:status', 'Named Entity Recognition')
+
+      // People
+      article.people = nlp(article.processed.text.raw).people().out('topk')
+
+      article.people.sort(function (a, b) {
+        return (a.percent > b.percent) ? -1 : 1
+      })
+
+      // Places
+      article.places = nlp(article.processed.text.raw).places().out('topk')
+
+      article.places.sort(function (a, b) {
+        return (a.percent > b.percent) ? -1 : 1
+      })
+
+      // Orgs & Places
+      article.orgs = nlp(article.processed.text.raw).organizations().out('topk')
+
+      article.orgs.sort(function (a, b) {
+        return (a.percent > b.percent) ? -1 : 1
+      })
+
+      // Topics
+      article.topics = nlp(article.processed.text.raw).topics().out('topk')
+
+      article.topics.sort(function (a, b) {
+        return (a.percent > b.percent) ? -1 : 1
+      })
+
+      console.log(article.orgs);
+
+      // Spelling
+      socket.emit('parse:status', 'Check Spelling')
+
+      article.spelling = await spellCheck(article.processed.text.formatted, article.topics, options.retextspell)
+      console.log(article.spelling);
+
+      // Evaluate keywords & keyphrases
+      socket.emit('parse:status', 'Evaluating Keywords')
+
+      // Evaluate meta title keywords & keyphrases
+      Object.assign(article.meta.title, await keywordParser(article.meta.title.text, options.retextkeywords))
+      console.log(article.meta.title);
+
+      // Evaluate derived title keywords & keyphrases
+      Object.assign(article.title, await keywordParser(article.title.text, options.retextkeywords))
+      console.log(article.title);
+
+      // Evaluate meta description keywords & keyphrases
+      Object.assign(article.meta.description, await keywordParser(article.meta.description.text, options.retextkeywords))
+      console.log(article.meta.description);
+
+      // Evaluate processed content keywords & keyphrases
+      Object.assign(article.processed, await keywordParser(article.processed.text.raw, options.retextkeywords))
+      console.log(article.processed);
 
       await browser.close();
+
+      socket.emit('parse:status', 'Horseman Anaysis Complete')
+
+      resolve(article)
 
     })();
 
