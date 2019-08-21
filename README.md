@@ -106,7 +106,7 @@ var options = {
 }
 ```
 
-If you want to enable lighthouse anaysis pass the following
+If you want to enable lighthouse analysis pass the following
 
 ```
 var options = {
