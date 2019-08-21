@@ -22,23 +22,21 @@
     "clean-html": "^1.5.0",
     "compromise": "^11.14.2",
     "dictionary-en-gb": "^2.1.1",
-    "html-to-text": "^4.0.0",
+    "html-to-text": "^5.1.1",
     "jquery": "^3.4.1",
-    "jsdom": "^13.2.0",
-    "lighthouse": "^4.3.1",
+    "jsdom": "^15.1.1",
+    "lighthouse": "^5.2.0",
     "lodash": "^4.17.15",
     "nlcst-to-string": "^2.0.3",
     "node-horseman": "^3.3.0",
     "node-readability": "^3.0.0",
-    "phantomjs-prebuilt": "^2.1.14",
-    "retext": "^5.0.0",
-    "retext-keywords": "^4.0.3",
-    "retext-spell": "^2.4.1",
+    "phantomjs-prebuilt": "^2.1.16",
+    "retext": "^7.0.0",
+    "retext-pos": "^2.0.2",
+    "retext-keywords": "^5.0.0",
+    "retext-spell": "^3.0.0",
     "sentiment": "^5.0.1",
-    "vfile-reporter-json": "^1.0.4"
-  },
-  "engines": {
-    "yarn": ">= 1.0.0"
+    "vfile-reporter-json": "^2.0.0"
   },
   "devDependencies": {
     "eslint": "^6.2.1",

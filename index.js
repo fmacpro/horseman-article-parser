@@ -3,6 +3,7 @@ const Horseman = require('node-horseman')
 const read = require('node-readability')
 const retext = require('retext')
 const nlcstToString = require('nlcst-to-string')
+const pos = require('retext-pos')
 const keywords = require('retext-keywords')
 const _ = require('lodash')
 const cleaner = require('clean-html')
@@ -508,40 +509,42 @@ const keywordParser = function (html, options) {
       options = { maximum: 10 }
     }
 
-    retext().use(keywords, options).process(html,
-      function (error, file) {
-        if (error) {
-          reject(error)
+    retext()
+      .use(pos)
+      .use(keywords, options)
+      .process(html, function (error, file) {
+          if (error) {
+            reject(error)
+          }
+
+          const keywords = []
+          const keyphrases = []
+
+          file.data.keywords.forEach(function (keyword) {
+            keywords.push({
+              keyword: nlcstToString(keyword.matches[0].node),
+              score: keyword.score
+            })
+          })
+
+          file.data.keyphrases.forEach(function (phrase) {
+            const nodes = phrase.matches[0].nodes
+            const tree = _.map(nodes)
+
+            keyphrases.push({
+              keyphrase: nlcstToString(tree, ''),
+              score: phrase.score,
+              weight: phrase.weight
+            })
+          })
+
+          keyphrases.sort(function (a, b) {
+            return (a.score > b.score) ? -1 : 1
+          })
+
+          resolve({ keywords: keywords, keyphrases: keyphrases })
         }
-
-        const keywords = []
-        const keyphrases = []
-
-        file.data.keywords.forEach(function (keyword) {
-          keywords.push({
-            keyword: nlcstToString(keyword.matches[0].node),
-            score: keyword.score
-          })
-        })
-
-        file.data.keyphrases.forEach(function (phrase) {
-          const nodes = phrase.matches[0].nodes
-          const tree = _.map(nodes)
-
-          keyphrases.push({
-            keyphrase: nlcstToString(tree, ''),
-            score: phrase.score,
-            weight: phrase.weight
-          })
-        })
-
-        keyphrases.sort(function (a, b) {
-          return (a.score > b.score) ? -1 : 1
-        })
-
-        resolve({ keywords: keywords, keyphrases: keyphrases })
-      }
-    )
+      )
       .catch(function (error) {
         reject(error)
       })
