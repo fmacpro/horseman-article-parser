@@ -3,6 +3,7 @@ const Horseman = require('node-horseman')
 const read = require('node-readability')
 const retext = require('retext')
 const nlcstToString = require('nlcst-to-string')
+const pos = require('retext-pos')
 const keywords = require('retext-keywords')
 const _ = require('lodash')
 const cleaner = require('clean-html')
@@ -55,7 +56,7 @@ module.exports = {
 
 const run = function (options, socket) {
   return new Promise(function (resolve, reject) {
-    let article = {}
+    const article = {}
 
     Promise.all([articleParser(options, socket), lighthouseAnalysis(options.url, options.lighthouse, socket)]).then(function (results) {
       Object.assign(article, results[0])
@@ -66,7 +67,7 @@ const run = function (options, socket) {
 }
 
 const articleParser = function (options, socket) {
-  let article = {}
+  const article = {}
   article.meta = {}
   article.meta.title = {}
   article.links = []
@@ -96,7 +97,7 @@ const articleParser = function (options, socket) {
   }
 
   return new Promise(function (resolve, reject) {
-    let horseman = new Horseman(options.horseman)
+    const horseman = new Horseman(options.horseman)
 
     socket.emit('parse:status', 'Starting Horseman')
 
@@ -123,9 +124,9 @@ const articleParser = function (options, socket) {
       .then(function (url) {
         article.url = url
 
-        let pathArray = article.url.split('/')
-        let protocol = pathArray[0]
-        let host = pathArray[2]
+        const pathArray = article.url.split('/')
+        const protocol = pathArray[0]
+        const host = pathArray[2]
 
         article.baseurl = protocol + '//' + host
       })
@@ -169,7 +170,7 @@ const articleParser = function (options, socket) {
       .then(function (meta) {
         Object.assign(article.meta, meta)
         // Assign description
-        let metaDescription = article.meta.description
+        const metaDescription = article.meta.description
         article.meta.description = {}
         article.meta.description.text = metaDescription
       })
@@ -201,15 +202,15 @@ const articleParser = function (options, socket) {
         // Get in article links
         socket.emit('parse:status', 'Evaluating Links')
 
-        let { window } = new JSDOM(article.processed.html)
-        let $ = require('jquery')(window)
+        const { window } = new JSDOM(article.processed.html)
+        const $ = require('jquery')(window)
 
-        let arr = window.$('a')
-        let links = []
+        const arr = window.$('a')
+        const links = []
         let i = 0
 
         for (i = 0; i < arr.length; i++) {
-          let link = { href: $(arr[i]).attr('href'), text: $(arr[i]).text() }
+          const link = { href: $(arr[i]).attr('href'), text: $(arr[i]).text() }
           links.push(link)
         }
         return links
@@ -249,7 +250,7 @@ const articleParser = function (options, socket) {
       // Sentiment
       .then(function () {
         socket.emit('parse:status', 'Sentiment Analysis')
-        let sentiment = new Sentiment()
+        const sentiment = new Sentiment()
         article.sentiment = sentiment.analyze(article.processed.text.raw)
         if (article.sentiment.score > 0.05) {
           article.sentiment.result = 'Positive'
@@ -389,7 +390,7 @@ const spellCheck = function (text, topics, options) {
 const getRawText = function (html, title, options) {
   return new Promise(function (resolve, reject) {
     // Lowercase for analysis
-    let options = {
+    const options = {
       wordwrap: null,
       noLinkBrackets: true,
       ignoreHref: true,
@@ -429,14 +430,14 @@ const getFormattedText = function (html, title, baseurl, options) {
     }
 
     // HTML > Text
-    let text = htmlToText.fromString(html, options)
+    const text = htmlToText.fromString(html, options)
 
     // If uppercase is set uppercase the title
     if (options.uppercaseHeadings === true) {
       title = title.toUpperCase()
     }
 
-    let formattedText = title + '\n\n' + text
+    const formattedText = title + '\n\n' + text
 
     resolve(formattedText)
   })
@@ -445,9 +446,9 @@ const getFormattedText = function (html, title, baseurl, options) {
 const getHtmlText = function (text) {
   return new Promise(function (resolve, reject) {
     // Replace windows line breaks with linux line breaks & split each line into array
-    let textArray = text.replace('\r\n', '\n').split('\n')
+    const textArray = text.replace('\r\n', '\n').split('\n')
     // Check length of text array (no of lines)
-    let codeLength = textArray.length
+    const codeLength = textArray.length
     // Wrap each line in a span
     textArray.forEach(function (line, index, array) {
       if (codeLength === index) return
@@ -455,7 +456,7 @@ const getHtmlText = function (text) {
       array[index] = '<span>' + line + '</span>'
     })
     // Join each line back into a string
-    let htmlText = textArray.join('\n')
+    const htmlText = textArray.join('\n')
 
     // return raw, formatted & html text
     resolve(htmlText)
@@ -492,8 +493,8 @@ const contentParser = function (html, options) {
         reject(error)
       }
 
-      let title = article.title
-      let content = article.content
+      const title = article.title
+      const content = article.content
 
       article.close()
 
@@ -508,14 +509,16 @@ const keywordParser = function (html, options) {
       options = { maximum: 10 }
     }
 
-    retext().use(keywords, options).process(html,
-      function (error, file) {
+    retext()
+      .use(pos)
+      .use(keywords, options)
+      .process(html, function (error, file) {
         if (error) {
           reject(error)
         }
 
-        let keywords = []
-        let keyphrases = []
+        const keywords = []
+        const keyphrases = []
 
         file.data.keywords.forEach(function (keyword) {
           keywords.push({
@@ -525,8 +528,8 @@ const keywordParser = function (html, options) {
         })
 
         file.data.keyphrases.forEach(function (phrase) {
-          let nodes = phrase.matches[0].nodes
-          let tree = _.map(nodes)
+          const nodes = phrase.matches[0].nodes
+          const tree = _.map(nodes)
 
           keyphrases.push({
             keyphrase: nlcstToString(tree, ''),
@@ -541,7 +544,7 @@ const keywordParser = function (html, options) {
 
         resolve({ keywords: keywords, keyphrases: keyphrases })
       }
-    )
+      )
       .catch(function (error) {
         reject(error)
       })
@@ -550,18 +553,25 @@ const keywordParser = function (html, options) {
 
 const lighthouseAnalysis = function (url, options, socket) {
   return new Promise(function (resolve, reject) {
-    socket.emit('parse:status', 'Starting Lighthouse')
-
     if (typeof options === 'undefined') {
       options = {
-        chromeFlags: ['--headless']
+        chromeFlags: ['--headless'],
+        enabled: false
       }
     }
 
-    launchChromeAndRunLighthouse(url, options).then(results => {
-      socket.emit('parse:status', 'Lighthouse Analysis Complete')
+    if (options.enabled) {
+      socket.emit('parse:status', 'Starting Lighthouse')
 
-      resolve(results)
-    })
+      if (typeof options.chromeFlags === 'undefined') {
+        options.chromeFlags = ['--headless']
+      }
+
+      launchChromeAndRunLighthouse(url, options).then(results => {
+        socket.emit('parse:status', 'Lighthouse Analysis Complete')
+
+        resolve(results)
+      })
+    }
   })
 }
