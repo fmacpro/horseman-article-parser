@@ -165,6 +165,7 @@ npm run test
 - [node-readability](https://ghub.io/node-readability): Turning any web page into a clean view.
 - [phantomjs-prebuilt](https://ghub.io/phantomjs-prebuilt): Headless WebKit with JS API
 - [retext](https://ghub.io/retext): Natural language processor powered by plugins
+- [retext-pos](https://github.com/retextjs/retext-pos): Plugin to add part-of-speech (POS) tags
 - [retext-keywords](https://ghub.io/retext-keywords): Keyword extraction with Retext
 - [retext-spell](https://ghub.io/retext-spell): Spelling checker for retext
 - [sentiment](https://ghub.io/sentiment): AFINN-based sentiment analysis for Node.js
