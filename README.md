@@ -4,7 +4,7 @@ A web page article parser which returns an object containing the article's forma
 
 ### Prerequisites
 
-Node.js, NPM & Chrome / Chromium
+Node.js & NPM
 
 ### Install
 
@@ -71,9 +71,9 @@ The options below are set by default
 var options = {
   userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36',
   // node-horsman options (https://ghub.io/node-horseman)
-  horseman: {
-    timeout: 10000, 
-    cookies: './cookies.json'
+  puppeteer: {
+    headless: true,
+    defaultViewport: null,
   },
   // clean-html options (https://ghub.io/clean-html)
   cleanhtml: {
@@ -97,6 +97,8 @@ var options = {
   }
 }
 ```
+
+For more Puppeteer launch options see https://github.com/GoogleChrome/puppeteer/blob/master/docs/api.md#puppeteerlaunchoptions
 
 At a minimum you should pass a url
 

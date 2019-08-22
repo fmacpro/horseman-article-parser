@@ -1,4 +1,5 @@
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer')
+const lighthouse = require('lighthouse')
 const read = require('node-readability')
 const retext = require('retext')
 const nlcstToString = require('nlcst-to-string')
@@ -15,23 +16,8 @@ const nlp = require('compromise')
 const absolutify = require('absolutify')
 const personalDictionary = require('./personalDictionary.js')
 const htmlTags = require('./stripTags.js')
-const lighthouse = require('lighthouse')
-const chromeLauncher = require('chrome-launcher')
 const jsdom = require('jsdom')
 const { JSDOM } = jsdom
-
-function launchChromeAndRunLighthouse (url, opts, config = null) {
-  return chromeLauncher.launch({ chromeFlags: opts.chromeFlags }).then(chrome => {
-    opts.port = chrome.port
-    return lighthouse(url, opts, config).then(results => {
-      // use results.lhr for the JS-consumeable output
-      // https://github.com/GoogleChrome/lighthouse/blob/master/types/lhr.d.ts
-      // use results.report for the HTML/JSON/CSV output as a string
-      // use results.artifacts for the trace/screenshots/other specific case you need (rarer)
-      return chrome.kill().then(() => results.lhr)
-    })
-  })
-}
 
 function capitalizeFirstLetter (string) {
   return string.charAt(0).toUpperCase() + string.slice(1)
@@ -52,7 +38,20 @@ module.exports = {
       socket = { emit: function (type, status) { console.log(status) } }
     }
 
-    let results = await Promise.all([articleParser(options, socket), lighthouseAnalysis(options.url, options.lighthouse, socket)]);
+    if (typeof options.lighthouse === 'undefined') {
+      options.lighthouse = {
+        enabled: false
+      }
+    }
+
+    if (typeof options.puppeteer === 'undefined') {
+      options.puppeteer = {
+        headless: true,
+        defaultViewport: null,
+      }
+    }
+
+    let results = await Promise.all([articleParser(options, socket), lighthouseAnalysis(options, socket)]);
 
     article = results[0];
     article.lighthouse = results[1];
@@ -73,21 +72,6 @@ const articleParser = async function (options, socket) {
   article.processed.text = {}
   article.lighthouse = {}
 
-  if (typeof options.horseman === 'undefined') {
-    options.horseman = {
-      timeout: 10000,
-      cookies: './cookies.json'
-    }
-  }
-
-  if (typeof options.horseman.phantomPath === 'undefined') {
-    //options.horseman.phantomPath = phantomjs.path
-  }
-
-  if (typeof options.userAgent === 'undefined') {
-    options.userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36'
-  }
-
   if (typeof options.striptags === 'undefined') {
     options.striptags = htmlTags
   }
@@ -95,7 +79,7 @@ const articleParser = async function (options, socket) {
   socket.emit('parse:status', 'Starting Horseman')
 
   // Init puppeteer
-  const browser = await puppeteer.launch();
+  const browser = await puppeteer.launch(options.puppeteer);
   
   const page = await browser.newPage();
 
@@ -489,27 +473,23 @@ const keywordParser = function (html, options) {
   })
 }
 
-const lighthouseAnalysis = function (url, options, socket) {
-  return new Promise(function (resolve, reject) {
-    if (typeof options === 'undefined') {
-      options = {
-        chromeFlags: ['--headless'],
-        enabled: false
-      }
-    }
+const lighthouseAnalysis = async function (options, socket) {
 
-    if (options.enabled) {
-      socket.emit('parse:status', 'Starting Lighthouse')
+  if (options.lighthouse.enabled) {
+    socket.emit('parse:status', 'Starting Lighthouse')
 
-      if (typeof options.chromeFlags === 'undefined') {
-        options.chromeFlags = ['--headless']
-      }
+    // Init puppeteer
+    const browser = await puppeteer.launch(options.puppeteer);
+    
+    const results = await lighthouse(options.url, {
+      port: (new URL(browser.wsEndpoint())).port,
+      output: 'json'
+    });
 
-      launchChromeAndRunLighthouse(url, options).then(results => {
-        socket.emit('parse:status', 'Lighthouse Analysis Complete')
+    await browser.close();
 
-        resolve(results)
-      })
-    }
-  })
+    socket.emit('parse:status', 'Lighthouse Analysis Complete')
+
+    return results.lhr;
+  }
 }
