@@ -1,5 +1,5 @@
-const phantomjs = require('phantomjs-prebuilt')
-const Horseman = require('node-horseman')
+const puppeteer = require('puppeteer')
+const lighthouse = require('lighthouse')
 const read = require('node-readability')
 const retext = require('retext')
 const nlcstToString = require('nlcst-to-string')
@@ -16,23 +16,8 @@ const nlp = require('compromise')
 const absolutify = require('absolutify')
 const personalDictionary = require('./personalDictionary.js')
 const htmlTags = require('./stripTags.js')
-const lighthouse = require('lighthouse')
-const chromeLauncher = require('chrome-launcher')
 const jsdom = require('jsdom')
 const { JSDOM } = jsdom
-
-function launchChromeAndRunLighthouse (url, opts, config = null) {
-  return chromeLauncher.launch({ chromeFlags: opts.chromeFlags }).then(chrome => {
-    opts.port = chrome.port
-    return lighthouse(url, opts, config).then(results => {
-      // use results.lhr for the JS-consumeable output
-      // https://github.com/GoogleChrome/lighthouse/blob/master/types/lhr.d.ts
-      // use results.report for the HTML/JSON/CSV output as a string
-      // use results.artifacts for the trace/screenshots/other specific case you need (rarer)
-      return chrome.kill().then(() => results.lhr)
-    })
-  })
-}
 
 function capitalizeFirstLetter (string) {
   return string.charAt(0).toUpperCase() + string.slice(1)
@@ -45,28 +30,36 @@ function toTitleCase (str) {
 }
 
 module.exports = {
-  parseArticle: function (options, socket) {
+  parseArticle: async function (options, socket) {
+    let article = {}
+
     if (typeof socket === 'undefined') {
       socket = { emit: function (type, status) { console.log(status) } }
     }
 
-    return run(options, socket)
+    if (typeof options.lighthouse === 'undefined') {
+      options.lighthouse = {
+        enabled: false
+      }
+    }
+
+    if (typeof options.puppeteer === 'undefined') {
+      options.puppeteer = {
+        headless: true,
+        defaultViewport: null
+      }
+    }
+
+    const results = await Promise.all([articleParser(options, socket), lighthouseAnalysis(options, socket)])
+
+    article = results[0]
+    article.lighthouse = results[1]
+
+    return article
   }
 }
 
-const run = function (options, socket) {
-  return new Promise(function (resolve, reject) {
-    const article = {}
-
-    Promise.all([articleParser(options, socket), lighthouseAnalysis(options.url, options.lighthouse, socket)]).then(function (results) {
-      Object.assign(article, results[0])
-      Object.assign(article.lighthouse, results[1])
-      resolve(article)
-    })
-  })
-}
-
-const articleParser = function (options, socket) {
+const articleParser = async function (options, socket) {
   const article = {}
   article.meta = {}
   article.meta.title = {}
@@ -77,279 +70,202 @@ const articleParser = function (options, socket) {
   article.processed.text = {}
   article.lighthouse = {}
 
-  if (typeof options.horseman === 'undefined') {
-    options.horseman = {
-      timeout: 10000,
-      cookies: './cookies.json'
-    }
-  }
-
-  if (typeof options.horseman.phantomPath === 'undefined') {
-    options.horseman.phantomPath = phantomjs.path
-  }
-
-  if (typeof options.userAgent === 'undefined') {
-    options.userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36'
-  }
-
   if (typeof options.striptags === 'undefined') {
     options.striptags = htmlTags
   }
 
-  return new Promise(function (resolve, reject) {
-    const horseman = new Horseman(options.horseman)
+  socket.emit('parse:status', 'Starting Horseman')
 
-    socket.emit('parse:status', 'Starting Horseman')
+  // Init puppeteer
+  const browser = await puppeteer.launch(options.puppeteer)
 
-    // Init horseman
-    horseman
-      .userAgent(options.userAgent)
-      .viewport(540, 800)
-      .open(options.url)
-      .then(socket.emit('parse:status', 'Fetch ' + options.url))
+  const page = await browser.newPage()
 
-      // Evaluate status
-      .status()
-      .then(function (status) {
-        article.status = status
-        socket.emit('parse:status', 'Status ' + status)
-        if (status === 403 || status === 404) {
-          reject(status)
-          return horseman.close()
-        }
-      })
+  const response = await page.goto(options.url)
 
-      // Evaluate URL
-      .url()
-      .then(function (url) {
-        article.url = url
+  socket.emit('parse:status', 'Fetching ' + options.url)
 
-        const pathArray = article.url.split('/')
-        const protocol = pathArray[0]
-        const host = pathArray[2]
+  // Evaluate status
+  article.status = response.request().response().status()
 
-        article.baseurl = protocol + '//' + host
-      })
-      .waitForSelector('head')
+  socket.emit('parse:status', 'Status ' + article.status)
 
-      // Evaluate title
-      .title()
-      .then(function (title) {
-        article.meta.title.text = title
-      })
-      // Take mobile screenshot
-      .then(function () {
-        socket.emit('parse:status', 'Taking Mobile Screenshot')
-      })
-      .screenshotBase64('JPEG')
-      .then(function (screenshot) {
-        article.mobile = screenshot
-      })
+  if (article.status === 403 || article.status === 404) {
+    await browser.close()
+    return article.status + ' Failed to fetch URL'
+  }
 
-      // Evaluate meta
-      .then(function () {
-        socket.emit('parse:status', 'Evaluating Meta Data')
-      })
-      .evaluate(function () {
-        var j = jQuery.noConflict()
-        var arr = j('meta')
-        var meta = {}
-        var i = 0
+  // Evaluate URL
+  article.url = response.request().response().url()
 
-        for (i = 0; i < arr.length; i++) {
-          if (j(arr[i]).attr('name')) {
-            meta[j(arr[i]).attr('name')] = j(arr[i]).attr('content')
-          } else if (j(arr[i]).attr('property')) {
-            meta[j(arr[i]).attr('property')] = j(arr[i]).attr('content')
-          } else {
-            // do nothing for now
-          }
-        }
-        return meta
-      })
-      .then(function (meta) {
-        Object.assign(article.meta, meta)
-        // Assign description
-        const metaDescription = article.meta.description
-        article.meta.description = {}
-        article.meta.description.text = metaDescription
-      })
+  const pathArray = article.url.split('/')
+  const protocol = pathArray[0]
+  const host = pathArray[2]
 
-      // HTML Cleaning
-      .evaluate(function (options) {
-        var j = jQuery.noConflict()
-        for (var i = 0; i < options.length; i++) {
-          j(options[i]).remove()
-        }
-      }, options.striptags)
-      .html('html')
+  article.baseurl = protocol + '//' + host
 
-      // More HTML Cleaning
-      .then(function (html) {
-        return htmlCleaner(html, options.cleanhtml)
-      })
+  // Evaluate title
+  article.meta.title.text = await page.title()
 
-      // Body Content Identification
-      .then(function (html) {
-        socket.emit('parse:status', 'Evaluating Content')
-        return contentParser(html, options.readability)
-      })
-      .then(function (content) {
-        // Turn relative links into absolute links
-        article.processed.html = absolutify(content.content, article.baseurl)
-        article.title.text = content.title
+  // Take mobile screenshot
+  socket.emit('parse:status', 'Taking Mobile Screenshot')
 
-        // Get in article links
-        socket.emit('parse:status', 'Evaluating Links')
+  article.mobile = await page.screenshot({ encoding: 'base64', type: 'jpeg', quality: 60 })
 
-        const { window } = new JSDOM(article.processed.html)
-        const $ = require('jquery')(window)
+  // Evaluate meta
+  await page.addScriptTag({ url: 'https://code.jquery.com/jquery-3.2.1.min.js' })
 
-        const arr = window.$('a')
-        const links = []
-        let i = 0
+  socket.emit('parse:status', 'Evaluating Meta Data')
 
-        for (i = 0; i < arr.length; i++) {
-          const link = { href: $(arr[i]).attr('href'), text: $(arr[i]).text() }
-          links.push(link)
-        }
-        return links
-      })
-      .then(function (links) {
-        Object.assign(article.links, links)
-      })
-      // Formatted Text (including new lines and spacing for spell check)
-      .then(function () {
-        return getFormattedText(article.processed.html, article.title.text, article.baseurl, options.htmltotext)
-      })
-      .then(function (formattedText) {
-        article.processed.text.formatted = formattedText
-      })
+  const meta = await page.evaluate(() => {
+    const j = window.$
 
-      // HTML Text (spans on each line for spell check line numbers)
-      .then(function () {
-        return getHtmlText(article.processed.text.formatted)
-      })
-      .then(function (htmlText) {
-        article.processed.text.html = htmlText
-      })
+    var arr = j('meta')
+    var meta = {}
+    var i = 0
 
-      // Raw Text (text prepared for keyword analysis & named entity recongnition)
-      .then(function () {
-        return getRawText(article.processed.html, article.title.text)
-      })
-      .then(function (rawText) {
-        article.processed.text.raw = rawText
-      })
-
-      // Excerpt
-      .then(function () {
-        article.excerpt = capitalizeFirstLetter(article.processed.text.raw.replace(/^(.{200}[^\s]*).*/, '$1'))
-      })
-
-      // Sentiment
-      .then(function () {
-        socket.emit('parse:status', 'Sentiment Analysis')
-        const sentiment = new Sentiment()
-        article.sentiment = sentiment.analyze(article.processed.text.raw)
-        if (article.sentiment.score > 0.05) {
-          article.sentiment.result = 'Positive'
-        } else if (article.sentiment.score < 0.05) {
-          article.sentiment.result = 'Negative'
-        } else {
-          article.sentiment.result = 'Neutral'
-        }
-      })
-
-      // Named Entity Recognition
-      .then(function () {
-        socket.emit('parse:status', 'Named Entity Recognition')
-
-        // People
-        article.people = nlp(article.processed.text.raw).people().out('topk')
-
-        article.people.sort(function (a, b) {
-          return (a.percent > b.percent) ? -1 : 1
-        })
-
-        // Places
-        article.places = nlp(article.processed.text.raw).places().out('topk')
-
-        article.places.sort(function (a, b) {
-          return (a.percent > b.percent) ? -1 : 1
-        })
-
-        // Orgs & Places
-        article.orgs = nlp(article.processed.text.raw).organizations().out('topk')
-
-        article.orgs.sort(function (a, b) {
-          return (a.percent > b.percent) ? -1 : 1
-        })
-
-        // Topics
-        article.topics = nlp(article.processed.text.raw).topics().out('topk')
-
-        article.topics.sort(function (a, b) {
-          return (a.percent > b.percent) ? -1 : 1
-        })
-      })
-
-      // Spelling
-      .then(function () {
-        socket.emit('parse:status', 'Check Spelling')
-        return spellCheck(article.processed.text.formatted, article.topics, options.retextspell)
-      })
-      .then(function (data) {
-        article.spelling = data
-      })
-
-      // Evaluate keywords & keyphrases
-      .then(function () {
-        socket.emit('parse:status', 'Evaluating Keywords')
-      })
-
-      // Evaluate meta title keywords & keyphrases
-      .then(function () {
-        return keywordParser(article.meta.title.text, options.retextkeywords)
-      })
-      .then(function (keywords) {
-        Object.assign(article.meta.title, keywords)
-      })
-
-      // Evaluate derived title keywords & keyphrases
-      .then(function () {
-        return keywordParser(article.title.text, options.retextkeywords)
-      })
-      .then(function (keywords) {
-        Object.assign(article.title, keywords)
-      })
-
-      // Evaluate meta description keywords & keyphrases
-      .then(function () {
-        return keywordParser(article.meta.description.text, options.retextkeywords)
-      })
-      .then(function (keywords) {
-        Object.assign(article.meta.description, keywords)
-      })
-
-      // Evaluate processed content keywords & keyphrases
-      .then(function () {
-        return keywordParser(article.processed.text.raw, options.retextkeywords)
-      })
-      .then(function (keywords) {
-        Object.assign(article.processed, keywords)
-      })
-      .then(function () {
-        socket.emit('parse:status', 'Horseman Anaysis Complete')
-        resolve(article)
-      })
-      .close()
-
-      // Catch and emit errors
-      .catch(function (error) {
-        reject(error)
-      })
+    for (i = 0; i < arr.length; i++) {
+      if (j(arr[i]).attr('name')) {
+        meta[j(arr[i]).attr('name')] = j(arr[i]).attr('content')
+      } else if (j(arr[i]).attr('property')) {
+        meta[j(arr[i]).attr('property')] = j(arr[i]).attr('content')
+      } else {
+        // do nothing for now
+      }
+    }
+    return meta
   })
+
+  // Assign meta
+  Object.assign(article.meta, meta)
+
+  // Assign meta description
+  const metaDescription = article.meta.description
+  article.meta.description = {}
+  article.meta.description.text = metaDescription
+
+  // HTML Cleaning
+  let html = await page.evaluate((options) => {
+    const j = window.$
+
+    for (var i = 0; i < options.length; i++) {
+      j(options[i]).remove()
+    }
+
+    return j('html').html()
+  }, options.striptags)
+
+  // More HTML Cleaning
+  html = await htmlCleaner(html, options.cleanhtml)
+
+  // Body Content Identification
+  socket.emit('parse:status', 'Evaluating Content')
+
+  const content = await contentParser(html, options.readability)
+
+  // Turn relative links into absolute links
+  article.processed.html = await absolutify(content.content, article.baseurl)
+  article.title.text = content.title
+
+  // Get in article links
+  socket.emit('parse:status', 'Evaluating Links')
+
+  const { window } = new JSDOM(article.processed.html)
+  const $ = require('jquery')(window)
+
+  const arr = window.$('a')
+  const links = []
+  let i = 0
+
+  for (i = 0; i < arr.length; i++) {
+    const link = { href: $(arr[i]).attr('href'), text: $(arr[i]).text() }
+    links.push(link)
+  }
+
+  Object.assign(article.links, links)
+
+  // Formatted Text (including new lines and spacing for spell check)
+  article.processed.text.formatted = await getFormattedText(article.processed.html, article.title.text, article.baseurl, options.htmltotext)
+
+  // HTML Text (spans on each line for spell check line numbers)
+  article.processed.text.html = await getHtmlText(article.processed.text.formatted)
+
+  // Raw Text (text prepared for keyword analysis & named entity recongnition)
+  article.processed.text.raw = await getRawText(article.processed.html, article.title.text)
+
+  // Excerpt
+  article.excerpt = capitalizeFirstLetter(article.processed.text.raw.replace(/^(.{200}[^\s]*).*/, '$1'))
+
+  // Sentiment
+  socket.emit('parse:status', 'Sentiment Analysis')
+
+  const sentiment = new Sentiment()
+
+  article.sentiment = sentiment.analyze(article.processed.text.raw)
+  if (article.sentiment.score > 0.05) {
+    article.sentiment.result = 'Positive'
+  } else if (article.sentiment.score < 0.05) {
+    article.sentiment.result = 'Negative'
+  } else {
+    article.sentiment.result = 'Neutral'
+  }
+
+  // Named Entity Recognition
+  socket.emit('parse:status', 'Named Entity Recognition')
+
+  // People
+  article.people = nlp(article.processed.text.raw).people().out('topk')
+
+  article.people.sort(function (a, b) {
+    return (a.percent > b.percent) ? -1 : 1
+  })
+
+  // Places
+  article.places = nlp(article.processed.text.raw).places().out('topk')
+
+  article.places.sort(function (a, b) {
+    return (a.percent > b.percent) ? -1 : 1
+  })
+
+  // Orgs & Places
+  article.orgs = nlp(article.processed.text.raw).organizations().out('topk')
+
+  article.orgs.sort(function (a, b) {
+    return (a.percent > b.percent) ? -1 : 1
+  })
+
+  // Topics
+  article.topics = nlp(article.processed.text.raw).topics().out('topk')
+
+  article.topics.sort(function (a, b) {
+    return (a.percent > b.percent) ? -1 : 1
+  })
+
+  // Spelling
+  socket.emit('parse:status', 'Check Spelling')
+
+  article.spelling = await spellCheck(article.processed.text.formatted, article.topics, options.retextspell)
+
+  // Evaluate keywords & keyphrases
+  socket.emit('parse:status', 'Evaluating Keywords')
+
+  // Evaluate meta title keywords & keyphrases
+  Object.assign(article.meta.title, await keywordParser(article.meta.title.text, options.retextkeywords))
+
+  // Evaluate derived title keywords & keyphrases
+  Object.assign(article.title, await keywordParser(article.title.text, options.retextkeywords))
+
+  // Evaluate meta description keywords & keyphrases
+  Object.assign(article.meta.description, await keywordParser(article.meta.description.text, options.retextkeywords))
+
+  // Evaluate processed content keywords & keyphrases
+  Object.assign(article.processed, await keywordParser(article.processed.text.raw, options.retextkeywords))
+
+  await browser.close()
+
+  socket.emit('parse:status', 'Horseman Anaysis Complete')
+
+  return article
 }
 
 const spellCheck = function (text, topics, options) {
@@ -551,27 +467,22 @@ const keywordParser = function (html, options) {
   })
 }
 
-const lighthouseAnalysis = function (url, options, socket) {
-  return new Promise(function (resolve, reject) {
-    if (typeof options === 'undefined') {
-      options = {
-        chromeFlags: ['--headless'],
-        enabled: false
-      }
-    }
+const lighthouseAnalysis = async function (options, socket) {
+  if (options.lighthouse.enabled) {
+    socket.emit('parse:status', 'Starting Lighthouse')
 
-    if (options.enabled) {
-      socket.emit('parse:status', 'Starting Lighthouse')
+    // Init puppeteer
+    const browser = await puppeteer.launch(options.puppeteer)
 
-      if (typeof options.chromeFlags === 'undefined') {
-        options.chromeFlags = ['--headless']
-      }
+    const results = await lighthouse(options.url, {
+      port: (new URL(browser.wsEndpoint())).port,
+      output: 'json'
+    })
 
-      launchChromeAndRunLighthouse(url, options).then(results => {
-        socket.emit('parse:status', 'Lighthouse Analysis Complete')
+    await browser.close()
 
-        resolve(results)
-      })
-    }
-  })
+    socket.emit('parse:status', 'Lighthouse Analysis Complete')
+
+    return results.lhr
+  }
 }
