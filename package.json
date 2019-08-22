@@ -18,8 +18,8 @@
   },
   "homepage": "https://github.com/fmacpro/horseman-article-parser#readme",
   "dependencies": {
-  	"puppeteer": "^1.19.0",
-  	"lighthouse": "^5.2.0",
+    "puppeteer": "^1.19.0",
+    "lighthouse": "^5.2.0",
     "absolutify": "^0.1.0",
     "clean-html": "^1.5.0",
     "compromise": "^11.14.2",
