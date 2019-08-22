@@ -4,7 +4,7 @@ A web page article parser which returns an object containing the article's forma
 
 ### Prerequisites
 
-Node.js, NPM & Chrome / Chromium
+Node.js & NPM
 
 ### Install
 
@@ -18,7 +18,6 @@ npm install horseman-article-parser --save
 var parser = require('horseman-article-parser');
 
 var options = {
-  userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36',
   url: "https://www.theguardian.com/politics/2018/sep/24/theresa-may-calls-for-immigration-based-on-skills-and-wealth",
   lighthouse: {
     enabled: true
@@ -70,10 +69,10 @@ The options below are set by default
 ```
 var options = {
   userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36',
-  // node-horsman options (https://ghub.io/node-horseman)
-  horseman: {
-    timeout: 10000, 
-    cookies: './cookies.json'
+  // puppeteer options (https://github.com/GoogleChrome/puppeteer)
+  puppeteer: {
+    headless: true,
+    defaultViewport: null,
   },
   // clean-html options (https://ghub.io/clean-html)
   cleanhtml: {
@@ -97,6 +96,8 @@ var options = {
   }
 }
 ```
+
+For more Puppeteer launch options see https://github.com/GoogleChrome/puppeteer/blob/master/docs/api.md#puppeteerlaunchoptions
 
 At a minimum you should pass a url
 
@@ -151,24 +152,23 @@ npm run test
 
 ## Dependencies
 
-- [absolutify](https://ghub.io/absolutify): Relative to Absolute URL Replacer
-- [clean-html](https://ghub.io/clean-html): HTML cleaner and beautifier
+- [Puppeteer](https://github.com/GoogleChrome/puppeteer/): High-level API to control Chrome or Chromium over the DevTools Protocol
+- [lighthouse](https://ghub.io/lighthouse): Automated auditing, performance metrics, and best practices for the web.
 - [compromise](https://ghub.io/compromise): natural language processing in the browser
-- [dictionary-en-gb](https://ghub.io/dictionary-en-gb): English (United Kingdom) spelling dictionary in UTF-8
-- [html-to-text](https://ghub.io/html-to-text): Advanced html to plain text converter
-- [jquery](https://ghub.io/jquery): JavaScript library for DOM operations
-- [jsdom](https://ghub.io/jsdom): A JavaScript implementation of many web standards
-- [lighthouse](https://ghub.io/lighthouse): Lighthouse
-- [lodash](https://ghub.io/lodash): Lodash modular utilities.
-- [nlcst-to-string](https://ghub.io/nlcst-to-string): Stringify NLCST
-- [node-horseman](https://ghub.io/node-horseman): Run PhantomJS from Node
-- [node-readability](https://ghub.io/node-readability): Turning any web page into a clean view.
-- [phantomjs-prebuilt](https://ghub.io/phantomjs-prebuilt): Headless WebKit with JS API
 - [retext](https://ghub.io/retext): Natural language processor powered by plugins
 - [retext-pos](https://github.com/retextjs/retext-pos): Plugin to add part-of-speech (POS) tags
 - [retext-keywords](https://ghub.io/retext-keywords): Keyword extraction with Retext
 - [retext-spell](https://ghub.io/retext-spell): Spelling checker for retext
 - [sentiment](https://ghub.io/sentiment): AFINN-based sentiment analysis for Node.js
+- [jquery](https://ghub.io/jquery): JavaScript library for DOM operations
+- [jsdom](https://ghub.io/jsdom): A JavaScript implementation of many web standards
+- [lodash](https://ghub.io/lodash): Lodash modular utilities.
+- [absolutify](https://ghub.io/absolutify): Relative to Absolute URL Replacer
+- [clean-html](https://ghub.io/clean-html): HTML cleaner and beautifier
+- [dictionary-en-gb](https://ghub.io/dictionary-en-gb): English (United Kingdom) spelling dictionary in UTF-8
+- [html-to-text](https://ghub.io/html-to-text): Advanced html to plain text converter
+- [nlcst-to-string](https://ghub.io/nlcst-to-string): Stringify NLCST
+- [node-readability](https://ghub.io/node-readability): Turning any web page into a clean view.
 - [vfile-reporter-json](https://ghub.io/vfile-reporter-json): JSON reporter for virtual files
 
 

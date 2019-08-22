@@ -32,6 +32,7 @@ parser.parseArticle(options)
       links: article.links,
       lighthouse: article.lighthouse
     }
+
     const json = JSON.stringify(response, null, 4)
     fs.writeFile('testresults.json', json, 'utf8', function (err) {
       if (err) throw err
