@@ -153,24 +153,23 @@ npm run test
 
 ## Dependencies
 
-- [absolutify](https://ghub.io/absolutify): Relative to Absolute URL Replacer
-- [clean-html](https://ghub.io/clean-html): HTML cleaner and beautifier
+- [Puppeteer](https://github.com/GoogleChrome/puppeteer/): High-level API to control Chrome or Chromium over the DevTools Protocol
+- [lighthouse](https://ghub.io/lighthouse): Automated auditing, performance metrics, and best practices for the web.
 - [compromise](https://ghub.io/compromise): natural language processing in the browser
-- [dictionary-en-gb](https://ghub.io/dictionary-en-gb): English (United Kingdom) spelling dictionary in UTF-8
-- [html-to-text](https://ghub.io/html-to-text): Advanced html to plain text converter
-- [jquery](https://ghub.io/jquery): JavaScript library for DOM operations
-- [jsdom](https://ghub.io/jsdom): A JavaScript implementation of many web standards
-- [lighthouse](https://ghub.io/lighthouse): Lighthouse
-- [lodash](https://ghub.io/lodash): Lodash modular utilities.
-- [nlcst-to-string](https://ghub.io/nlcst-to-string): Stringify NLCST
-- [node-horseman](https://ghub.io/node-horseman): Run PhantomJS from Node
-- [node-readability](https://ghub.io/node-readability): Turning any web page into a clean view.
-- [phantomjs-prebuilt](https://ghub.io/phantomjs-prebuilt): Headless WebKit with JS API
 - [retext](https://ghub.io/retext): Natural language processor powered by plugins
 - [retext-pos](https://github.com/retextjs/retext-pos): Plugin to add part-of-speech (POS) tags
 - [retext-keywords](https://ghub.io/retext-keywords): Keyword extraction with Retext
 - [retext-spell](https://ghub.io/retext-spell): Spelling checker for retext
 - [sentiment](https://ghub.io/sentiment): AFINN-based sentiment analysis for Node.js
+- [jquery](https://ghub.io/jquery): JavaScript library for DOM operations
+- [jsdom](https://ghub.io/jsdom): A JavaScript implementation of many web standards
+- [lodash](https://ghub.io/lodash): Lodash modular utilities.
+- [absolutify](https://ghub.io/absolutify): Relative to Absolute URL Replacer
+- [clean-html](https://ghub.io/clean-html): HTML cleaner and beautifier
+- [dictionary-en-gb](https://ghub.io/dictionary-en-gb): English (United Kingdom) spelling dictionary in UTF-8
+- [html-to-text](https://ghub.io/html-to-text): Advanced html to plain text converter
+- [nlcst-to-string](https://ghub.io/nlcst-to-string): Stringify NLCST
+- [node-readability](https://ghub.io/node-readability): Turning any web page into a clean view.
 - [vfile-reporter-json](https://ghub.io/vfile-reporter-json): JSON reporter for virtual files
 
 
