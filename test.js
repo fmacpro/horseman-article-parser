@@ -11,7 +11,6 @@ const options = {
 
 parser.parseArticle(options)
   .then(function (article) {
-    
     const response = {
       title: article.title.text,
       excerpt: article.excerpt,
@@ -39,7 +38,6 @@ parser.parseArticle(options)
       if (err) throw err
       console.log('Results written to testresults.json')
     })
-    
   })
   .catch(function (error) {
     console.log(error.message)

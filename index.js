@@ -31,7 +31,6 @@ function toTitleCase (str) {
 
 module.exports = {
   parseArticle: async function (options, socket) {
-    
     let article = {}
 
     if (typeof socket === 'undefined') {
@@ -47,21 +46,20 @@ module.exports = {
     if (typeof options.puppeteer === 'undefined') {
       options.puppeteer = {
         headless: true,
-        defaultViewport: null,
+        defaultViewport: null
       }
     }
 
-    let results = await Promise.all([articleParser(options, socket), lighthouseAnalysis(options, socket)]);
+    const results = await Promise.all([articleParser(options, socket), lighthouseAnalysis(options, socket)])
 
-    article = results[0];
-    article.lighthouse = results[1];
-    
+    article = results[0]
+    article.lighthouse = results[1]
+
     return article
   }
 }
 
 const articleParser = async function (options, socket) {
-
   const article = {}
   article.meta = {}
   article.meta.title = {}
@@ -79,22 +77,22 @@ const articleParser = async function (options, socket) {
   socket.emit('parse:status', 'Starting Horseman')
 
   // Init puppeteer
-  const browser = await puppeteer.launch(options.puppeteer);
-  
-  const page = await browser.newPage();
+  const browser = await puppeteer.launch(options.puppeteer)
+
+  const page = await browser.newPage()
 
   const response = await page.goto(options.url)
-  
+
   socket.emit('parse:status', 'Fetching ' + options.url)
 
   // Evaluate status
   article.status = response.request().response().status()
-  
+
   socket.emit('parse:status', 'Status ' + article.status)
 
   if (article.status === 403 || article.status === 404) {
-      return article.status + ' Failed to fetch URL';
-      await browser.close();
+    await browser.close()
+    return article.status + ' Failed to fetch URL'
   }
 
   // Evaluate URL
@@ -107,21 +105,20 @@ const articleParser = async function (options, socket) {
   article.baseurl = protocol + '//' + host
 
   // Evaluate title
-  article.meta.title.text = await page.title();
+  article.meta.title.text = await page.title()
 
   // Take mobile screenshot
   socket.emit('parse:status', 'Taking Mobile Screenshot')
 
-  article.mobile = await page.screenshot({ encoding: 'base64', type: 'jpeg', quality: 60 });
+  article.mobile = await page.screenshot({ encoding: 'base64', type: 'jpeg', quality: 60 })
 
   // Evaluate meta
-  await page.addScriptTag({ url: 'https://code.jquery.com/jquery-3.2.1.min.js' });
+  await page.addScriptTag({ url: 'https://code.jquery.com/jquery-3.2.1.min.js' })
 
   socket.emit('parse:status', 'Evaluating Meta Data')
 
   const meta = await page.evaluate(() => {
-    
-    const j = window.$;
+    const j = window.$
 
     var arr = j('meta')
     var meta = {}
@@ -137,8 +134,7 @@ const articleParser = async function (options, socket) {
       }
     }
     return meta
-
-  });
+  })
 
   // Assign meta
   Object.assign(article.meta, meta)
@@ -150,24 +146,22 @@ const articleParser = async function (options, socket) {
 
   // HTML Cleaning
   let html = await page.evaluate((options) => {
-
-    const j = window.$;
+    const j = window.$
 
     for (var i = 0; i < options.length; i++) {
       j(options[i]).remove()
     }
 
-    return j("html").html();
-
-  }, options.striptags);
+    return j('html').html()
+  }, options.striptags)
 
   // More HTML Cleaning
-  html = await htmlCleaner(html, options.cleanhtml);
+  html = await htmlCleaner(html, options.cleanhtml)
 
   // Body Content Identification
   socket.emit('parse:status', 'Evaluating Content')
 
-  let content = await contentParser(html, options.readability)
+  const content = await contentParser(html, options.readability)
 
   // Turn relative links into absolute links
   article.processed.html = await absolutify(content.content, article.baseurl)
@@ -267,11 +261,11 @@ const articleParser = async function (options, socket) {
   // Evaluate processed content keywords & keyphrases
   Object.assign(article.processed, await keywordParser(article.processed.text.raw, options.retextkeywords))
 
-  await browser.close();
+  await browser.close()
 
   socket.emit('parse:status', 'Horseman Anaysis Complete')
 
-  return article;
+  return article
 }
 
 const spellCheck = function (text, topics, options) {
@@ -474,22 +468,21 @@ const keywordParser = function (html, options) {
 }
 
 const lighthouseAnalysis = async function (options, socket) {
-
   if (options.lighthouse.enabled) {
     socket.emit('parse:status', 'Starting Lighthouse')
 
     // Init puppeteer
-    const browser = await puppeteer.launch(options.puppeteer);
-    
+    const browser = await puppeteer.launch(options.puppeteer)
+
     const results = await lighthouse(options.url, {
       port: (new URL(browser.wsEndpoint())).port,
       output: 'json'
-    });
+    })
 
-    await browser.close();
+    await browser.close()
 
     socket.emit('parse:status', 'Lighthouse Analysis Complete')
 
-    return results.lhr;
+    return results.lhr
   }
 }
