@@ -34,7 +34,6 @@
     "retext-pos": "^2.0.2",
     "retext-spell": "^3.0.0",
     "sentiment": "^5.0.1",
-    "url": "^0.11.0",
     "vfile-reporter-json": "^2.0.0"
   },
   "devDependencies": {
