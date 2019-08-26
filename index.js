@@ -148,7 +148,7 @@ const articleParser = async function (options, socket) {
   // More HTML Cleaning
   html = await htmlCleaner(html, options.cleanhtml)
 
-  //console.log(html);
+  // console.log(html);
 
   // Body Content Identification
   socket.emit('parse:status', 'Evaluating Content')
@@ -388,24 +388,19 @@ const htmlCleaner = function (html, options) {
 }
 
 const contentParser = async function (html, options) {
-
   if (typeof options === 'undefined') {
     options = {}
   }
 
   const dom = new JSDOM(html)
 
-  await helpers.setCleanRules(options.cleanRulers || []);
+  await helpers.setCleanRules(options.cleanRulers || [])
+  await helpers.prepDocument(dom.window.document)
 
-  let cache = {};
+  const content = await getContent(dom.window.document)
+  const title = await getTitle(dom.window.document)
 
-  await helpers.prepDocument(dom.window.document);
-
-  let content = await getContent(dom.window.document);
-  let title = await getTitle(dom.window.document);
-
-  return({ title: title, content: content })
-  //console.log("test");
+  return ({ title: title, content: content })
 }
 
 const keywordParser = function (html, options) {
@@ -476,43 +471,41 @@ const lighthouseAnalysis = async function (options, socket) {
   }
 }
 
-const getContent = function(document) {
+const getContent = function (document) {
+  var articleContent = helpers.grabArticle(document)
 
-  var articleContent = helpers.grabArticle(document);
+  return articleContent.innerHTML
+}
 
-  return articleContent.innerHTML;
-};
+const getTitle = function (document) {
+  var title = findMetaTitle(document) || document.title
+  var betterTitle
+  var commonSeparatingCharacters = [' | ', ' _ ', ' - ', '«', '»', '—']
 
-const getTitle = function(document) {
-
-  var title = findMetaTitle(document) || document.title;
-  var betterTitle;
-  var commonSeparatingCharacters = [' | ', ' _ ', ' - ', '«', '»', '—'];
-
-  commonSeparatingCharacters.forEach(function(char) {
-    var tmpArray = title.split(char);
+  commonSeparatingCharacters.forEach(function (char) {
+    var tmpArray = title.split(char)
     if (tmpArray.length > 1) {
-      betterTitle = tmpArray[0].trim();
+      betterTitle = tmpArray[0].trim()
     }
-  });
+  })
 
   if (betterTitle && betterTitle.length > 10) {
-    return betterTitle;
+    return betterTitle
   }
 
-  return title;
-};
+  return title
+}
 
-const findMetaTitle = function(document) {
-  var metaTags = document.getElementsByTagName('meta');
-  var tag;
+const findMetaTitle = function (document) {
+  var metaTags = document.getElementsByTagName('meta')
+  var tag
 
-  for(var i = 0; i < metaTags.length; i++) {
-    tag = metaTags[i];
+  for (var i = 0; i < metaTags.length; i++) {
+    tag = metaTags[i]
 
-    if(tag.getAttribute('property') === 'og:title' || tag.getAttribute('name') === 'twitter:title'){
-      return tag.getAttribute('content');
+    if (tag.getAttribute('property') === 'og:title' || tag.getAttribute('name') === 'twitter:title') {
+      return tag.getAttribute('content')
     }
   }
-  return null;
+  return null
 }

@@ -1,4 +1,4 @@
-var url = require("url");
+var url = require('url')
 
 module.exports.capitalizeFirstLetter = function (string) {
   return string.charAt(0).toUpperCase() + string.slice(1)
@@ -11,7 +11,7 @@ module.exports.toTitleCase = function (str) {
 }
 
 // All of the regular expressions in use within readability.
-let regexps = {
+const regexps = {
   unlikelyCandidatesRe: /combx|modal|comment|disqus|foot|header|menu|meta|nav|rss|shoutbox|sidebar|sponsor|social|teaserlist|time|tweet|twitter/i,
   okMaybeItsACandidateRe: /and|article|body|column|main|story|entry|^post/im,
   positiveRe: /article|body|content|entry|hentry|page|pagination|post|section|chapter|description|main|blog|text/i,
@@ -24,18 +24,16 @@ let regexps = {
   killBreaksRe: /(<br\s*\/?>(\s|&nbsp;?)*){1,}/g,
   videoRe: /http:\/\/(www\.)?(youtube|vimeo|youku|tudou|56|yinyuetai)\.com/i,
   attributeRe: /blog|post|article/i
-};
+}
 
-let dbg;
-let debug;
+let debug
+const dbg = (debug) ? console.log : function () {}
 
-dbg = (debug) ? console.log : function() {};
+let cleanRules = []
 
-let cleanRules = [];
-
-module.exports.setCleanRules = function(rules) {
-  cleanRules = rules;
-};
+module.exports.setCleanRules = function (rules) {
+  cleanRules = rules
+}
 
 /**
  * Prepare the HTML document for readability to scrape it.
@@ -43,49 +41,50 @@ module.exports.setCleanRules = function(rules) {
  *
  * @return void
  **/
-let prepDocument = module.exports.prepDocument = function(document) {
-  let frames = document.getElementsByTagName('frame');
+module.exports.prepDocument = function (document) {
+  const frames = document.getElementsByTagName('frame')
   if (frames.length > 0) {
-    let bestFrame = null;
-    let bestFrameSize = 0;
+    let bestFrame = null
+    let bestFrameSize = 0
 
-    Array.prototype.slice.call(frames, 0).forEach(function(frame) {
-      let frameSize = frame.offsetWidth + frame.offsetHeight;
-      let canAccessFrame = false;
+    Array.prototype.slice.call(frames, 0).forEach(function (frame) {
+      const frameSize = frame.offsetWidth + frame.offsetHeight
+      let canAccessFrame = false
       try {
-        frame.contentWindow.document.body;
-        canAccessFrame = true;
+        if (frame.contentWindow.document.body) {
+          canAccessFrame = true
+        }
       } catch (e) {}
 
       if (canAccessFrame && frameSize > bestFrameSize) {
-        bestFrame = frame;
-        bestFrameSize = frameSize;
+        bestFrame = frame
+        bestFrameSize = frameSize
       }
-    });
+    })
 
     if (bestFrame) {
-      let newBody = document.createElement('body');
-      newBody.innerHTML = bestFrame.contentWindow.document.body.innerHTML;
-      newBody.style.overflow = 'scroll';
-      document.body = newBody;
+      const newBody = document.createElement('body')
+      newBody.innerHTML = bestFrame.contentWindow.document.body.innerHTML
+      newBody.style.overflow = 'scroll'
+      document.body = newBody
 
-      let frameset = document.getElementsByTagName('frameset')[0];
+      const frameset = document.getElementsByTagName('frameset')[0]
       if (frameset) {
-        frameset.parentNode.removeChild(frameset);
+        frameset.parentNode.removeChild(frameset)
       }
     }
   }
-  
+
   // Strip out all <script> tags, as they *should* be useless
-  let scripts = document.getElementsByTagName('script');
+  const scripts = document.getElementsByTagName('script');
   [].forEach.call(scripts, function (node) {
-    node.parentNode.removeChild(node);
-  });
+    node.parentNode.removeChild(node)
+  })
 
   // turn all double br's into p's
   // note, this is pretty costly as far as processing goes. Maybe optimize later.
   // document.body.innerHTML = document.body.innerHTML.replace(regexps.replaceBrsRe, '</p><p>').replace(regexps.replaceFontsRe, '<$1span>');
-};
+}
 
 /***
  * grabArticle - Using a variety of metrics (content score, classname, element types), find the content that is
@@ -93,7 +92,7 @@ let prepDocument = module.exports.prepDocument = function(document) {
  *
  * @return Element
  **/
-let grabArticle = module.exports.grabArticle = function(document, preserveUnlikelyCandidates) {
+module.exports.grabArticle = function (document, preserveUnlikelyCandidates) {
   /**
    * First, node prepping. Trash nodes that look cruddy (like ones with the class name "comment", etc), and turn divs
    * into P tags where they have been used inappropriately (as in, where they contain no other block level elements.)
@@ -101,47 +100,47 @@ let grabArticle = module.exports.grabArticle = function(document, preserveUnlike
    * Note: Assignment from index for performance. See http://www.peachpit.com/articles/article.aspx?p=31567&seqNum=5
    * TODO: Shouldn't this be a reverse traversal?
    **/
-  let nodes = document.getElementsByTagName('*');
+  const nodes = document.getElementsByTagName('*')
   for (let i = 0; i < nodes.length; ++i) {
-    let node = nodes[i];
+    const node = nodes[i]
     // Remove unlikely candidates */
-    let continueFlag = false;
+    let continueFlag = false
     if (!preserveUnlikelyCandidates) {
-      let unlikelyMatchString = node.className + '\n' + node.id;
-      if (unlikelyMatchString.search(regexps.unlikelyCandidatesRe) !== -1 && unlikelyMatchString.search(regexps.okMaybeItsACandidateRe) == -1 && node.tagName !== 'HTML' && node.tagName !== "BODY") {
-        dbg("Removing unlikely candidate - " + unlikelyMatchString);
-        node.parentNode.removeChild(node);
-        continueFlag = true;
+      const unlikelyMatchString = node.className + '\n' + node.id
+      if (unlikelyMatchString.search(regexps.unlikelyCandidatesRe) !== -1 && unlikelyMatchString.search(regexps.okMaybeItsACandidateRe) === -1 && node.tagName !== 'HTML' && node.tagName !== 'BODY') {
+        dbg('Removing unlikely candidate - ' + unlikelyMatchString)
+        node.parentNode.removeChild(node)
+        continueFlag = true
       }
     }
 
     // Turn all divs that don't have children block level elements into p's
     if (!continueFlag && node.tagName === 'DIV') {
       if (node.innerHTML.search(regexps.divToPElementsRe) === -1) {
-        dbg("Altering div to p");
-        let newNode = document.createElement('p');
-        newNode.innerHTML = node.innerHTML;
-        node.parentNode.replaceChild(newNode, node);
+        dbg('Altering div to p')
+        const newNode = document.createElement('p')
+        newNode.innerHTML = node.innerHTML
+        node.parentNode.replaceChild(newNode, node)
       } else {
         // EXPERIMENTAL
-        Array.prototype.slice.call(node.childNodes).forEach(function(childNode) {
-          if (childNode.nodeType == 3 /*TEXT_NODE*/ ) {
-            let nextSibling = childNode.nextSibling
-            if (nextSibling && nextSibling.tagName == 'BR') {
-              dbg("replacing text node followed by br with a p tag with the same content.");
-              let p = document.createElement('p');
-              p.innerHTML = childNode.nodeValue;
+        Array.prototype.slice.call(node.childNodes).forEach(function (childNode) {
+          if (childNode.nodeType === 3 /* TEXT_NODE */) {
+            const nextSibling = childNode.nextSibling
+            if (nextSibling && nextSibling.tagName === 'BR') {
+              dbg('replacing text node followed by br with a p tag with the same content.')
+              const p = document.createElement('p')
+              p.innerHTML = childNode.nodeValue
               childNode.parentNode.removeChild(nextSibling)
-              childNode.parentNode.replaceChild(p, childNode);
+              childNode.parentNode.replaceChild(p, childNode)
             } else {
               // use span instead of p. Need more tests.
-              dbg("replacing text node with a span tag with the same content.");
-              let span = document.createElement('span');
-              span.innerHTML = childNode.nodeValue;
-              childNode.parentNode.replaceChild(span, childNode);
+              dbg('replacing text node with a span tag with the same content.')
+              const span = document.createElement('span')
+              span.innerHTML = childNode.nodeValue
+              childNode.parentNode.replaceChild(span, childNode)
             }
           }
-        });
+        })
       }
     }
   }
@@ -152,63 +151,62 @@ let grabArticle = module.exports.grabArticle = function(document, preserveUnlike
    *
    * A score is determined by things like number of commas, class names, etc. Maybe eventually link density.
    **/
-  let allParagraphs = document.getElementsByTagName("p");
-  let candidates = [];
+  const allParagraphs = document.getElementsByTagName('p')
+  const candidates = []
 
   for (let i = 0; i < allParagraphs.length; ++i) {
-    let paragraph = allParagraphs[i];
-    let parentNode = paragraph.parentNode;
-    let grandParentNode = parentNode.parentNode;
-    let innerText = getInnerText(paragraph);
+    const paragraph = allParagraphs[i]
+    const parentNode = paragraph.parentNode
+    const grandParentNode = parentNode.parentNode
+    const innerText = getInnerText(paragraph)
 
     // If this paragraph is less than 25 characters, don't even count it.
-    if (innerText.length < 25) continue;
+    if (innerText.length < 25) continue
 
     // Initialize readability data for the parent.
-    if (typeof parentNode.readability == 'undefined') {
-      initializeNode(parentNode);
-      candidates.push(parentNode);
+    if (typeof parentNode.readability === 'undefined') {
+      initializeNode(parentNode)
+      candidates.push(parentNode)
     }
 
     // Initialize readability data for the grandparent.
-    if (typeof grandParentNode.readability == 'undefined') {
-      initializeNode(grandParentNode);
-      candidates.push(grandParentNode);
+    if (typeof grandParentNode.readability === 'undefined') {
+      initializeNode(grandParentNode)
+      candidates.push(grandParentNode)
     }
 
-    let contentScore = 0;
+    let contentScore = 0
 
     // Add a point for the paragraph itself as a base. */
-    ++contentScore;
+    ++contentScore
 
     // Add points for any commas within this paragraph */
-    contentScore += innerText.replace('，', ',').split(',').length;
+    contentScore += innerText.replace('，', ',').split(',').length
 
     // For every 100 characters in this paragraph, add another point. Up to 3 points. */
-    contentScore += Math.min(Math.floor(innerText.length / 100), 3);
+    contentScore += Math.min(Math.floor(innerText.length / 100), 3)
 
     // Add the score to the parent. The grandparent gets half. */
-    parentNode.readability.contentScore += contentScore;
-    grandParentNode.readability.contentScore += contentScore / 2;
+    parentNode.readability.contentScore += contentScore
+    grandParentNode.readability.contentScore += contentScore / 2
   }
-
 
   /**
    * After we've calculated scores, loop through all of the possible candidate nodes we found
    * and find the one with the highest score.
    **/
-  let topCandidate = null;
-  candidates.forEach(function(candidate) {
+  let topCandidate = null
+  candidates.forEach(function (candidate) {
     /**
      * Scale the final candidates score based on link density. Good content should have a
      * relatively small link density (5% or less) and be mostly unaffected by this operation.
      **/
-    candidate.readability.contentScore = candidate.readability.contentScore * (1 - getLinkDensity(candidate));
+    candidate.readability.contentScore = candidate.readability.contentScore * (1 - getLinkDensity(candidate))
 
-    dbg('Candidate: ' + candidate + " (" + candidate.className + ":" + candidate.id + ") with score " + candidate.readability.contentScore);
+    dbg('Candidate: ' + candidate + ' (' + candidate.className + ':' + candidate.id + ') with score ' + candidate.readability.contentScore)
 
-    if (!topCandidate || candidate.readability.contentScore > topCandidate.readability.contentScore) topCandidate = candidate;
-  });
+    if (!topCandidate || candidate.readability.contentScore > topCandidate.readability.contentScore) topCandidate = candidate
+  })
 
   /**
    * If we still have no top candidate, just use the body as a last resort.
@@ -217,68 +215,67 @@ let grabArticle = module.exports.grabArticle = function(document, preserveUnlike
   if (topCandidate === null || topCandidate.tagName === 'BODY') {
     // With no top candidate, bail out if no body tag exists as last resort.
     if (!document.body) {
-      return new Error('No body tag was found.');
+      return new Error('No body tag was found.')
     }
-    topCandidate = document.createElement('DIV');
-    topCandidate.innerHTML = document.body.innerHTML;
-    document.body.innerHTML = '';
-    document.body.appendChild(topCandidate);
-    initializeNode(topCandidate);
+    topCandidate = document.createElement('DIV')
+    topCandidate.innerHTML = document.body.innerHTML
+    document.body.innerHTML = ''
+    document.body.appendChild(topCandidate)
+    initializeNode(topCandidate)
   }
-
 
   /**
    * Now that we have the top candidate, look through its siblings for content that might also be related.
    * Things like preambles, content split by ads that we removed, etc.
    **/
-  let articleContent = document.createElement('DIV');
-  articleContent.id = 'readability-content';
-  let siblingScoreThreshold = Math.max(10, topCandidate.readability.contentScore * 0.2);
-  let siblingNodes = topCandidate.parentNode.childNodes;
+  const articleContent = document.createElement('DIV')
+  articleContent.id = 'readability-content'
+  const siblingScoreThreshold = Math.max(10, topCandidate.readability.contentScore * 0.2)
+  const siblingNodes = topCandidate.parentNode.childNodes
   for (let i = 0, il = siblingNodes.length; i < il; i++) {
-    let siblingNode = siblingNodes[i];
-    let append = false;
+    const siblingNode = siblingNodes[i]
+    let append = false
 
-    dbg('Looking at sibling node: ' + siblingNode + ' (' + siblingNode.className + ':' + siblingNode.id + ')' + ((typeof siblingNode.readability != 'undefined') ? (' with score ' + siblingNode.readability.contentScore) : ''));
-    dbg('Sibling has score ' + (siblingNode.readability ? siblingNode.readability.contentScore : 'Unknown'));
+    dbg('Looking at sibling node: ' + siblingNode + ' (' + siblingNode.className + ':' + siblingNode.id + ')' + ((typeof siblingNode.readability !== 'undefined') ? (' with score ' + siblingNode.readability.contentScore) : ''))
+    dbg('Sibling has score ' + (siblingNode.readability ? siblingNode.readability.contentScore : 'Unknown'))
 
     if (siblingNode === topCandidate) {
-      append = true;
+      append = true
     }
 
-    if (typeof siblingNode.readability != 'undefined' && siblingNode.readability.contentScore >= siblingScoreThreshold) {
-      append = true;
+    if (typeof siblingNode.readability !== 'undefined' && siblingNode.readability.contentScore >= siblingScoreThreshold) {
+      append = true
     }
 
-    if (siblingNode.nodeName == 'P') {
-      let linkDensity = getLinkDensity(siblingNode);
-      let nodeContent = getInnerText(siblingNode);
-      let nodeLength = nodeContent.length;
+    if (siblingNode.nodeName === 'P') {
+      const linkDensity = getLinkDensity(siblingNode)
+      const nodeContent = getInnerText(siblingNode)
+      const nodeLength = nodeContent.length
 
       if (nodeLength > 80 && linkDensity < 0.25) {
-        append = true;
+        append = true
       } else if (nodeLength < 80 && linkDensity === 0 && nodeContent.search(/\.( |$)/) !== -1) {
-        append = true;
+        append = true
       }
     }
 
     if (append) {
-      dbg("Appending node: " + siblingNode);
+      dbg('Appending node: ' + siblingNode)
 
       /* Append sibling and subtract from our list because it removes the node when you append to another node */
-      articleContent.appendChild(siblingNode);
-      i--;
-      il--;
+      articleContent.appendChild(siblingNode)
+      i--
+      il--
     }
   }
 
   /**
    * So we have all of the content that we need. Now we clean it up for presentation.
    **/
-  prepArticle(articleContent);
+  prepArticle(articleContent)
 
-  return articleContent;
-};
+  return articleContent
+}
 
 /**
  * Remove the style attribute on every e and under.
@@ -286,24 +283,23 @@ let grabArticle = module.exports.grabArticle = function(document, preserveUnlike
  * @param Element
  * @return void
  **/
-function cleanStyles(e) {
-  if (!e) return;
-
+function cleanStyles (e) {
+  if (!e) return
 
   // Remove any root styles, if we're able.
-  if (typeof e.removeAttribute == 'function' && e.className != 'readability-styled') e.removeAttribute('style');
+  if (typeof e.removeAttribute === 'function' && e.className !== 'readability-styled') e.removeAttribute('style')
 
   // Go until there are no more child nodes
-  let cur = e.firstChild;
+  let cur = e.firstChild
   while (cur) {
-    if (cur.nodeType == 1) {
+    if (cur.nodeType === 1) {
       // Remove style attribute(s) :
-      if (cur.className != "readability-styled") {
-        cur.removeAttribute("style");
+      if (cur.className !== 'readability-styled') {
+        cur.removeAttribute('style')
       }
-      cleanStyles(cur);
+      cleanStyles(cur)
     }
-    cur = cur.nextSibling;
+    cur = cur.nextSibling
   }
 }
 
@@ -313,10 +309,9 @@ function cleanStyles(e) {
  * @param Element
  * @return void
  **/
-function killBreaks(e) {
-  e.innerHTML = e.innerHTML.replace(regexps.killBreaksRe, '<br />');
+function killBreaks (e) {
+  e.innerHTML = e.innerHTML.replace(regexps.killBreaksRe, '<br />')
 }
-
 
 /**
  * Get the inner text of a node - cross browser compatibly.
@@ -325,15 +320,15 @@ function killBreaks(e) {
  * @param Element
  * @return string
  **/
-let getInnerText = exports.getInnerText = function(e, normalizeSpaces) {
-  let textContent = "";
+const getInnerText = exports.getInnerText = function (e, normalizeSpaces) {
+  let textContent = ''
 
-  normalizeSpaces = (typeof normalizeSpaces == 'undefined') ? true : normalizeSpaces;
+  normalizeSpaces = (typeof normalizeSpaces === 'undefined') ? true : normalizeSpaces
 
-  textContent = e.textContent.trim();
+  textContent = e.textContent.trim()
 
-  if (normalizeSpaces) return textContent.replace(regexps.normalizeRe, " ");
-  else return textContent;
+  if (normalizeSpaces) return textContent.replace(regexps.normalizeRe, ' ')
+  else return textContent
 }
 
 /**
@@ -343,9 +338,9 @@ let getInnerText = exports.getInnerText = function(e, normalizeSpaces) {
  * @param string - what to split on. Default is ","
  * @return number (integer)
  **/
-function getCharCount(e, s) {
-  s = s || ",";
-  return getInnerText(e).split(s).length;
+function getCharCount (e, s) {
+  s = s || ','
+  return getInnerText(e).split(s).length
 }
 
 /**
@@ -355,18 +350,18 @@ function getCharCount(e, s) {
  * @param Element
  * @return number (float)
  **/
-function getLinkDensity(e) {
-  let links = e.getElementsByTagName("a");
+function getLinkDensity (e) {
+  const links = e.getElementsByTagName('a')
 
-  let textLength = getInnerText(e).length;
-  let linkLength = 0;
+  const textLength = getInnerText(e).length
+  let linkLength = 0
   for (let i = 0, il = links.length; i < il; i++) {
-    let href = links[i].getAttribute('href');
+    const href = links[i].getAttribute('href')
     // hack for <h2><a href="#menu"></a></h2> / <h2><a></a></h2>
-    if (!href || (href.length > 0 && href[0] === '#')) continue;
-    linkLength += getInnerText(links[i]).length;
+    if (!href || (href.length > 0 && href[0] === '#')) continue
+    linkLength += getInnerText(links[i]).length
   }
-  return linkLength / textLength;
+  return linkLength / textLength
 }
 
 /**
@@ -376,24 +371,24 @@ function getLinkDensity(e) {
  * @param Element
  * @return number (Integer)
  **/
-function getClassWeight(e) {
-  let weight = 0;
+function getClassWeight (e) {
+  let weight = 0
 
   /* Look for a special classname */
   if (e.className !== '') {
-    if (e.className.search(regexps.negativeRe) !== -1) weight -= 25;
+    if (e.className.search(regexps.negativeRe) !== -1) weight -= 25
 
-    if (e.className.search(regexps.positiveRe) !== -1) weight += 25;
+    if (e.className.search(regexps.positiveRe) !== -1) weight += 25
   }
 
   /* Look for a special ID */
-  if (typeof(e.id) == 'string' && e.id != "") {
-    if (e.id.search(regexps.negativeRe) !== -1) weight -= 25;
+  if (typeof (e.id) === 'string' && e.id !== '') {
+    if (e.id.search(regexps.negativeRe) !== -1) weight -= 25
 
-    if (e.id.search(regexps.positiveRe) !== -1) weight += 25;
+    if (e.id.search(regexps.positiveRe) !== -1) weight += 25
   }
 
-  return weight;
+  return weight
 }
 
 /**
@@ -404,35 +399,33 @@ function getClassWeight(e) {
  * @param string tag to clean
  * @return void
  **/
-function clean(e, tag) {
-  let targetList = e.getElementsByTagName(tag);
-  let isEmbed = (tag == 'object' || tag == 'embed');
-
-
+function clean (e, tag) {
+  const targetList = e.getElementsByTagName(tag)
+  const isEmbed = (tag === 'object' || tag === 'embed')
 
   for (let y = targetList.length - 1; y >= 0; y--) {
-    //------- user clean handler -----------------
-    let validRule = false;
+    // ------- user clean handler -----------------
+    let validRule = false
     for (let i = 0; i < cleanRules.length; i++) {
       if (cleanRules[i](targetList[y], tag) === true) {
-        validRule = true;
-        break;
+        validRule = true
+        break
       }
     }
 
     if (validRule) {
-      continue;
+      continue
     }
-    //------- end user clean handler -----------------
+    // ------- end user clean handler -----------------
 
     /* Allow youtube and vimeo videos through as people usually want to see those. */
     if (isEmbed) {
       if (targetList[y].innerHTML.search(regexps.videoRe) !== -1) {
-        continue;
+        continue
       }
     }
 
-    targetList[y].parentNode.removeChild(targetList[y]);
+    targetList[y].parentNode.removeChild(targetList[y])
   }
 }
 
@@ -442,9 +435,9 @@ function clean(e, tag) {
  *
  * @return void
  **/
-function cleanConditionally(e, tag) {
-  let tagsList = e.getElementsByTagName(tag);
-  let curTagsLength = tagsList.length;
+function cleanConditionally (e, tag) {
+  const tagsList = e.getElementsByTagName(tag)
+  const curTagsLength = tagsList.length
 
   /**
    * Gather counts for other typical elements embedded within.
@@ -453,86 +446,85 @@ function cleanConditionally(e, tag) {
    * TODO: Consider taking into account original contentScore here.
    **/
   for (let i = curTagsLength - 1; i >= 0; i--) {
-    let weight = getClassWeight(tagsList[i]);
+    const weight = getClassWeight(tagsList[i])
 
-    dbg("Cleaning Conditionally " + tagsList[i] + " (" + tagsList[i].className + ":" + tagsList[i].id + ")" + ((typeof tagsList[i].readability != 'undefined') ? (" with score " + tagsList[i].readability.contentScore) : ''));
+    dbg('Cleaning Conditionally ' + tagsList[i] + ' (' + tagsList[i].className + ':' + tagsList[i].id + ')' + ((typeof tagsList[i].readability !== 'undefined') ? (' with score ' + tagsList[i].readability.contentScore) : ''))
 
     if (weight < 0) {
-      tagsList[i].parentNode.removeChild(tagsList[i]);
+      tagsList[i].parentNode.removeChild(tagsList[i])
     } else if (getCharCount(tagsList[i], ',') < 10) {
       /**
        * If there are not very many commas, and the number of
        * non-paragraph elements is more than paragraphs or other ominous signs, remove the element.
        **/
 
-      let p = tagsList[i].getElementsByTagName("p").length;
-      let img = tagsList[i].getElementsByTagName("img").length;
-      let li = tagsList[i].getElementsByTagName("li").length - 100;
-      let input = tagsList[i].getElementsByTagName("input").length;
+      const p = tagsList[i].getElementsByTagName('p').length
+      const img = tagsList[i].getElementsByTagName('img').length
+      const li = tagsList[i].getElementsByTagName('li').length - 100
+      const input = tagsList[i].getElementsByTagName('input').length
 
-      let embedCount = 0;
-      let embeds = tagsList[i].getElementsByTagName("embed");
+      let embedCount = 0
+      const embeds = tagsList[i].getElementsByTagName('embed')
       for (let ei = 0, il = embeds.length; ei < il; ei++) {
-        if (embeds[ei].src && embeds[ei].src.search(regexps.videoRe) == -1) {
-          embedCount++;
+        if (embeds[ei].src && embeds[ei].src.search(regexps.videoRe) === -1) {
+          embedCount++
         }
       }
 
-      let linkDensity = getLinkDensity(tagsList[i]);
-      let contentLength = getInnerText(tagsList[i]).length;
-      let toRemove = false;
+      const linkDensity = getLinkDensity(tagsList[i])
+      const contentLength = getInnerText(tagsList[i]).length
+      let toRemove = false
 
       if (img > p && img > 1) {
-        toRemove = true;
-      } else if (li > p && tag != "ul" && tag != "ol") {
-        toRemove = true;
+        toRemove = true
+      } else if (li > p && tag !== 'ul' && tag !== 'ol') {
+        toRemove = true
       } else if (input > Math.floor(p / 3)) {
-        toRemove = true;
-      } else if (contentLength < 25 && (img == 0 || img > 2)) {
-        toRemove = true;
-      } else if (weight < 25 && linkDensity > .2) {
-        toRemove = true;
-      } else if (weight >= 25 && linkDensity > .5) {
-        toRemove = true;
-      } else if ((embedCount == 1 && contentLength < 75) || embedCount > 1) {
-        toRemove = true;
+        toRemove = true
+      } else if (contentLength < 25 && (img === 0 || img > 2)) {
+        toRemove = true
+      } else if (weight < 25 && linkDensity > 0.2) {
+        toRemove = true
+      } else if (weight >= 25 && linkDensity > 0.5) {
+        toRemove = true
+      } else if ((embedCount === 1 && contentLength < 75) || embedCount > 1) {
+        toRemove = true
       }
 
       if (toRemove) {
-        tagsList[i].parentNode.removeChild(tagsList[i]);
+        tagsList[i].parentNode.removeChild(tagsList[i])
       }
     }
   }
 }
 
-
 /**
  * Converts relative urls to absolute for images and links
  **/
-function fixLinks(e) {
+function fixLinks (e) {
   if (!e.ownerDocument.originalURL) {
-    return;
+    return
   }
 
-  function fixLink(link) {
-    let fixed = url.resolve(e.ownerDocument.originalURL, link);
-    return fixed;
+  function fixLink (link) {
+    const fixed = url.URL(e.ownerDocument.originalURL, link)
+    return fixed
   }
 
-  let i;
-  let imgs = e.getElementsByTagName('img');
+  let i
+  const imgs = e.getElementsByTagName('img')
   for (i = imgs.length - 1; i >= 0; --i) {
-    let src = imgs[i].getAttribute('src');
+    const src = imgs[i].getAttribute('src')
     if (src) {
-      imgs[i].setAttribute('src', fixLink(src));
+      imgs[i].setAttribute('src', fixLink(src))
     }
   }
 
-  let as = e.getElementsByTagName('a');
+  const as = e.getElementsByTagName('a')
   for (i = as.length - 1; i >= 0; --i) {
-    let href = as[i].getAttribute('href');
+    const href = as[i].getAttribute('href')
     if (href) {
-      as[i].setAttribute('href', fixLink(href));
+      as[i].setAttribute('href', fixLink(href))
     }
   }
 }
@@ -543,12 +535,12 @@ function fixLinks(e) {
  * @param Element
  * @return void
  **/
-function cleanHeaders(e) {
+function cleanHeaders (e) {
   for (let headerIndex = 1; headerIndex < 7; headerIndex++) {
-    let headers = e.getElementsByTagName('h' + headerIndex);
+    const headers = e.getElementsByTagName('h' + headerIndex)
     for (let i = headers.length - 1; i >= 0; --i) {
       if (getClassWeight(headers[i]) < 0 || getLinkDensity(headers[i]) > 0.33) {
-        headers[i].parentNode.removeChild(headers[i]);
+        headers[i].parentNode.removeChild(headers[i])
       }
     }
   }
@@ -561,64 +553,63 @@ function cleanHeaders(e) {
  * @return void
  **/
 
-function cleanSingleHeader(e) {
+function cleanSingleHeader (e) {
   for (let headerIndex = 1; headerIndex < 7; headerIndex++) {
-    let headers = e.getElementsByTagName('h' + headerIndex);
+    const headers = e.getElementsByTagName('h' + headerIndex)
     for (let i = headers.length - 1; i >= 0; --i) {
       if (headers[i].nextSibling === null) {
-        headers[i].parentNode.removeChild(headers[i]);
+        headers[i].parentNode.removeChild(headers[i])
       }
     }
   }
-
 }
 
-function prepArticle(articleContent) {
-  cleanStyles(articleContent);
-  killBreaks(articleContent);
+function prepArticle (articleContent) {
+  cleanStyles(articleContent)
+  killBreaks(articleContent)
 
   /* Clean out junk from the article content */
-  clean(articleContent, 'form');
-  clean(articleContent, 'object');
+  clean(articleContent, 'form')
+  clean(articleContent, 'object')
   if (articleContent.getElementsByTagName('h1').length === 1) {
-    clean(articleContent, 'h1');
+    clean(articleContent, 'h1')
   }
   /**
    * If there is only one h2, they are probably using it
    * as a header and not a subheader, so remove it since we already have a header.
    ***/
-  if (articleContent.getElementsByTagName('h2').length === 1) clean(articleContent, "h2");
+  if (articleContent.getElementsByTagName('h2').length === 1) clean(articleContent, 'h2')
 
-  clean(articleContent, "iframe");
+  clean(articleContent, 'iframe')
 
-  cleanHeaders(articleContent);
+  cleanHeaders(articleContent)
 
   /* Do these last as the previous stuff may have removed junk that will affect these */
-  cleanConditionally(articleContent, "table");
-  cleanConditionally(articleContent, "ul");
-  cleanConditionally(articleContent, "div");
+  cleanConditionally(articleContent, 'table')
+  cleanConditionally(articleContent, 'ul')
+  cleanConditionally(articleContent, 'div')
 
   /* Remove extra paragraphs */
-  let articleParagraphs = articleContent.getElementsByTagName('p');
+  const articleParagraphs = articleContent.getElementsByTagName('p')
   for (let i = articleParagraphs.length - 1; i >= 0; i--) {
-    let imgCount = articleParagraphs[i].getElementsByTagName('img').length;
-    let embedCount = articleParagraphs[i].getElementsByTagName('embed').length;
-    let objectCount = articleParagraphs[i].getElementsByTagName('object').length;
+    const imgCount = articleParagraphs[i].getElementsByTagName('img').length
+    const embedCount = articleParagraphs[i].getElementsByTagName('embed').length
+    const objectCount = articleParagraphs[i].getElementsByTagName('object').length
 
-    if (imgCount == 0 && embedCount == 0 && objectCount == 0 && getInnerText(articleParagraphs[i], false) == '') {
-      articleParagraphs[i].parentNode.removeChild(articleParagraphs[i]);
+    if (imgCount === 0 && embedCount === 0 && objectCount === 0 && getInnerText(articleParagraphs[i], false) === '') {
+      articleParagraphs[i].parentNode.removeChild(articleParagraphs[i])
     }
   }
 
-  cleanSingleHeader(articleContent);
+  cleanSingleHeader(articleContent)
 
   try {
-    articleContent.innerHTML = articleContent.innerHTML.replace(/<br[^>]*>\s*<p/gi, '<p');
+    articleContent.innerHTML = articleContent.innerHTML.replace(/<br[^>]*>\s*<p/gi, '<p')
   } catch (e) {
-    dbg("Cleaning innerHTML of breaks failed. This is an IE strict-block-elements bug. Ignoring.");
+    dbg('Cleaning innerHTML of breaks failed. This is an IE strict-block-elements bug. Ignoring.')
   }
 
-  fixLinks(articleContent);
+  fixLinks(articleContent)
 }
 
 /**
@@ -628,27 +619,27 @@ function prepArticle(articleContent) {
  * @param Element
  * @return void
  **/
-function initializeNode(node) {
-  node.readability = { contentScore: 0 };
+function initializeNode (node) {
+  node.readability = { contentScore: 0 }
 
   switch (node.tagName) {
     case 'ARTICLE':
-      node.readability.contentScore += 10;
-      break;
+      node.readability.contentScore += 10
+      break
 
     case 'SECTION':
-      node.readability.contentScore += 8;
-      break;
+      node.readability.contentScore += 8
+      break
 
     case 'DIV':
-      node.readability.contentScore += 5;
-      break;
+      node.readability.contentScore += 5
+      break
 
     case 'PRE':
     case 'TD':
     case 'BLOCKQUOTE':
-      node.readability.contentScore += 3;
-      break;
+      node.readability.contentScore += 3
+      break
 
     case 'ADDRESS':
     case 'OL':
@@ -658,8 +649,8 @@ function initializeNode(node) {
     case 'DT':
     case 'LI':
     case 'FORM':
-      node.readability.contentScore -= 3;
-      break;
+      node.readability.contentScore -= 3
+      break
 
     case 'H1':
     case 'H2':
@@ -668,17 +659,17 @@ function initializeNode(node) {
     case 'H5':
     case 'H6':
     case 'TH':
-      node.readability.contentScore -= 5;
-      break;
+      node.readability.contentScore -= 5
+      break
   }
 
   if (node.attributes.itemscope) {
-    node.readability.contentScore += 5;
+    node.readability.contentScore += 5
     if (node.attributes.itemtype &&
       regexps.attributeRe.test(node.getAttribute('itemtype'))) {
-      node.readability.contentScore += 30;
+      node.readability.contentScore += 30
     }
   }
 
-  node.readability.contentScore += getClassWeight(node);
+  node.readability.contentScore += getClassWeight(node)
 }
