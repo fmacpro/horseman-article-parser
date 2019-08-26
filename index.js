@@ -1,6 +1,5 @@
 const puppeteer = require('puppeteer')
 const lighthouse = require('lighthouse')
-const read = require('node-readability')
 const retext = require('retext')
 const nlcstToString = require('nlcst-to-string')
 const pos = require('retext-pos')
@@ -18,16 +17,7 @@ const personalDictionary = require('./personalDictionary.js')
 const htmlTags = require('./stripTags.js')
 const jsdom = require('jsdom')
 const { JSDOM } = jsdom
-
-function capitalizeFirstLetter (string) {
-  return string.charAt(0).toUpperCase() + string.slice(1)
-}
-
-function toTitleCase (str) {
-  return str.replace(/\w\S*/g, function (txt) {
-    return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
-  })
-}
+const helpers = require('./helpers')
 
 module.exports = {
   parseArticle: async function (options, socket) {
@@ -158,6 +148,8 @@ const articleParser = async function (options, socket) {
   // More HTML Cleaning
   html = await htmlCleaner(html, options.cleanhtml)
 
+  // console.log(html);
+
   // Body Content Identification
   socket.emit('parse:status', 'Evaluating Content')
 
@@ -194,7 +186,7 @@ const articleParser = async function (options, socket) {
   article.processed.text.raw = await getRawText(article.processed.html, article.title.text)
 
   // Excerpt
-  article.excerpt = capitalizeFirstLetter(article.processed.text.raw.replace(/^(.{200}[^\s]*).*/, '$1'))
+  article.excerpt = helpers.capitalizeFirstLetter(article.processed.text.raw.replace(/^(.{200}[^\s]*).*/, '$1'))
 
   // Sentiment
   socket.emit('parse:status', 'Sentiment Analysis')
@@ -274,7 +266,7 @@ const spellCheck = function (text, topics, options) {
   return new Promise(function (resolve, reject) {
     let ignoreList = _.map(topics, 'normal')
     ignoreList = ignoreList.join(' ')
-    ignoreList = toTitleCase(ignoreList) + ' ' + ignoreList.toUpperCase()
+    ignoreList = helpers.toTitleCase(ignoreList) + ' ' + ignoreList.toUpperCase()
     ignoreList = ignoreList.split(' ')
 
     if (typeof options === 'undefined') {
@@ -395,28 +387,20 @@ const htmlCleaner = function (html, options) {
   })
 }
 
-const contentParser = function (html, options) {
-  return new Promise(function (resolve, reject) {
-    // https://github.com/luin/readability
+const contentParser = async function (html, options) {
+  if (typeof options === 'undefined') {
+    options = {}
+  }
 
-    if (typeof options === 'undefined') {
-      options = {}
-    }
+  const dom = new JSDOM(html)
 
-    read(html, options, function (error, article, meta) {
-      if (error) {
-        article.close()
-        reject(error)
-      }
+  await helpers.setCleanRules(options.cleanRulers || [])
+  await helpers.prepDocument(dom.window.document)
 
-      const title = article.title
-      const content = article.content
+  const content = await getContent(dom.window.document)
+  const title = await getTitle(dom.window.document)
 
-      article.close()
-
-      resolve({ title: title, content: content })
-    })
-  })
+  return ({ title: title, content: content })
 }
 
 const keywordParser = function (html, options) {
@@ -485,4 +469,43 @@ const lighthouseAnalysis = async function (options, socket) {
 
     return results.lhr
   }
+}
+
+const getContent = function (document) {
+  var articleContent = helpers.grabArticle(document)
+
+  return articleContent.innerHTML
+}
+
+const getTitle = function (document) {
+  var title = findMetaTitle(document) || document.title
+  var betterTitle
+  var commonSeparatingCharacters = [' | ', ' _ ', ' - ', '«', '»', '—']
+
+  commonSeparatingCharacters.forEach(function (char) {
+    var tmpArray = title.split(char)
+    if (tmpArray.length > 1) {
+      betterTitle = tmpArray[0].trim()
+    }
+  })
+
+  if (betterTitle && betterTitle.length > 10) {
+    return betterTitle
+  }
+
+  return title
+}
+
+const findMetaTitle = function (document) {
+  var metaTags = document.getElementsByTagName('meta')
+  var tag
+
+  for (var i = 0; i < metaTags.length; i++) {
+    tag = metaTags[i]
+
+    if (tag.getAttribute('property') === 'og:title' || tag.getAttribute('name') === 'twitter:title') {
+      return tag.getAttribute('content')
+    }
+  }
+  return null
 }
