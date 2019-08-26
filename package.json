@@ -18,8 +18,6 @@
   },
   "homepage": "https://github.com/fmacpro/horseman-article-parser#readme",
   "dependencies": {
-    "puppeteer": "^1.19.0",
-    "lighthouse": "^5.2.0",
     "absolutify": "^0.1.0",
     "clean-html": "^1.5.0",
     "compromise": "^11.14.2",
@@ -27,14 +25,17 @@
     "html-to-text": "^5.1.1",
     "jquery": "^3.4.1",
     "jsdom": "^15.1.1",
+    "lighthouse": "^5.2.0",
     "lodash": "^4.17.15",
     "nlcst-to-string": "^2.0.3",
     "node-readability": "^3.0.0",
+    "puppeteer": "^1.19.0",
     "retext": "^7.0.0",
     "retext-keywords": "^5.0.0",
     "retext-pos": "^2.0.2",
     "retext-spell": "^3.0.0",
     "sentiment": "^5.0.1",
+    "url": "^0.11.0",
     "vfile-reporter-json": "^2.0.0"
   },
   "devDependencies": {
