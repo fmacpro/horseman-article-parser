@@ -168,7 +168,6 @@ npm run test
 - [dictionary-en-gb](https://ghub.io/dictionary-en-gb): English (United Kingdom) spelling dictionary in UTF-8
 - [html-to-text](https://ghub.io/html-to-text): Advanced html to plain text converter
 - [nlcst-to-string](https://ghub.io/nlcst-to-string): Stringify NLCST
-- [node-readability](https://ghub.io/node-readability): Turning any web page into a clean view.
 - [vfile-reporter-json](https://ghub.io/vfile-reporter-json): JSON reporter for virtual files
 
 
@@ -186,3 +185,7 @@ npm run test
 ## License
 
 This project is licensed under the GNU GENERAL PUBLIC LICENSE Version 3 - see the [LICENSE](LICENSE) file for details
+
+## Notes
+
+Due to [node-readability](https://github.com/luin/readability) being stale I have imported the relevent functions into this project and refactored it so it doesn't use [request](https://github.com/request/request) and therfor has no vulnrabilities.
