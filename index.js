@@ -101,6 +101,7 @@ const articleParser = async function (options, socket) {
   const protocol = pathArray[0]
   const host = pathArray[2]
 
+  article.host = host
   article.baseurl = protocol + '//' + host
 
   // Evaluate title
@@ -160,7 +161,21 @@ const articleParser = async function (options, socket) {
   // Body Content Identification
   socket.emit('parse:status', 'Evaluating Content')
 
-  const content = await contentParser(html, options.readability)
+  const content = {};
+
+  if ( article.host === 'twitter.com' ) {
+    const { window } = new JSDOM(html)
+    const $ = require('jquery')(window)
+     
+    content.content = window.$('.permalink-tweet-container .js-tweet-text-container').html();
+
+    console.log(content.content);
+    content.title = '';
+
+  }
+  else {
+    const content = await contentParser(html, options.readability)
+  }
 
   // Turn relative links into absolute links
   article.processed.html = await absolutify(content.content, article.baseurl)
