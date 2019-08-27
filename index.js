@@ -27,10 +27,8 @@ module.exports = {
       socket = { emit: function (type, status) { console.log(status) } }
     }
 
-    if (typeof options.lighthouse === 'undefined') {
-      options.lighthouse = {
-        enabled: false
-      }
+    if (typeof options.enabled === 'undefined') {
+      options.enabled = []
     }
 
     if (typeof options.puppeteer === 'undefined') {
@@ -40,7 +38,13 @@ module.exports = {
       }
     }
 
-    const results = await Promise.all([articleParser(options, socket), lighthouseAnalysis(options, socket)])
+    const actions = [articleParser(options, socket)]
+
+    if (options.enabled.includes('lighthouse')) {
+      actions.push(lighthouseAnalysis(options, socket))
+    }
+
+    const results = await Promise.all(actions)
 
     article = results[0]
     article.lighthouse = results[1]
@@ -98,9 +102,11 @@ const articleParser = async function (options, socket) {
   article.meta.title.text = await page.title()
 
   // Take mobile screenshot
-  socket.emit('parse:status', 'Taking Mobile Screenshot')
+  if (options.enabled.includes('screenshot')) {
+    socket.emit('parse:status', 'Taking Mobile Screenshot')
 
-  article.mobile = await page.screenshot({ encoding: 'base64', type: 'jpeg', quality: 60 })
+    article.mobile = await page.screenshot({ encoding: 'base64', type: 'jpeg', quality: 60 })
+  }
 
   // Evaluate meta
   await page.addScriptTag({ url: 'https://code.jquery.com/jquery-3.2.1.min.js' })
@@ -148,8 +154,6 @@ const articleParser = async function (options, socket) {
   // More HTML Cleaning
   html = await htmlCleaner(html, options.cleanhtml)
 
-  // console.log(html);
-
   // Body Content Identification
   socket.emit('parse:status', 'Evaluating Content')
 
@@ -160,21 +164,23 @@ const articleParser = async function (options, socket) {
   article.title.text = content.title
 
   // Get in article links
-  socket.emit('parse:status', 'Evaluating Links')
+  if (options.enabled.includes('links')) {
+    socket.emit('parse:status', 'Evaluating Links')
 
-  const { window } = new JSDOM(article.processed.html)
-  const $ = require('jquery')(window)
+    const { window } = new JSDOM(article.processed.html)
+    const $ = require('jquery')(window)
 
-  const arr = window.$('a')
-  const links = []
-  let i = 0
+    const arr = window.$('a')
+    const links = []
+    let i = 0
 
-  for (i = 0; i < arr.length; i++) {
-    const link = { href: $(arr[i]).attr('href'), text: $(arr[i]).text() }
-    links.push(link)
+    for (i = 0; i < arr.length; i++) {
+      const link = { href: $(arr[i]).attr('href'), text: $(arr[i]).text() }
+      links.push(link)
+    }
+
+    Object.assign(article.links, links)
   }
-
-  Object.assign(article.links, links)
 
   // Formatted Text (including new lines and spacing for spell check)
   article.processed.text.formatted = await getFormattedText(article.processed.html, article.title.text, article.baseurl, options.htmltotext)
@@ -189,69 +195,77 @@ const articleParser = async function (options, socket) {
   article.excerpt = helpers.capitalizeFirstLetter(article.processed.text.raw.replace(/^(.{200}[^\s]*).*/, '$1'))
 
   // Sentiment
-  socket.emit('parse:status', 'Sentiment Analysis')
+  if (options.enabled.includes('sentiment')) {
+    socket.emit('parse:status', 'Sentiment Analysis')
 
-  const sentiment = new Sentiment()
+    const sentiment = new Sentiment()
 
-  article.sentiment = sentiment.analyze(article.processed.text.raw)
-  if (article.sentiment.score > 0.05) {
-    article.sentiment.result = 'Positive'
-  } else if (article.sentiment.score < 0.05) {
-    article.sentiment.result = 'Negative'
-  } else {
-    article.sentiment.result = 'Neutral'
+    article.sentiment = sentiment.analyze(article.processed.text.raw)
+    if (article.sentiment.score > 0.05) {
+      article.sentiment.result = 'Positive'
+    } else if (article.sentiment.score < 0.05) {
+      article.sentiment.result = 'Negative'
+    } else {
+      article.sentiment.result = 'Neutral'
+    }
   }
 
   // Named Entity Recognition
-  socket.emit('parse:status', 'Named Entity Recognition')
+  if (options.enabled.includes('entities')) {
+    socket.emit('parse:status', 'Named Entity Recognition')
 
-  // People
-  article.people = nlp(article.processed.text.raw).people().out('topk')
+    // People
+    article.people = nlp(article.processed.text.raw).people().out('topk')
 
-  article.people.sort(function (a, b) {
-    return (a.percent > b.percent) ? -1 : 1
-  })
+    article.people.sort(function (a, b) {
+      return (a.percent > b.percent) ? -1 : 1
+    })
 
-  // Places
-  article.places = nlp(article.processed.text.raw).places().out('topk')
+    // Places
+    article.places = nlp(article.processed.text.raw).places().out('topk')
 
-  article.places.sort(function (a, b) {
-    return (a.percent > b.percent) ? -1 : 1
-  })
+    article.places.sort(function (a, b) {
+      return (a.percent > b.percent) ? -1 : 1
+    })
 
-  // Orgs & Places
-  article.orgs = nlp(article.processed.text.raw).organizations().out('topk')
+    // Orgs & Places
+    article.orgs = nlp(article.processed.text.raw).organizations().out('topk')
 
-  article.orgs.sort(function (a, b) {
-    return (a.percent > b.percent) ? -1 : 1
-  })
+    article.orgs.sort(function (a, b) {
+      return (a.percent > b.percent) ? -1 : 1
+    })
 
-  // Topics
-  article.topics = nlp(article.processed.text.raw).topics().out('topk')
+    // Topics
+    article.topics = nlp(article.processed.text.raw).topics().out('topk')
 
-  article.topics.sort(function (a, b) {
-    return (a.percent > b.percent) ? -1 : 1
-  })
+    article.topics.sort(function (a, b) {
+      return (a.percent > b.percent) ? -1 : 1
+    })
+  }
 
   // Spelling
-  socket.emit('parse:status', 'Check Spelling')
+  if (options.enabled.includes('spelling')) {
+    socket.emit('parse:status', 'Check Spelling')
 
-  article.spelling = await spellCheck(article.processed.text.formatted, article.topics, options.retextspell)
+    article.spelling = await spellCheck(article.processed.text.formatted, article.topics, options.retextspell)
+  }
 
   // Evaluate keywords & keyphrases
-  socket.emit('parse:status', 'Evaluating Keywords')
+  if (options.enabled.includes('keywords')) {
+    socket.emit('parse:status', 'Evaluating Keywords')
 
-  // Evaluate meta title keywords & keyphrases
-  Object.assign(article.meta.title, await keywordParser(article.meta.title.text, options.retextkeywords))
+    // Evaluate meta title keywords & keyphrases
+    Object.assign(article.meta.title, await keywordParser(article.meta.title.text, options.retextkeywords))
 
-  // Evaluate derived title keywords & keyphrases
-  Object.assign(article.title, await keywordParser(article.title.text, options.retextkeywords))
+    // Evaluate derived title keywords & keyphrases
+    Object.assign(article.title, await keywordParser(article.title.text, options.retextkeywords))
 
-  // Evaluate meta description keywords & keyphrases
-  Object.assign(article.meta.description, await keywordParser(article.meta.description.text, options.retextkeywords))
+    // Evaluate meta description keywords & keyphrases
+    Object.assign(article.meta.description, await keywordParser(article.meta.description.text, options.retextkeywords))
 
-  // Evaluate processed content keywords & keyphrases
-  Object.assign(article.processed, await keywordParser(article.processed.text.raw, options.retextkeywords))
+    // Evaluate processed content keywords & keyphrases
+    Object.assign(article.processed, await keywordParser(article.processed.text.raw, options.retextkeywords))
+  }
 
   await browser.close()
 
@@ -452,23 +466,21 @@ const keywordParser = function (html, options) {
 }
 
 const lighthouseAnalysis = async function (options, socket) {
-  if (options.lighthouse.enabled) {
-    socket.emit('parse:status', 'Starting Lighthouse')
+  socket.emit('parse:status', 'Starting Lighthouse')
 
-    // Init puppeteer
-    const browser = await puppeteer.launch(options.puppeteer)
+  // Init puppeteer
+  const browser = await puppeteer.launch(options.puppeteer)
 
-    const results = await lighthouse(options.url, {
-      port: (new URL(browser.wsEndpoint())).port,
-      output: 'json'
-    })
+  const results = await lighthouse(options.url, {
+    port: (new URL(browser.wsEndpoint())).port,
+    output: 'json'
+  })
 
-    await browser.close()
+  await browser.close()
 
-    socket.emit('parse:status', 'Lighthouse Analysis Complete')
+  socket.emit('parse:status', 'Lighthouse Analysis Complete')
 
-    return results.lhr
-  }
+  return results.lhr
 }
 
 const getContent = function (document) {
