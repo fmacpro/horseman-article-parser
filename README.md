@@ -19,9 +19,7 @@ var parser = require('horseman-article-parser');
 
 var options = {
   url: "https://www.theguardian.com/politics/2018/sep/24/theresa-may-calls-for-immigration-based-on-skills-and-wealth",
-  lighthouse: {
-    enabled: true
-  }
+  enabled: ['lighthouse', 'screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords']
 }
 
 parser.parseArticle(options)
@@ -68,7 +66,6 @@ The options below are set by default
 
 ```
 var options = {
-  userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36',
   // puppeteer options (https://github.com/GoogleChrome/puppeteer)
   puppeteer: {
     headless: true,
@@ -89,11 +86,7 @@ var options = {
     uppercaseHeadings: true
   },
   // retext-keywords options (https://ghub.io/retext-keywords)
-  retextkeywords: { maximum: 10 },
-  // lighthouse options (https://github.com/GoogleChrome/lighthouse)
-  lighthouse: {
-    enabled: false
-  }
+  retextkeywords: { maximum: 10 }
 }
 ```
 
@@ -107,14 +100,12 @@ var options = {
 }
 ```
 
-If you want to enable lighthouse analysis pass the following
+If you want to enable the advanced features you should pass the following
 
 ```
 var options = {
   url: "https://www.theguardian.com/politics/2018/sep/24/theresa-may-calls-for-immigration-based-on-skills-and-wealth",
-  lighthouse: {
-    enabled: true
-  }
+  enabled: ['lighthouse', 'screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords']
 }
 ```
 
