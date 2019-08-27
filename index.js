@@ -75,7 +75,12 @@ const articleParser = async function (options, socket) {
 
   const page = await browser.newPage()
 
+  // Inject jQuery - https://stackoverflow.com/a/50598512
+  const jquery = await page.evaluate(() => window.fetch('https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js').then((res) => res.text()))
+
   const response = await page.goto(options.url)
+
+  await page.evaluate(jquery)
 
   socket.emit('parse:status', 'Fetching ' + options.url)
 
@@ -109,8 +114,6 @@ const articleParser = async function (options, socket) {
   }
 
   // Evaluate meta
-  await page.addScriptTag({ url: 'https://code.jquery.com/jquery-3.2.1.min.js' })
-
   socket.emit('parse:status', 'Evaluating Meta Data')
 
   const meta = await page.evaluate(() => {
