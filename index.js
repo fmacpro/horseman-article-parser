@@ -31,12 +31,6 @@ module.exports = {
       options.enabled = []
     }
 
-    if (typeof options.lighthouse === 'undefined') {
-      options.lighthouse = {
-        enabled: false
-      }
-    }
-
     if (typeof options.puppeteer === 'undefined') {
       options.puppeteer = {
         headless: true,
@@ -44,9 +38,9 @@ module.exports = {
       }
     }
 
-    let actions = [articleParser(options, socket)];
+    const actions = [articleParser(options, socket)]
 
-    if ( options.enabled.includes('lighthouse') ) {
+    if (options.enabled.includes('lighthouse')) {
       actions.push(lighthouseAnalysis(options, socket))
     }
 
@@ -108,12 +102,10 @@ const articleParser = async function (options, socket) {
   article.meta.title.text = await page.title()
 
   // Take mobile screenshot
-  if ( options.enabled.includes('screenshot') ) {
-
+  if (options.enabled.includes('screenshot')) {
     socket.emit('parse:status', 'Taking Mobile Screenshot')
 
     article.mobile = await page.screenshot({ encoding: 'base64', type: 'jpeg', quality: 60 })
-
   }
 
   // Evaluate meta
@@ -172,8 +164,7 @@ const articleParser = async function (options, socket) {
   article.title.text = content.title
 
   // Get in article links
-  if ( options.enabled.includes('links') ) {
-
+  if (options.enabled.includes('links')) {
     socket.emit('parse:status', 'Evaluating Links')
 
     const { window } = new JSDOM(article.processed.html)
@@ -204,8 +195,7 @@ const articleParser = async function (options, socket) {
   article.excerpt = helpers.capitalizeFirstLetter(article.processed.text.raw.replace(/^(.{200}[^\s]*).*/, '$1'))
 
   // Sentiment
-  if ( options.enabled.includes('sentiment') ) {
-
+  if (options.enabled.includes('sentiment')) {
     socket.emit('parse:status', 'Sentiment Analysis')
 
     const sentiment = new Sentiment()
@@ -218,12 +208,10 @@ const articleParser = async function (options, socket) {
     } else {
       article.sentiment.result = 'Neutral'
     }
-
   }
 
   // Named Entity Recognition
-  if ( options.enabled.includes('entities') ) {
-
+  if (options.enabled.includes('entities')) {
     socket.emit('parse:status', 'Named Entity Recognition')
 
     // People
@@ -253,21 +241,17 @@ const articleParser = async function (options, socket) {
     article.topics.sort(function (a, b) {
       return (a.percent > b.percent) ? -1 : 1
     })
-
   }
 
   // Spelling
-  if ( options.enabled.includes('spelling') ) {
-
-  socket.emit('parse:status', 'Check Spelling')
+  if (options.enabled.includes('spelling')) {
+    socket.emit('parse:status', 'Check Spelling')
 
     article.spelling = await spellCheck(article.processed.text.formatted, article.topics, options.retextspell)
-
   }
 
   // Evaluate keywords & keyphrases
-  if ( options.enabled.includes('keywords') ) {
-
+  if (options.enabled.includes('keywords')) {
     socket.emit('parse:status', 'Evaluating Keywords')
 
     // Evaluate meta title keywords & keyphrases
@@ -281,7 +265,6 @@ const articleParser = async function (options, socket) {
 
     // Evaluate processed content keywords & keyphrases
     Object.assign(article.processed, await keywordParser(article.processed.text.raw, options.retextkeywords))
-
   }
 
   await browser.close()
@@ -483,7 +466,6 @@ const keywordParser = function (html, options) {
 }
 
 const lighthouseAnalysis = async function (options, socket) {
-
   socket.emit('parse:status', 'Starting Lighthouse')
 
   // Init puppeteer
@@ -499,7 +481,6 @@ const lighthouseAnalysis = async function (options, socket) {
   socket.emit('parse:status', 'Lighthouse Analysis Complete')
 
   return results.lhr
-
 }
 
 const getContent = function (document) {
