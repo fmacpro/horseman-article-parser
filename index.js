@@ -173,41 +173,28 @@ const articleParser = async function (options, socket) {
   // Title
   article.title.text = await getTitle(dom.window.document)
 
-  let content = '';
+  let content = ''
 
-  // Twitter Content
-  if ( article.host === 'twitter.com' ) {
-
+  if (article.host === 'twitter.com') { // Twitter Content
     // Tweet
     content = await page.evaluate(() => {
       const j = window.$
 
-      j('.permalink-tweet-container .js-tweet-text-container .twitter-timeline-link').remove();
+      j('.permalink-tweet-container .js-tweet-text-container .twitter-timeline-link').remove()
 
-      return j('.permalink-tweet-container .js-tweet-text-container').html();
+      return j('.permalink-tweet-container .js-tweet-text-container').html()
     })
-
-  }
-  // Youtube Content
-  else if ( article.host === 'www.youtube.com' ) {
-
+  } else if (article.host === 'www.youtube.com') { // Youtube Content
     // Video Title
     article.title.text = await page.evaluate(() => {
-      const j = window.$
-
-      return window["ytInitialData"].contents.twoColumnWatchNextResults.results.results.contents[0].videoPrimaryInfoRenderer.title.runs[0].text
+      return window.ytInitialData.contents.twoColumnWatchNextResults.results.results.contents[0].videoPrimaryInfoRenderer.title.runs[0].text
     })
 
     // Video Description
     content = await page.evaluate(() => {
-      const j = window.$
-
-      return window["ytInitialData"].contents.twoColumnWatchNextResults.results.results.contents[1].videoSecondaryInfoRenderer.description.runs[0].text
+      return window.ytInitialData.contents.twoColumnWatchNextResults.results.results.contents[1].videoSecondaryInfoRenderer.description.runs[0].text
     })
-
-  }
-  // General Content
-  else {
+  } else { // General Content
     content = helpers.grabArticle(dom.window.document).innerHTML
   }
 
