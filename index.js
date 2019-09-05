@@ -75,7 +75,12 @@ const articleParser = async function (options, socket) {
 
   const page = await browser.newPage()
 
+  // Inject jQuery - https://stackoverflow.com/a/50598512
+  const jquery = await page.evaluate(() => window.fetch('https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js').then((res) => res.text()))
+
   const response = await page.goto(options.url)
+
+  await page.evaluate(jquery)
 
   socket.emit('parse:status', 'Fetching ' + options.url)
 
@@ -96,6 +101,7 @@ const articleParser = async function (options, socket) {
   const protocol = pathArray[0]
   const host = pathArray[2]
 
+  article.host = host
   article.baseurl = protocol + '//' + host
 
   // Evaluate title
@@ -109,8 +115,6 @@ const articleParser = async function (options, socket) {
   }
 
   // Evaluate meta
-  await page.addScriptTag({ url: 'https://code.jquery.com/jquery-3.2.1.min.js' })
-
   socket.emit('parse:status', 'Evaluating Meta Data')
 
   const meta = await page.evaluate(() => {
@@ -157,11 +161,45 @@ const articleParser = async function (options, socket) {
   // Body Content Identification
   socket.emit('parse:status', 'Evaluating Content')
 
-  const content = await contentParser(html, options.readability)
+  if (typeof options.readability === 'undefined') {
+    options.readability = {}
+  }
 
-  // Turn relative links into absolute links
-  article.processed.html = await absolutify(content.content, article.baseurl)
-  article.title.text = content.title
+  const dom = new JSDOM(html)
+
+  await helpers.setCleanRules(options.readability.cleanRulers || [])
+  await helpers.prepDocument(dom.window.document)
+
+  // Title
+  article.title.text = await getTitle(dom.window.document)
+
+  let content = ''
+
+  // Content
+  if (article.host === 'twitter.com') { // Twitter Content
+    // Tweet
+    content = await page.evaluate(() => {
+      const j = window.$
+
+      j('.permalink-tweet-container .js-tweet-text-container .twitter-timeline-link').remove()
+
+      return j('.permalink-tweet-container .js-tweet-text-container').html()
+    })
+  } else if (article.host === 'www.youtube.com') { // Youtube Content
+    // Video Title
+    article.title.text = await page.evaluate(() => {
+      return window.ytInitialData.contents.twoColumnWatchNextResults.results.results.contents[0].videoPrimaryInfoRenderer.title.runs[0].text
+    })
+    // Video Description
+    content = await page.evaluate(() => {
+      return window.ytInitialData.contents.twoColumnWatchNextResults.results.results.contents[1].videoSecondaryInfoRenderer.description.runs[0].text
+    })
+  } else { // General Content
+    content = helpers.grabArticle(dom.window.document).innerHTML
+  }
+
+  // Turn relative links into absolute links & assign processed html
+  article.processed.html = await absolutify(content, article.baseurl)
 
   // Get in article links
   if (options.enabled.includes('links')) {
@@ -326,7 +364,7 @@ const getRawText = function (html, title, options) {
     let rawText = htmlToText.fromString(html, options)
 
     // Normalise
-    rawText = nlp(title + '\n\n' + rawText)
+    rawText = nlp(rawText)
     rawText.normalize()
     rawText = rawText.out('text')
 
@@ -401,22 +439,6 @@ const htmlCleaner = function (html, options) {
   })
 }
 
-const contentParser = async function (html, options) {
-  if (typeof options === 'undefined') {
-    options = {}
-  }
-
-  const dom = new JSDOM(html)
-
-  await helpers.setCleanRules(options.cleanRulers || [])
-  await helpers.prepDocument(dom.window.document)
-
-  const content = await getContent(dom.window.document)
-  const title = await getTitle(dom.window.document)
-
-  return ({ title: title, content: content })
-}
-
 const keywordParser = function (html, options) {
   return new Promise(function (resolve, reject) {
     if (typeof options === 'undefined') {
@@ -481,12 +503,6 @@ const lighthouseAnalysis = async function (options, socket) {
   socket.emit('parse:status', 'Lighthouse Analysis Complete')
 
   return results.lhr
-}
-
-const getContent = function (document) {
-  var articleContent = helpers.grabArticle(document)
-
-  return articleContent.innerHTML
 }
 
 const getTitle = function (document) {

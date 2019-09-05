@@ -2,8 +2,9 @@ const parser = require('./index.js')
 const fs = require('fs')
 
 const options = {
-  url: 'https://www.theguardian.com/politics/2018/sep/24/theresa-may-calls-for-immigration-based-on-skills-and-wealth',
+  url: 'https://en.wikipedia.org/wiki/Act_of_Parliament_(UK)',
   enabled: ['lighthouse', 'screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords']
+  //enabled: ['links', 'sentiment', 'entities', 'spelling', 'keywords']
 }
 
 parser.parseArticle(options)
