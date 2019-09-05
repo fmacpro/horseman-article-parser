@@ -1,341 +1,134 @@
 {
-    "title": "After bronze and iron, welcome to the plastic age, say scientists",
-    "excerpt": "Plastic pollution is being deposited into the fossil record research has found with contamination increasing exponentially since 1945. scientists suggest the plastic layers could be used to mark the start",
-    "metadescription": "Plastic pollution has entered the fossil record, research shows",
-    "url": "https://www.theguardian.com/environment/2019/sep/04/plastic-pollution-fossil-record",
+    "title": "Dirty Great Machines - Bucket Wheel Excavator | Technology Documentary | Reel Truth. Science",
+    "excerpt": "The only mission for bucket wheel excavators is to dig through dirt and rock in order to get to precious minerals but sometimes even these big machines sometimes break down. will ilias and his team be",
+    "url": "https://www.youtube.com/watch?v=rYNNsDR6fD0",
     "sentiment": {
-        "score": -16,
-        "comparative": -0.016293279022403257
+        "score": 0,
+        "comparative": 0
     },
     "keyphrases": [
         {
-            "keyphrase": "plastic",
+            "keyphrase": "bucket wheel excavators",
             "score": 1,
-            "weight": 22
+            "weight": 2
         },
         {
-            "keyphrase": "plastic pollution",
-            "score": 0.17430503380916604,
-            "weight": 29
+            "keyphrase": "pound monster",
+            "score": 0.5,
+            "weight": 1
         },
         {
-            "keyphrase": "ocean",
-            "score": 0.04695717505634861,
-            "weight": 5
-        },
-        {
-            "keyphrase": "years",
-            "score": 0.037565740045078885,
-            "weight": 4
-        },
-        {
-            "keyphrase": "plastic production",
-            "score": 0.03606311044327573,
-            "weight": 24
-        },
-        {
-            "keyphrase": "pollution",
-            "score": 0.0202854996243426,
-            "weight": 6
-        },
-        {
-            "keyphrase": "rise",
-            "score": 0.018031555221637866,
-            "weight": 3
-        },
-        {
-            "keyphrase": "particles",
-            "score": 0.013523666416228399,
-            "weight": 4
-        },
-        {
-            "keyphrase": "plastic particles",
-            "score": 0.0101427498121713,
-            "weight": 27
-        },
-        {
-            "keyphrase": "plastic age",
-            "score": 0.0101427498121713,
-            "weight": 27
-        },
-        {
-            "keyphrase": "research",
-            "score": 0.0101427498121713,
-            "weight": 3
-        },
-        {
-            "keyphrase": "sediments",
-            "score": 0.0101427498121713,
-            "weight": 3
-        },
-        {
-            "keyphrase": "brandon",
-            "score": 0.0101427498121713,
-            "weight": 3
-        },
-        {
-            "keyphrase": "guardian",
-            "score": 0.0101427498121713,
-            "weight": 3
+            "keyphrase": "greece power",
+            "score": 0.5,
+            "weight": 1
         }
     ],
     "keywords": [
         {
-            "keyword": "plastic",
+            "keyword": "mission",
             "score": 1
         },
         {
-            "keyword": "pollution",
-            "score": 0.30434782608695654
+            "keyword": "bucket",
+            "score": 1
         },
         {
-            "keyword": "ocean",
-            "score": 0.2608695652173913
+            "keyword": "wheel",
+            "score": 1
         },
         {
-            "keyword": "ages",
-            "score": 0.21739130434782608
+            "keyword": "excavators",
+            "score": 1
         },
         {
-            "keyword": "years",
-            "score": 0.21739130434782608
+            "keyword": "dirt",
+            "score": 1
         },
         {
-            "keyword": "particles",
-            "score": 0.21739130434782608
+            "keyword": "rock",
+            "score": 1
         },
         {
-            "keyword": "research",
-            "score": 0.17391304347826086
+            "keyword": "order",
+            "score": 1
         },
         {
-            "keyword": "rise",
-            "score": 0.17391304347826086
+            "keyword": "minerals",
+            "score": 1
         },
         {
-            "keyword": "sediments",
-            "score": 0.17391304347826086
+            "keyword": "machines",
+            "score": 1
         },
         {
-            "keyword": "fibres",
-            "score": 0.17391304347826086
+            "keyword": "ilias",
+            "score": 1
         },
         {
-            "keyword": "brandon",
-            "score": 0.17391304347826086
+            "keyword": "team",
+            "score": 1
         },
         {
-            "keyword": "microplastic",
-            "score": 0.17391304347826086
+            "keyword": "pound",
+            "score": 1
         },
         {
-            "keyword": "guardian",
-            "score": 0.17391304347826086
+            "keyword": "monster",
+            "score": 1
         },
         {
-            "keyword": "journalism",
-            "score": 0.17391304347826086
+            "keyword": "greece",
+            "score": 1
+        },
+        {
+            "keyword": "power",
+            "score": 1
+        },
+        {
+            "keyword": "awe",
+            "score": 1
+        },
+        {
+            "keyword": "documentaries",
+            "score": 1
+        },
+        {
+            "keyword": "channel",
+            "score": 1
         }
     ],
-    "people": [
-        {
-            "normal": "brandon",
-            "count": 3,
-            "percent": 33.33
-        },
-        {
-            "normal": "mark",
-            "count": 1,
-            "percent": 11.11
-        },
-        {
-            "normal": "jennifer brandon",
-            "count": 1,
-            "percent": 11.11
-        },
-        {
-            "normal": "diego",
-            "count": 1,
-            "percent": 11.11
-        },
-        {
-            "normal": "coral reefs",
-            "count": 1,
-            "percent": 11.11
-        },
-        {
-            "normal": "sir david",
-            "count": 1,
-            "percent": 11.11
-        },
-        {
-            "normal": "barbara",
-            "count": 1,
-            "percent": 11.11
-        }
-    ],
+    "people": [],
     "orgs": [],
     "places": [
         {
-            "normal": "california",
+            "normal": "greece",
             "count": 1,
-            "percent": 50
-        },
-        {
-            "normal": "los angeles",
-            "count": 1,
-            "percent": 50
+            "percent": 100
         }
     ],
     "text": {
-        "raw": "plastic pollution is being deposited into the fossil record research has found with contamination increasing exponentially since 1945. scientists suggest the plastic layers could be used to mark the start of the anthropocene the proposed geological epoch in which human activities have come to dominate the planet. they say after the bronze and iron ages the current period may become known as the plastic age. the study the 1st detailed analysis of the rise in plastic pollution in sediments examined annual layers off the coast of californiaback to 1834. they discovered the plastic in the layers mirrors precisely the exponential rise in plastic production over the past 70 years.. most of the plastic particles were fibres from synthetic fabrics used in clothes indicating that plastics are flowing freely into the ocean through waste water. \"our love of plastic is being left behind in our fossil record\" said jennifer brandon at the scripps institution of oceanography at the university of california san diego who led the study. it is bad for the animals that live at the bottom of the ocean coral reefs mussels oysters and so on. but the fact that it is getting into our fossil record is more of an existential question. \"we all learn in school about the stone age the bronze age and iron age - is this going to be known as the plastic age?\" she said. \"it is a scary thing that this is what our generations will be remembered for.\" sir david attenborough whose blue planet 2 tv series raised the profile of plastic pollution in the ocean said in july attitudes were changing. he predicted polluting the planet would soon provoke as much abhorrence as human slavery. the research published in the journal science advances found that since the 1940 the amount of microscopic plastics in the sediments has doubled about every 15 years.. in 2010, the most recent year analysed the pollution had reached almost 40 particles per 10 by 10 patch of ocean floor every year.2 thirds of the particles were plastic fibres a 5th were broken down fragments of other plastic and a 10th were plastic film. \"it is a very clear signature\" brandon said. \"plastic was invented and pretty much immediately we can see it appear in the sedimentary record.\" a study in 2016 showed a single clothes wash could release 700000 microplastic fibres. \"they are definitely not being disposed of properly\" brandon said. we are not filtering them out properly at household or waste treatment plant level. i think that is the next big frontier what are we doing about our waste water and what we make our clothes out of because clearly [the plastic] is washing straight into the ocean? many millions of tonnes of plastic are discarded into the environment every year and are broken down into small particles and fibres that do not biodegrade. microplastics have been found everywhere from the deepest oceans to high mountains and even the arctic air showing pervasive pollution of the planet. research is limited but eating plastic is known to harm marine creatures. humans are believed to consume at least 50000 microplastic particles 1 year through food and water. the health impact is unknown but microplastics can release toxic substances and may penetrate tissues. the latest research analysed a sediment core taken more than a mile offshore from santa barbara and close to the 4000000 people that live in los angeles. this basin is naturally devoid of oxygen due to local current patterns meaning there are no animals burrowing into the sediments and destroying the delicate annual layering. the 36cm-long core was originally taken to assess fish populations over time. it had been wrapped in a plastic liner but the scientists used a laser signature to identify this specific type of plastic and discount the small amount of contamination from their analysis. the core was taken in 2010 but brandon said there was no reason to think the exponential rise in plastic pollution had been curbed since then as plastic production continued to rise. \"i hope our study shows this is a very serious problem\" she said. … in our natural world we refuse to turn away from the climate catastrophe and species extinction. for the guardian reporting on the environment is a priority. we give reporting on climate nature and pollution the prominence it deserves stories which often go unreported by others in the media. at this pivotal time for our species and our planet we are determined to inform readers about threats consequences and solutions based on scientific facts not political prejudice or business interests. more people are reading and supporting the guardian’s independent investigative journalism than ever before. and unlike many news organisations we have chosen an approach that allows us to keep our journalism accessible to all regardless of where they live or what they can afford. but we need your ongoing support to keep working as we do. the guardian will engage with the most critical issues of our time - from the escalating climate catastrophe to widespread inequality to the influence of big tech on our lives. at a time when factual information is a necessity we believe that each of us around the world deserves access to accurate reporting with integrity at its heart. our editorial independence means we set our own agenda and voice our own opinions. guardian journalism is free from commercial and political bias and not influenced by billionaire owners or shareholders. this means we can give a voice to those less heard explore where others turn away and rigorously challenge those in power. we need your support to keep delivering quality journalism to maintain our openness and to protect our precious independence. every reader contribution big or small is so valuable. support the guardian from as little as 1 - and it only takes 1 minute. thank you.",
-        "formatted": "AFTER BRONZE AND IRON, WELCOME TO THE PLASTIC AGE, SAY SCIENTISTS\n\n Plastic pollution is being deposited into the fossil record, research has found, with contamination\nincreasing exponentially since 1945.\n\nScientists suggest the plastic layers could be used to mark the start of the Anthropocene, the\nproposed geological epoch in which human activities have come to dominate the planet. They say after\nthe bronze and iron ages, the current period may become known as the plastic age.\n\nThe study, the first detailed analysis of the rise in plastic pollution in sediments, examined\nannual layers off the coast of Californiaback to 1834. They discovered the plastic in the layers\nmirrors precisely the exponential rise in plastic production over the past 70 years.\n\nMost of the plastic particles were fibres from synthetic fabrics used in clothes, indicating that\nplastics are flowing freely into the ocean through waste water.\n\n“Our love of plastic is being left behind in our fossil record,” said Jennifer Brandon, at the\nScripps Institution of Oceanography at the University of California San Diego, who led the study.\n“It is bad for the animals that live at the bottom of the ocean: coral reefs, mussels, oysters and\nso on. But the fact that it is getting into our fossil record is more of an existential question.\n\n“We all learn in school about the stone age, the bronze age and iron age – is this going to be known\nas the plastic age?” she said. “It is a scary thing that this is what our generations will be\nremembered for.”\n\nSir David Attenborough, whose Blue Planet 2 TV series raised the profile of plastic pollution in the\nocean, said in July attitudes were changing. He predicted polluting the planet would soon provoke as\nmuch abhorrence as human slavery.\n\nThe research, published in the journal Science Advances, found that since the 1940s the amount of\nmicroscopic plastics in the sediments has doubled about every 15 years. In 2010, the most recent\nyear analysed, the pollution had reached almost 40 particles per 10cm by 10cm patch of ocean floor\nevery year.\n\nTwo-thirds of the particles were plastic fibres, a fifth were broken-down fragments of other plastic\nand a 10th were plastic film. “It is a very clear signature,” Brandon said. “Plastic was invented\nand pretty much immediately we can see it appear in the sedimentary record.”\n\nA study in 2016 showed a single clothes wash could release 700,000 microplastic fibres. “They are\ndefinitely not being disposed of properly,” Brandon said. “We are not filtering them out properly at\nhousehold or waste treatment plant level. I think that is the next big frontier: what are we doing\nabout our waste water and what we make our clothes out of, because clearly [the plastic] is washing\nstraight into the ocean?”\n\nMany millions of tonnes of plastic are discarded into the environment every year and are broken down\ninto small particles and fibres that do not biodegrade. Microplastics have been found everywhere\nfrom the deepest oceans to high mountains and even the Arctic air, showing pervasive pollution of\nthe planet.\n\nResearch is limited but eating plastic is known to harm marine creatures. Humans are believed to\nconsume at least 50,000 microplastic particles a year through food and water. The health impact is\nunknown but microplastics can release toxic substances and may penetrate tissues.\n\nThe latest research analysed a sediment core taken more than a mile offshore from Santa Barbara and\nclose to the 4 million people that live in Los Angeles. This basin is naturally devoid of oxygen due\nto local current patterns, meaning there are no animals burrowing into the sediments and destroying\nthe delicate annual layering.\n\nThe 36cm-long core was originally taken to assess fish populations over time. It had been wrapped in\na plastic liner, but the scientists used a laser signature to identify this specific type of plastic\nand discount the small amount of contamination from their analysis.\n\nThe core was taken in 2010 but Brandon said there was no reason to think the exponential rise in\nplastic pollution had been curbed since then, as plastic production continued to rise.\n\n“I hope our study shows this is a very serious problem,” she said.\n\n… in our natural world, we refuse to turn away from the climate catastrophe and species extinction.\nFor The Guardian, reporting on the environment is a priority. We give reporting on climate, nature\nand pollution the prominence it deserves, stories which often go unreported by others in the media.\nAt this pivotal time for our species and our planet, we are determined to inform readers about\nthreats, consequences and solutions based on scientific facts, not political prejudice or business\ninterests.\n\nMore people are reading and supporting The Guardian’s independent, investigative journalism than\never before. And unlike many news organisations, we have chosen an approach that allows us to keep\nour journalism accessible to all, regardless of where they live or what they can afford. But we need\nyour ongoing support to keep working as we do.\n\nThe Guardian will engage with the most critical issues of our time – from the escalating climate\ncatastrophe to widespread inequality to the influence of big tech on our lives. At a time when\nfactual information is a necessity, we believe that each of us, around the world, deserves access to\naccurate reporting with integrity at its heart.\n\nOur editorial independence means we set our own agenda and voice our own opinions. Guardian\njournalism is free from commercial and political bias and not influenced by billionaire owners or\nshareholders. This means we can give a voice to those less heard, explore where others turn away,\nand rigorously challenge those in power.\n\nWe need your support to keep delivering quality journalism, to maintain our openness and to protect\nour precious independence. Every reader contribution, big or small, is so valuable. Support The\nGuardian from as little as £1 – and it only takes a minute. Thank you.",
-        "html": "<span>AFTER BRONZE AND IRON, WELCOME TO THE PLASTIC AGE, SAY SCIENTISTS</span>\n<span></span>\n<span>Plastic pollution is being deposited into the fossil record, research has found, with contamination</span>\n<span>increasing exponentially since 1945.</span>\n<span></span>\n<span>Scientists suggest the plastic layers could be used to mark the start of the Anthropocene, the</span>\n<span>proposed geological epoch in which human activities have come to dominate the planet. They say after</span>\n<span>the bronze and iron ages, the current period may become known as the plastic age.</span>\n<span></span>\n<span>The study, the first detailed analysis of the rise in plastic pollution in sediments, examined</span>\n<span>annual layers off the coast of Californiaback to 1834. They discovered the plastic in the layers</span>\n<span>mirrors precisely the exponential rise in plastic production over the past 70 years.</span>\n<span></span>\n<span>Most of the plastic particles were fibres from synthetic fabrics used in clothes, indicating that</span>\n<span>plastics are flowing freely into the ocean through waste water.</span>\n<span></span>\n<span>“Our love of plastic is being left behind in our fossil record,” said Jennifer Brandon, at the</span>\n<span>Scripps Institution of Oceanography at the University of California San Diego, who led the study.</span>\n<span>“It is bad for the animals that live at the bottom of the ocean: coral reefs, mussels, oysters and</span>\n<span>so on. But the fact that it is getting into our fossil record is more of an existential question.</span>\n<span></span>\n<span>“We all learn in school about the stone age, the bronze age and iron age – is this going to be known</span>\n<span>as the plastic age?” she said. “It is a scary thing that this is what our generations will be</span>\n<span>remembered for.”</span>\n<span></span>\n<span>Sir David Attenborough, whose Blue Planet 2 TV series raised the profile of plastic pollution in the</span>\n<span>ocean, said in July attitudes were changing. He predicted polluting the planet would soon provoke as</span>\n<span>much abhorrence as human slavery.</span>\n<span></span>\n<span>The research, published in the journal Science Advances, found that since the 1940s the amount of</span>\n<span>microscopic plastics in the sediments has doubled about every 15 years. In 2010, the most recent</span>\n<span>year analysed, the pollution had reached almost 40 particles per 10cm by 10cm patch of ocean floor</span>\n<span>every year.</span>\n<span></span>\n<span>Two-thirds of the particles were plastic fibres, a fifth were broken-down fragments of other plastic</span>\n<span>and a 10th were plastic film. “It is a very clear signature,” Brandon said. “Plastic was invented</span>\n<span>and pretty much immediately we can see it appear in the sedimentary record.”</span>\n<span></span>\n<span>A study in 2016 showed a single clothes wash could release 700,000 microplastic fibres. “They are</span>\n<span>definitely not being disposed of properly,” Brandon said. “We are not filtering them out properly at</span>\n<span>household or waste treatment plant level. I think that is the next big frontier: what are we doing</span>\n<span>about our waste water and what we make our clothes out of, because clearly [the plastic] is washing</span>\n<span>straight into the ocean?”</span>\n<span></span>\n<span>Many millions of tonnes of plastic are discarded into the environment every year and are broken down</span>\n<span>into small particles and fibres that do not biodegrade. Microplastics have been found everywhere</span>\n<span>from the deepest oceans to high mountains and even the Arctic air, showing pervasive pollution of</span>\n<span>the planet.</span>\n<span></span>\n<span>Research is limited but eating plastic is known to harm marine creatures. Humans are believed to</span>\n<span>consume at least 50,000 microplastic particles a year through food and water. The health impact is</span>\n<span>unknown but microplastics can release toxic substances and may penetrate tissues.</span>\n<span></span>\n<span>The latest research analysed a sediment core taken more than a mile offshore from Santa Barbara and</span>\n<span>close to the 4 million people that live in Los Angeles. This basin is naturally devoid of oxygen due</span>\n<span>to local current patterns, meaning there are no animals burrowing into the sediments and destroying</span>\n<span>the delicate annual layering.</span>\n<span></span>\n<span>The 36cm-long core was originally taken to assess fish populations over time. It had been wrapped in</span>\n<span>a plastic liner, but the scientists used a laser signature to identify this specific type of plastic</span>\n<span>and discount the small amount of contamination from their analysis.</span>\n<span></span>\n<span>The core was taken in 2010 but Brandon said there was no reason to think the exponential rise in</span>\n<span>plastic pollution had been curbed since then, as plastic production continued to rise.</span>\n<span></span>\n<span>“I hope our study shows this is a very serious problem,” she said.</span>\n<span></span>\n<span>… in our natural world, we refuse to turn away from the climate catastrophe and species extinction.</span>\n<span>For The Guardian, reporting on the environment is a priority. We give reporting on climate, nature</span>\n<span>and pollution the prominence it deserves, stories which often go unreported by others in the media.</span>\n<span>At this pivotal time for our species and our planet, we are determined to inform readers about</span>\n<span>threats, consequences and solutions based on scientific facts, not political prejudice or business</span>\n<span>interests.</span>\n<span></span>\n<span>More people are reading and supporting The Guardian’s independent, investigative journalism than</span>\n<span>ever before. And unlike many news organisations, we have chosen an approach that allows us to keep</span>\n<span>our journalism accessible to all, regardless of where they live or what they can afford. But we need</span>\n<span>your ongoing support to keep working as we do.</span>\n<span></span>\n<span>The Guardian will engage with the most critical issues of our time – from the escalating climate</span>\n<span>catastrophe to widespread inequality to the influence of big tech on our lives. At a time when</span>\n<span>factual information is a necessity, we believe that each of us, around the world, deserves access to</span>\n<span>accurate reporting with integrity at its heart.</span>\n<span></span>\n<span>Our editorial independence means we set our own agenda and voice our own opinions. Guardian</span>\n<span>journalism is free from commercial and political bias and not influenced by billionaire owners or</span>\n<span>shareholders. This means we can give a voice to those less heard, explore where others turn away,</span>\n<span>and rigorously challenge those in power.</span>\n<span></span>\n<span>We need your support to keep delivering quality journalism, to maintain our openness and to protect</span>\n<span>our precious independence. Every reader contribution, big or small, is so valuable. Support The</span>\n<span>Guardian from as little as £1 – and it only takes a minute. Thank you.</span>"
+        "raw": "the only mission for bucket wheel excavators is to dig through dirt and rock in order to get to precious minerals but sometimes even these big machines sometimes break down. will ilias and his team be able to fix the 40000000 pound monster of mining before greece power supply becomes threatened? for more awe inspiring documentaries subscribe to our channel:",
+        "formatted": "DIRTY GREAT MACHINES - BUCKET WHEEL EXCAVATOR | TECHNOLOGY DOCUMENTARY | REEL TRUTH. SCIENCE\n\nThe only mission for bucket wheel excavators is to dig through dirt and rock in order to get to\nprecious minerals but sometimes even these big machines sometimes break down. Will Ilias and his\nteam be able to fix the 40 million pound monster of mining before Greece power supply becomes\nthreatened? For more awe inspiring documentaries, subscribe to our channel:",
+        "html": "<span>DIRTY GREAT MACHINES - BUCKET WHEEL EXCAVATOR | TECHNOLOGY DOCUMENTARY | REEL TRUTH. SCIENCE</span>\n<span></span>\n<span>The only mission for bucket wheel excavators is to dig through dirt and rock in order to get to</span>\n<span>precious minerals but sometimes even these big machines sometimes break down. Will Ilias and his</span>\n<span>team be able to fix the 40 million pound monster of mining before Greece power supply becomes</span>\n<span>threatened? For more awe inspiring documentaries, subscribe to our channel:</span>"
     },
     "spelling": [
         {
-            "reason": "`Californiaback` is misspelt",
-            "line": 11,
-            "column": 32,
+            "reason": "`Ilias` is misspelt; did you mean `alias`, `Elias`, `Ilia`, `Iliad`, `Iliads`?",
+            "line": 4,
+            "column": 84,
             "location": {
                 "start": {
-                    "line": 11,
-                    "column": 32,
-                    "offset": 611
+                    "line": 4,
+                    "column": 84,
+                    "offset": 273
                 },
                 "end": {
-                    "line": 11,
-                    "column": 46,
-                    "offset": 625
+                    "line": 4,
+                    "column": 89,
+                    "offset": 278
                 }
             },
-            "ruleId": "californiaback",
-            "source": "retext-spell",
-            "fatal": false,
-            "stack": null
-        },
-        {
-            "reason": "`Scripps` is misspelt; did you mean `Scrips`, `SCRIP'S`, `Scrimps`, `Scripts`?",
-            "line": 18,
-            "column": 1,
-            "location": {
-                "start": {
-                    "line": 18,
-                    "column": 1,
-                    "offset": 1021
-                },
-                "end": {
-                    "line": 18,
-                    "column": 8,
-                    "offset": 1028
-                }
-            },
-            "ruleId": "scripps",
-            "source": "retext-spell",
-            "fatal": false,
-            "stack": null
-        },
-        {
-            "reason": "`Attenborough` is misspelt",
-            "line": 26,
-            "column": 11,
-            "location": {
-                "start": {
-                    "line": 26,
-                    "column": 11,
-                    "offset": 1540
-                },
-                "end": {
-                    "line": 26,
-                    "column": 23,
-                    "offset": 1552
-                }
-            },
-            "ruleId": "attenborough",
-            "source": "retext-spell",
-            "fatal": false,
-            "stack": null
-        },
-        {
-            "reason": "`microplastic` is misspelt",
-            "line": 39,
-            "column": 68,
-            "location": {
-                "start": {
-                    "line": 39,
-                    "column": 68,
-                    "offset": 2401
-                },
-                "end": {
-                    "line": 39,
-                    "column": 80,
-                    "offset": 2413
-                }
-            },
-            "ruleId": "microplastic",
-            "source": "retext-spell",
-            "fatal": false,
-            "stack": null
-        },
-        {
-            "reason": "`Microplastics` is misspelt",
-            "line": 46,
-            "column": 57,
-            "location": {
-                "start": {
-                    "line": 46,
-                    "column": 57,
-                    "offset": 2916
-                },
-                "end": {
-                    "line": 46,
-                    "column": 70,
-                    "offset": 2929
-                }
-            },
-            "ruleId": "microplastics",
-            "source": "retext-spell",
-            "fatal": false,
-            "stack": null
-        },
-        {
-            "reason": "`microplastic` is misspelt",
-            "line": 51,
-            "column": 25,
-            "location": {
-                "start": {
-                    "line": 51,
-                    "column": 25,
-                    "offset": 3189
-                },
-                "end": {
-                    "line": 51,
-                    "column": 37,
-                    "offset": 3201
-                }
-            },
-            "ruleId": "microplastic",
-            "source": "retext-spell",
-            "fatal": false,
-            "stack": null
-        },
-        {
-            "reason": "`microplastics` is misspelt",
-            "line": 52,
-            "column": 13,
-            "location": {
-                "start": {
-                    "line": 52,
-                    "column": 13,
-                    "offset": 3276
-                },
-                "end": {
-                    "line": 52,
-                    "column": 26,
-                    "offset": 3289
-                }
-            },
-            "ruleId": "microplastics",
+            "ruleId": "ilias",
             "source": "retext-spell",
             "fatal": false,
             "stack": null
@@ -343,152 +136,20 @@
     ],
     "meta": {
         "title": {
-            "text": "After bronze and iron, welcome to the plastic age, say scientists | Environment | The Guardian",
+            "text": "YouTube",
             "keywords": [
                 {
-                    "keyword": "bronze",
-                    "score": 1
-                },
-                {
-                    "keyword": "iron",
-                    "score": 1
-                },
-                {
-                    "keyword": "plastic",
-                    "score": 1
-                },
-                {
-                    "keyword": "age",
-                    "score": 1
-                },
-                {
-                    "keyword": "scientists",
-                    "score": 1
-                },
-                {
-                    "keyword": "Environment",
-                    "score": 1
-                },
-                {
-                    "keyword": "Guardian",
+                    "keyword": "YouTube",
                     "score": 1
                 }
             ],
-            "keyphrases": [
-                {
-                    "keyphrase": "plastic age",
-                    "score": 1,
-                    "weight": 1
-                }
-            ]
+            "keyphrases": []
         },
+        "referrer": "origin-when-cross-origin",
         "description": {
-            "text": "Plastic pollution has entered the fossil record, research shows",
-            "keywords": [
-                {
-                    "keyword": "Plastic",
-                    "score": 1
-                },
-                {
-                    "keyword": "pollution",
-                    "score": 1
-                },
-                {
-                    "keyword": "record",
-                    "score": 1
-                },
-                {
-                    "keyword": "research",
-                    "score": 1
-                }
-            ],
-            "keyphrases": [
-                {
-                    "keyphrase": "Plastic pollution",
-                    "score": 1,
-                    "weight": 1
-                }
-            ]
-        },
-        "format-detection": "telephone=no",
-        "HandheldFriendly": "True",
-        "viewport": "width=device-width,minimum-scale=1,initial-scale=1",
-        "apple-mobile-web-app-title": "Guardian",
-        "application-name": "The Guardian",
-        "msapplication-TileColor": "#052962",
-        "theme-color": "#052962",
-        "msapplication-TileImage": "https://assets.guim.co.uk/images/favicons/023dafadbf5ef53e0865e4baaaa32b3b/windows_tile_144_b.png",
-        "apple-itunes-app": "app-id=409128287, app-argument=https://www.theguardian.com/environment/2019/sep/04/plastic-pollution-fossil-record, affiliate-data=ct=newsmartappbanner&pt=304191",
-        "author": "Damian Carrington",
-        "thumbnail": "https://i.guim.co.uk/img/media/626e9d37484510e78495a8af2a4b390d0c10cc1e/250_497_4950_2970/master/4950.jpg?width=620&quality=85&auto=format&fit=max&s=03ab2ee01dee90d378d8bb2e0a831e94",
-        "keywords": "Plastics,Pollution,Environment,Oceans,Science,Marine life,Wildlife,California,US news,World news",
-        "news_keywords": "Plastics,Pollution,Environment,Oceans,Science,Marine life,Wildlife,California,US news,World news",
-        "og:url": "http://www.theguardian.com/environment/2019/sep/04/plastic-pollution-fossil-record",
-        "article:author": "https://www.theguardian.com/profile/damiancarrington",
-        "og:image:height": "720",
-        "og:description": "Plastic pollution has entered the fossil record, research shows",
-        "og:image:width": "1200",
-        "og:image": "https://i.guim.co.uk/img/media/626e9d37484510e78495a8af2a4b390d0c10cc1e/250_497_4950_2970/master/4950.jpg?width=1200&height=630&quality=85&auto=format&fit=crop&overlay-align=bottom%2Cleft&overlay-width=100p&overlay-base64=L2ltZy9zdGF0aWMvb3ZlcmxheXMvdGctZGVmYXVsdC5wbmc&enable=upscale&s=45bdeff39de110a8c52adcb0b03e348d",
-        "al:ios:url": "gnmguardian://environment/2019/sep/04/plastic-pollution-fossil-record?contenttype=Article&source=applinks",
-        "article:publisher": "https://www.facebook.com/theguardian",
-        "og:type": "article",
-        "al:ios:app_store_id": "409128287",
-        "article:section": "Environment",
-        "article:published_time": "2019-09-04T18:00:39.000Z",
-        "og:title": "After bronze and iron, welcome to the plastic age, say scientists",
-        "fb:app_id": "180444840287",
-        "article:tag": "Plastics,Pollution,Environment,Oceans,Science,Marine life,Wildlife,California,US news,World news",
-        "al:ios:app_name": "The Guardian",
-        "og:site_name": "the Guardian",
-        "article:modified_time": "2019-09-04T18:00:39.000Z",
-        "twitter:app:id:iphone": "409128287",
-        "twitter:app:name:googleplay": "The Guardian",
-        "twitter:app:name:ipad": "The Guardian",
-        "twitter:image": "https://i.guim.co.uk/img/media/626e9d37484510e78495a8af2a4b390d0c10cc1e/250_497_4950_2970/master/4950.jpg?width=1200&height=630&quality=85&auto=format&fit=crop&overlay-align=bottom%2Cleft&overlay-width=100p&overlay-base64=L2ltZy9zdGF0aWMvb3ZlcmxheXMvdGctZGVmYXVsdC5wbmc&s=02c98ecb3264139c182f8e5591b65584",
-        "twitter:site": "@guardian",
-        "twitter:app:url:ipad": "gnmguardian://environment/2019/sep/04/plastic-pollution-fossil-record?contenttype=Article&source=twitter",
-        "twitter:card": "summary_large_image",
-        "twitter:app:name:iphone": "The Guardian",
-        "twitter:creator": "@dpcarrington",
-        "twitter:app:id:ipad": "409128287",
-        "twitter:app:id:googleplay": "com.guardian",
-        "twitter:app:url:googleplay": "guardian://www.theguardian.com/environment/2019/sep/04/plastic-pollution-fossil-record",
-        "twitter:app:url:iphone": "gnmguardian://environment/2019/sep/04/plastic-pollution-fossil-record?contenttype=Article&source=twitter",
-        "twitter:dnt": "on",
-        "fb:pages": "516977308337360"
-    },
-    "links": [
-        {
-            "href": "https://www.theguardian.com/environment/2016/aug/29/declare-anthropocene-epoch-experts-urge-geological-congress-human-impact-earth",
-            "text": "the Anthropocene"
-        },
-        {
-            "href": "https://www.theguardian.com/us-news/california",
-            "text": "California"
-        },
-        {
-            "href": "https://www.theguardian.com/tv-and-radio/2019/jul/09/david-attenborough-young-people-give-me-hope-on-environment",
-            "text": "soon provoke as much abhorrence as human slavery"
-        },
-        {
-            "href": "https://advances.sciencemag.org/content/5/9/eaax0587",
-            "text": "published in the journal Science Advances"
-        },
-        {
-            "href": "https://www.theguardian.com/science/2016/sep/27/washing-clothes-releases-water-polluting-fibres-study-finds",
-            "text": "single clothes wash could release 700,000 microplastic fibres"
-        },
-        {
-            "href": "https://www.theguardian.com/environment/2018/dec/20/plastic-pollution-mariana-trench-deepest-point-ocean",
-            "text": "deepest oceans"
-        },
-        {
-            "href": "https://www.theguardian.com/environment/2019/apr/15/winds-can-carry-microplastics-anywhere-and-everywhere",
-            "text": "high mountains"
-        },
-        {
-            "href": "https://www.theguardian.com/environment/2019/aug/14/microplastics-found-at-profuse-levels-in-snow-from-arctic-to-alps-contamination",
-            "text": "the Arctic air"
+            "keywords": [],
+            "keyphrases": []
         }
-    ]
+    },
+    "links": []
 }

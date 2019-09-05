@@ -178,12 +178,31 @@ const articleParser = async function (options, socket) {
   // Twitter Content
   if ( article.host === 'twitter.com' ) {
 
+    // Tweet
     content = await page.evaluate(() => {
       const j = window.$
 
       j('.permalink-tweet-container .js-tweet-text-container .twitter-timeline-link').remove();
 
       return j('.permalink-tweet-container .js-tweet-text-container').html();
+    })
+
+  }
+  // Youtube Content
+  else if ( article.host === 'www.youtube.com' ) {
+
+    // Video Title
+    article.title.text = await page.evaluate(() => {
+      const j = window.$
+
+      return window["ytInitialData"].contents.twoColumnWatchNextResults.results.results.contents[0].videoPrimaryInfoRenderer.title.runs[0].text
+    })
+
+    // Video Description
+    content = await page.evaluate(() => {
+      const j = window.$
+
+      return window["ytInitialData"].contents.twoColumnWatchNextResults.results.results.contents[1].videoSecondaryInfoRenderer.description.runs[0].text
     })
 
   }

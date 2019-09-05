@@ -2,7 +2,7 @@ const parser = require('./index.js')
 const fs = require('fs')
 
 const options = {
-  url: 'https://www.theguardian.com/environment/2019/sep/04/plastic-pollution-fossil-record',
+  url: 'https://www.youtube.com/watch?v=rYNNsDR6fD0',
   //enabled: ['lighthouse', 'screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords']
   enabled: ['links', 'sentiment', 'entities', 'spelling', 'keywords']
 }
