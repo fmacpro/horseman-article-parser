@@ -175,6 +175,7 @@ const articleParser = async function (options, socket) {
 
   let content = ''
 
+  // Content
   if (article.host === 'twitter.com') { // Twitter Content
     // Tweet
     content = await page.evaluate(() => {
@@ -189,7 +190,6 @@ const articleParser = async function (options, socket) {
     article.title.text = await page.evaluate(() => {
       return window.ytInitialData.contents.twoColumnWatchNextResults.results.results.contents[0].videoPrimaryInfoRenderer.title.runs[0].text
     })
-
     // Video Description
     content = await page.evaluate(() => {
       return window.ytInitialData.contents.twoColumnWatchNextResults.results.results.contents[1].videoSecondaryInfoRenderer.description.runs[0].text
