@@ -2,8 +2,9 @@ const parser = require('./index.js')
 const fs = require('fs')
 
 const options = {
-  url: 'https://twitter.com/jeremycorbyn/status/1166265428672483328',
-  enabled: ['lighthouse', 'screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords']
+  url: 'https://www.theguardian.com/environment/2019/sep/04/plastic-pollution-fossil-record',
+  //enabled: ['lighthouse', 'screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords']
+  enabled: ['links', 'sentiment', 'entities', 'spelling', 'keywords']
 }
 
 parser.parseArticle(options)

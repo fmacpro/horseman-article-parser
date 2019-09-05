@@ -161,25 +161,39 @@ const articleParser = async function (options, socket) {
   // Body Content Identification
   socket.emit('parse:status', 'Evaluating Content')
 
-  const content = {};
+  if (typeof options.readability === 'undefined') {
+    options.readability = {}
+  }
 
+  const dom = new JSDOM(html)
+
+  await helpers.setCleanRules(options.readability.cleanRulers || [])
+  await helpers.prepDocument(dom.window.document)
+
+  // Title
+  article.title.text = await getTitle(dom.window.document)
+
+  let content = '';
+
+  // Twitter Content
   if ( article.host === 'twitter.com' ) {
-    const { window } = new JSDOM(html)
-    const $ = require('jquery')(window)
-     
-    content.content = window.$('.permalink-tweet-container .js-tweet-text-container').html();
 
-    console.log(content.content);
-    content.title = '';
+    content = await page.evaluate(() => {
+      const j = window.$
+
+      j('.permalink-tweet-container .js-tweet-text-container .twitter-timeline-link').remove();
+
+      return j('.permalink-tweet-container .js-tweet-text-container').html();
+    })
 
   }
+  // General Content
   else {
-    const content = await contentParser(html, options.readability)
+    content = helpers.grabArticle(dom.window.document).innerHTML
   }
 
-  // Turn relative links into absolute links
-  article.processed.html = await absolutify(content.content, article.baseurl)
-  article.title.text = content.title
+  // Turn relative links into absolute links & assign processed html
+  article.processed.html = await absolutify(content, article.baseurl)
 
   // Get in article links
   if (options.enabled.includes('links')) {
@@ -344,7 +358,7 @@ const getRawText = function (html, title, options) {
     let rawText = htmlToText.fromString(html, options)
 
     // Normalise
-    rawText = nlp(title + '\n\n' + rawText)
+    rawText = nlp(rawText)
     rawText.normalize()
     rawText = rawText.out('text')
 
@@ -419,22 +433,6 @@ const htmlCleaner = function (html, options) {
   })
 }
 
-const contentParser = async function (html, options) {
-  if (typeof options === 'undefined') {
-    options = {}
-  }
-
-  const dom = new JSDOM(html)
-
-  await helpers.setCleanRules(options.cleanRulers || [])
-  await helpers.prepDocument(dom.window.document)
-
-  const content = await getContent(dom.window.document)
-  const title = await getTitle(dom.window.document)
-
-  return ({ title: title, content: content })
-}
-
 const keywordParser = function (html, options) {
   return new Promise(function (resolve, reject) {
     if (typeof options === 'undefined') {
@@ -499,12 +497,6 @@ const lighthouseAnalysis = async function (options, socket) {
   socket.emit('parse:status', 'Lighthouse Analysis Complete')
 
   return results.lhr
-}
-
-const getContent = function (document) {
-  var articleContent = helpers.grabArticle(document)
-
-  return articleContent.innerHTML
 }
 
 const getTitle = function (document) {
