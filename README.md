@@ -68,8 +68,15 @@ The options below are set by default
 var options = {
   // puppeteer options (https://github.com/GoogleChrome/puppeteer)
   puppeteer: {
-    headless: true,
-    defaultViewport: null,
+    // puppeteer launch options (https://github.com/GoogleChrome/puppeteer/blob/master/docs/api.md#puppeteerlaunchoptions)
+    launch: {
+      headless: true,
+      defaultViewport: null
+    },
+    // puppeteer goto options (https://github.com/GoogleChrome/puppeteer/blob/master/docs/api.md#pagegotourl-options)
+    goto: {
+      waitUntil: 'domcontentloaded'
+    }
   },
   // clean-html options (https://ghub.io/clean-html)
   cleanhtml: {
@@ -90,8 +97,6 @@ var options = {
 }
 ```
 
-For more Puppeteer launch options see https://github.com/GoogleChrome/puppeteer/blob/master/docs/api.md#puppeteerlaunchoptions
-
 At a minimum you should pass a url
 
 ```
@@ -106,6 +111,32 @@ If you want to enable the advanced features you should pass the following
 var options = {
   url: "https://www.theguardian.com/politics/2018/sep/24/theresa-may-calls-for-immigration-based-on-skills-and-wealth",
   enabled: ['lighthouse', 'screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords']
+}
+```
+
+If you want to pass cookies to puppeteer use the following
+
+```
+var options = {
+  puppeteer: {
+    cookies: [{ name: 'cookie1', value: 'val1', domain: '.domain1' },{ name: 'cookie2', value: 'val2', domain: '.domain2' }]
+  }
+}
+```
+
+To strip tags before processing use the following
+
+```
+var options = {
+  striptags: ['.something', '#somethingelse']
+}
+```
+
+If you need to dismiss any popups e.g. a privacy popup use the following
+
+```
+var options = {
+  clickelements: ['#button1', '#button2']
 }
 ```
 
@@ -144,7 +175,6 @@ npm run test
 ## Dependencies
 
 - [Puppeteer](https://github.com/GoogleChrome/puppeteer/): High-level API to control Chrome or Chromium over the DevTools Protocol
-- [lighthouse](https://ghub.io/lighthouse): Automated auditing, performance metrics, and best practices for the web.
 - [compromise](https://ghub.io/compromise): natural language processing in the browser
 - [retext](https://ghub.io/retext): Natural language processor powered by plugins
 - [retext-pos](https://github.com/retextjs/retext-pos): Plugin to add part-of-speech (POS) tags

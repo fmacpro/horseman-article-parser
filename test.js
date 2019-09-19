@@ -4,7 +4,7 @@ const fs = require('fs')
 const options = {
   url: 'https://en.wikipedia.org/wiki/Act_of_Parliament_(UK)',
   enabled: ['lighthouse', 'screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords']
-  //enabled: ['links', 'sentiment', 'entities', 'spelling', 'keywords']
+  // enabled: ['links', 'sentiment', 'entities', 'spelling', 'keywords']
 }
 
 parser.parseArticle(options)

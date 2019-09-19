@@ -32,9 +32,19 @@ module.exports = {
     }
 
     if (typeof options.puppeteer === 'undefined') {
-      options.puppeteer = {
+      options.puppeteer = {}
+    }
+
+    if (typeof options.puppeteer.launch === 'undefined') {
+      options.puppeteer.launch = {
         headless: true,
         defaultViewport: null
+      }
+    }
+
+    if (typeof options.puppeteer.goto === 'undefined') {
+      options.puppeteer.goto = {
+        waitUntil: 'domcontentloaded'
       }
     }
 
@@ -71,14 +81,30 @@ const articleParser = async function (options, socket) {
   socket.emit('parse:status', 'Starting Horseman')
 
   // Init puppeteer
-  const browser = await puppeteer.launch(options.puppeteer)
+  const browser = await puppeteer.launch(options.puppeteer.launch)
 
   const page = await browser.newPage()
 
   // Inject jQuery - https://stackoverflow.com/a/50598512
   const jquery = await page.evaluate(() => window.fetch('https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js').then((res) => res.text()))
 
-  const response = await page.goto(options.url)
+  const response = await page.goto(options.url, options.puppeteer.goto)
+
+  // Inject cookies if set
+  if (typeof options.puppeteer.cookies !== 'undefined') {
+    await page.setCookie(...options.puppeteer.cookies)
+  }
+
+  // Click buttons if defined (for dismissing privacy popups etc)
+  if (typeof options.clickelements !== 'undefined') {
+    let clickelement = ''
+
+    for (clickelement of options.clickelements) {
+      if (await page.$(clickelement) !== null) {
+        await page.click(clickelement)
+      }
+    }
+  }
 
   await page.evaluate(jquery)
 
@@ -491,7 +517,7 @@ const lighthouseAnalysis = async function (options, socket) {
   socket.emit('parse:status', 'Starting Lighthouse')
 
   // Init puppeteer
-  const browser = await puppeteer.launch(options.puppeteer)
+  const browser = await puppeteer.launch(options.puppeteer.launch)
 
   const results = await lighthouse(options.url, {
     port: (new URL(browser.wsEndpoint())).port,

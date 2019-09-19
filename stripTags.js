@@ -14,5 +14,8 @@ module.exports = [
   '.inline-audio_container',
   '.mw-editsection',
   '.mw-cite-backlink',
-  'ul.gallery'
+  'ul.gallery',
+  '.contributions__epic',
+  '.site-message',
+  '.site-message-overlay'
 ]
