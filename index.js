@@ -92,7 +92,7 @@ const articleParser = async function (options, socket) {
 
   // Inject cookies if set
   if (typeof options.puppeteer.cookies !== 'undefined') {
-    await page.setCookie(...cookies);
+    await page.setCookie(...options.puppeteer.cookies)
   }
 
   await page.evaluate(jquery)
