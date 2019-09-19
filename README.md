@@ -128,7 +128,7 @@ To strip tags before processing use the following
 
 ```
 var options = {
-  striptags: ['.somthing', '#somthingelse']
+  striptags: ['.something', '#somethingelse']
 }
 ```
 
