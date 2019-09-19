@@ -101,7 +101,7 @@ const articleParser = async function (options, socket) {
 
     for (clickelement of options.clickelements) {
       if (await page.$(clickelement) !== null) {
-        page.click(clickelement)
+        await page.click(clickelement)
       }
     }
   }
