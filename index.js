@@ -95,6 +95,17 @@ const articleParser = async function (options, socket) {
     await page.setCookie(...options.puppeteer.cookies)
   }
 
+  // Click buttons if defined (for dismissing privacy popups etc)
+  if (typeof options.clickelements !== 'undefined') {
+    let clickelement = ''
+
+    for (clickelement of options.clickelements) {
+      if (await page.$(clickelement) !== null) {
+        page.click(clickelement)
+      }
+    }
+  }
+
   await page.evaluate(jquery)
 
   socket.emit('parse:status', 'Fetching ' + options.url)

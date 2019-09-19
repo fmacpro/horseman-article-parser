@@ -124,6 +124,22 @@ var options = {
 }
 ```
 
+To strip tags before processing use the following
+
+```
+var options = {
+  striptags: ['.somthing', '#somthingelse']
+}
+```
+
+If you need to dismiss any popups e.g. a privacy popup use the following
+
+```
+var options = {
+  clickelements: ['#button1', '#button2']
+}
+```
+
 there are some additional "complex" options available
 
 ```
@@ -159,7 +175,6 @@ npm run test
 ## Dependencies
 
 - [Puppeteer](https://github.com/GoogleChrome/puppeteer/): High-level API to control Chrome or Chromium over the DevTools Protocol
-- [lighthouse](https://ghub.io/lighthouse): Automated auditing, performance metrics, and best practices for the web.
 - [compromise](https://ghub.io/compromise): natural language processing in the browser
 - [retext](https://ghub.io/retext): Natural language processor powered by plugins
 - [retext-pos](https://github.com/retextjs/retext-pos): Plugin to add part-of-speech (POS) tags
