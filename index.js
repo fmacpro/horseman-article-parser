@@ -14,7 +14,6 @@ const htmlToText = require('html-to-text')
 const nlp = require('compromise')
 const absolutify = require('absolutify')
 const personalDictionary = require('./personalDictionary.js')
-const htmlTags = require('./stripTags.js')
 const jsdom = require('jsdom')
 const { JSDOM } = jsdom
 const helpers = require('./helpers')
@@ -75,7 +74,7 @@ const articleParser = async function (options, socket) {
   article.lighthouse = {}
 
   if (typeof options.striptags === 'undefined') {
-    options.striptags = htmlTags
+    options.striptags = []
   }
 
   socket.emit('parse:status', 'Starting Horseman')
@@ -116,8 +115,9 @@ const articleParser = async function (options, socket) {
   socket.emit('parse:status', 'Status ' + article.status)
 
   if (article.status === 403 || article.status === 404) {
+    socket.emit('parse:status', 'Failed to fetch URL')
     await browser.close()
-    return article.status + ' Failed to fetch URL'
+    process.exit(1)
   }
 
   // Evaluate URL
