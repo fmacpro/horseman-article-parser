@@ -117,6 +117,7 @@ const articleParser = async function (options, socket) {
   if (article.status === 403 || article.status === 404) {
     socket.emit('parse:status', 'Failed to fetch URL')
     await browser.close()
+    return false
   }
 
   // Evaluate URL
