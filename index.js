@@ -87,7 +87,11 @@ const articleParser = async function (options, socket) {
   // Inject jQuery - https://stackoverflow.com/a/50598512
   const jquery = await page.evaluate(() => window.fetch('https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js').then((res) => res.text()))
 
-  const response = await page.goto(options.url, options.puppeteer.goto)
+  const response = await page.goto(options.url, options.puppeteer.goto).catch(async function () {
+    socket.emit('parse:status', 'Failed to fetch URL')
+    await browser.close()
+    return false
+  })
 
   // Inject cookies if set
   if (typeof options.puppeteer.cookies !== 'undefined') {
