@@ -95,6 +95,7 @@ const articleParser = async function (options, socket) {
 
   if (!response) {
     socket.emit('parse:status', 'Failed to fetch ' + options.url + ' (timeout)')
+    await browser.close()
     return false
   }
 
