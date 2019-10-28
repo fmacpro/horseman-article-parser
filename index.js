@@ -15,7 +15,6 @@ const report = require('vfile-reporter-json')
 const htmlToText = require('html-to-text')
 const nlp = require('compromise')
 const absolutify = require('absolutify')
-const personalDictionary = require('./personalDictionary.js')
 const jsdom = require('jsdom')
 const { JSDOM } = jsdom
 const helpers = require('./helpers')
@@ -79,12 +78,34 @@ const articleParser = async function (options, socket) {
     options.striptags = []
   }
 
+  if (typeof options.blockedResourceTypes === 'undefined') {
+    options.blockedResourceTypes = []
+  }
+
+  if (typeof options.skippedResources === 'undefined') {
+    options.skippedResources = []
+  }
+
   socket.emit('parse:status', 'Starting Horseman')
 
   // Init puppeteer
   const browser = await puppeteer.launch(options.puppeteer.launch)
 
   const page = await browser.newPage()
+
+  await page.setRequestInterception(true)
+
+  page.on('request', request => {
+    const requestUrl = request._url.split('?')[0].split('#')[0]
+    if (
+      options.blockedResourceTypes.indexOf(request.resourceType()) !== -1 ||
+      options.skippedResources.some(resource => requestUrl.indexOf(resource) !== -1)
+    ) {
+      request.abort()
+    } else {
+      request.continue()
+    }
+  })
 
   // Inject jQuery - https://stackoverflow.com/a/50598512
   const jquery = await page.evaluate(() => window.fetch('https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js').then((res) => res.text()))
@@ -360,13 +381,16 @@ const spellCheck = function (text, topics, options) {
     if (typeof options === 'undefined') {
       options = {
         dictionary: dictionary,
-        personal: personalDictionary,
         ignore: ignoreList
       }
     }
 
     if (typeof options.dictionary === 'undefined') {
       options.dictionary = dictionary
+    }
+
+    if (typeof options.personalDictionary === 'undefined') {
+      options.personalDictionary = []
     }
 
     retext()
