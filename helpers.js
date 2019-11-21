@@ -502,6 +502,11 @@ function cleanConditionally (e, tag) {
 
 /**
  * Converts relative urls to absolute for images and links
+ *
+ * @param {jQuery} element
+ *
+ * @return {Void}
+ *
  **/
 function fixLinks (e) {
   if (!e.ownerDocument.originalURL) {

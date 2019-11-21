@@ -67,7 +67,7 @@ element looks good or bad.</p>
 <dd><p>Clean an element of all tags of type &quot;tag&quot; if they look fishy.
 &quot;Fishy&quot; is an algorithm based on content length, classnames, link density, number of images &amp; embeds, etc.</p>
 </dd>
-<dt><a href="#fixLinks">fixLinks()</a></dt>
+<dt><a href="#fixLinks">fixLinks(element)</a> ⇒ <code>Void</code></dt>
 <dd><p>Converts relative urls to absolute for images and links</p>
 </dd>
 <dt><a href="#cleanHeaders">cleanHeaders(element)</a> ⇒ <code>Void</code></dt>
@@ -338,10 +338,15 @@ non-paragraph elements is more than paragraphs or other ominous signs, remove th
 **Kind**: inner constant of [<code>cleanConditionally</code>](#cleanConditionally)  
 <a name="fixLinks"></a>
 
-## fixLinks()
+## fixLinks(element) ⇒ <code>Void</code>
 Converts relative urls to absolute for images and links
 
 **Kind**: global function  
+
+| Param | Type |
+| --- | --- |
+| element | <code>jQuery</code> | 
+
 <a name="cleanHeaders"></a>
 
 ## cleanHeaders(element) ⇒ <code>Void</code>
