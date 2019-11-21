@@ -6,7 +6,7 @@
   "scripts": {
     "lint": "./node_modules/.bin/eslint . --ext .json --ext .js --fix",
     "test": "node test.js",
-    "docs": "./node_modules/jsdoc-to-markdown/bin/cli.js index.js | tee ./APIDOC.md"
+    "docs": "./node_modules/jsdoc-to-markdown/bin/cli.js index.js helpers.js | tee ./APIDOC.md"
   },
   "repository": {
     "type": "git",
