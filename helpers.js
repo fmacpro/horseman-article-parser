@@ -337,7 +337,7 @@ function getInnerText (e, normalizeSpaces) {
  * Get the number of times a string s appears in the node e.
  *
  * @param {jQuery} element
- * @param string - what to split on. Default is ","
+ * @param {string} string - character to split on. Default is ","
  * @return {Number} (integer)
  **/
 function getCharCount (e, s) {

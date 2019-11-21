@@ -203,7 +203,7 @@ Get the number of times a string s appears in the node e.
 | Param | Type | Description |
 | --- | --- | --- |
 | element | <code>jQuery</code> |  |
-| string |  | what to split on. Default is "," |
+| string | <code>string</code> | character to split on. Default is "," |
 
 <a name="getLinkDensity"></a>
 
