@@ -39,7 +39,7 @@ module.exports.setCleanRules = function (rules) {
  * Prepare the HTML document for readability to scrape it.
  * This includes things like stripping javascript, CSS, and handling terrible markup.
  *
- * @return void
+ * @return {Void}
  **/
 module.exports.prepDocument = function (document) {
   const frames = document.getElementsByTagName('frame')

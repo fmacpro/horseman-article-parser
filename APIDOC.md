@@ -28,7 +28,7 @@ This also strips out any excess whitespace to be found.</p>
 <dt><a href="#getHtmlText">getHtmlText(text)</a> ⇒ <code>String</code></dt>
 <dd><p>takes the formatted article body text and returns the &quot;clean&quot; html text of the article</p>
 </dd>
-<dt><a href="#prepDocument">prepDocument()</a> ⇒</dt>
+<dt><a href="#prepDocument">prepDocument()</a> ⇒ <code>Void</code></dt>
 <dd><p>Prepare the HTML document for readability to scrape it.
 This includes things like stripping javascript, CSS, and handling terrible markup.</p>
 </dd>
@@ -166,12 +166,11 @@ takes the formatted article body text and returns the "clean" html text of the a
 
 <a name="prepDocument"></a>
 
-## prepDocument() ⇒
+## prepDocument() ⇒ <code>Void</code>
 Prepare the HTML document for readability to scrape it.
 This includes things like stripping javascript, CSS, and handling terrible markup.
 
 **Kind**: global function  
-**Returns**: void  
 <a name="cleanStyles"></a>
 
 ## cleanStyles(Element) ⇒
