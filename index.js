@@ -532,6 +532,16 @@ const getHtmlText = function (text) {
   })
 }
 
+/**
+ * takes a string of html and runs it through [clean-html]{@link https://github.com/dave-kennedy/clean-html}
+ *
+ * @param {String} html - the html to clean
+ * @param {Object} options - the [clean-html options]{@link https://github.com/dave-kennedy/clean-html#options}
+ *
+ * @return {String} the cleaned html
+ *
+ */
+
 const htmlCleaner = function (html, options) {
   return new Promise(function (resolve, reject) {
     if (typeof options === 'undefined') {
@@ -547,6 +557,16 @@ const htmlCleaner = function (html, options) {
     })
   })
 }
+
+/**
+ * takes a string of html and runs it through [retext-keywords]{@link https://github.com/retextjs/retext-keywords} and returns keyword and keyphrase suggestions
+ *
+ * @param {String} html - the html to process
+ * @param {Object} options - the [retext-keywords options]{@link https://github.com/retextjs/retext-keywords#api}
+ *
+ * @return {Object} the keyword and keyphrase suggestions
+ *
+ */
 
 const keywordParser = function (html, options) {
   return new Promise(function (resolve, reject) {
@@ -596,6 +616,16 @@ const keywordParser = function (html, options) {
   })
 }
 
+/**
+ * runs a google lighthouse audit on the target article
+ *
+ * @param {Object} options - the article parser options object
+  * @param {Object} options.puppeteer.launch - the pupperteer launch options
+ *
+ * @return {Object} the google lighthouse analysis
+ *
+ */
+
 const lighthouseAnalysis = async function (options, socket) {
   socket.emit('parse:status', 'Starting Lighthouse')
 
@@ -613,6 +643,15 @@ const lighthouseAnalysis = async function (options, socket) {
 
   return results.lhr
 }
+
+/**
+ * gets the best available title for the article
+ *
+ * @param {String} document - the html document
+ *
+ * @return {String} the title of the article
+ *
+ */
 
 const getTitle = function (document) {
   var title = findMetaTitle(document) || document.title
@@ -632,6 +671,15 @@ const getTitle = function (document) {
 
   return title
 }
+
+/**
+ * gets the best available meta title of the article
+ *
+ * @param {String} document - the html document
+ *
+ * @return {String} the best available meta title of the article
+ *
+ */
 
 const findMetaTitle = function (document) {
   var metaTags = document.getElementsByTagName('meta')

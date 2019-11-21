@@ -19,6 +19,21 @@
 <dt><a href="#getHtmlText">getHtmlText(text)</a> ⇒ <code>String</code></dt>
 <dd><p>takes the formatted article body text and returns the &quot;clean&quot; html text of the article</p>
 </dd>
+<dt><a href="#htmlCleaner">htmlCleaner(html, options)</a> ⇒ <code>String</code></dt>
+<dd><p>takes a string of html and runs it through <a href="https://github.com/dave-kennedy/clean-html">clean-html</a></p>
+</dd>
+<dt><a href="#keywordParser">keywordParser(html, options)</a> ⇒ <code>Object</code></dt>
+<dd><p>takes a string of html and runs it through <a href="https://github.com/retextjs/retext-keywords">retext-keywords</a> and returns keyword and keyphrase suggestions</p>
+</dd>
+<dt><a href="#lighthouseAnalysis">lighthouseAnalysis(options)</a> ⇒ <code>Object</code></dt>
+<dd><p>runs a google lighthouse audit on the target article</p>
+</dd>
+<dt><a href="#getTitle">getTitle(document)</a> ⇒ <code>String</code></dt>
+<dd><p>gets the best available title for the article</p>
+</dd>
+<dt><a href="#findMetaTitle">findMetaTitle(document)</a> ⇒ <code>String</code></dt>
+<dd><p>gets the best available meta title of the article</p>
+</dd>
 <dt><a href="#prepDocument">prepDocument(document)</a> ⇒ <code>Void</code></dt>
 <dd><p>Prepare the HTML document for readability to process it.
 This includes things like stripping javascript, CSS, and handling terrible markup.</p>
@@ -145,6 +160,69 @@ takes the formatted article body text and returns the "clean" html text of the a
 | Param | Type | Description |
 | --- | --- | --- |
 | text | <code>String</code> | the formatted text string to process |
+
+<a name="htmlCleaner"></a>
+
+## htmlCleaner(html, options) ⇒ <code>String</code>
+takes a string of html and runs it through [clean-html](https://github.com/dave-kennedy/clean-html)
+
+**Kind**: global function  
+**Returns**: <code>String</code> - the cleaned html  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| html | <code>String</code> | the html to clean |
+| options | <code>Object</code> | the [clean-html options](https://github.com/dave-kennedy/clean-html#options) |
+
+<a name="keywordParser"></a>
+
+## keywordParser(html, options) ⇒ <code>Object</code>
+takes a string of html and runs it through [retext-keywords](https://github.com/retextjs/retext-keywords) and returns keyword and keyphrase suggestions
+
+**Kind**: global function  
+**Returns**: <code>Object</code> - the keyword and keyphrase suggestions  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| html | <code>String</code> | the html to process |
+| options | <code>Object</code> | the [retext-keywords options](https://github.com/retextjs/retext-keywords#api) |
+
+<a name="lighthouseAnalysis"></a>
+
+## lighthouseAnalysis(options) ⇒ <code>Object</code>
+runs a google lighthouse audit on the target article
+
+**Kind**: global function  
+**Returns**: <code>Object</code> - the google lighthouse analysis  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| options | <code>Object</code> | the article parser options object |
+| options.puppeteer.launch | <code>Object</code> | the pupperteer launch options |
+
+<a name="getTitle"></a>
+
+## getTitle(document) ⇒ <code>String</code>
+gets the best available title for the article
+
+**Kind**: global function  
+**Returns**: <code>String</code> - the title of the article  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| document | <code>String</code> | the html document |
+
+<a name="findMetaTitle"></a>
+
+## findMetaTitle(document) ⇒ <code>String</code>
+gets the best available meta title of the article
+
+**Kind**: global function  
+**Returns**: <code>String</code> - the best available meta title of the article  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| document | <code>String</code> | the html document |
 
 <a name="prepDocument"></a>
 
