@@ -19,8 +19,8 @@
 <dt><a href="#getHtmlText">getHtmlText(text)</a> ⇒ <code>String</code></dt>
 <dd><p>takes the formatted article body text and returns the &quot;clean&quot; html text of the article</p>
 </dd>
-<dt><a href="#prepDocument">prepDocument()</a> ⇒ <code>Void</code></dt>
-<dd><p>Prepare the HTML document for readability to scrape it.
+<dt><a href="#prepDocument">prepDocument(document)</a> ⇒ <code>Void</code></dt>
+<dd><p>Prepare the HTML document for readability to process it.
 This includes things like stripping javascript, CSS, and handling terrible markup.</p>
 </dd>
 <dt><a href="#cleanStyles">cleanStyles(element)</a> ⇒ <code>Void</code></dt>
@@ -148,11 +148,16 @@ takes the formatted article body text and returns the "clean" html text of the a
 
 <a name="prepDocument"></a>
 
-## prepDocument() ⇒ <code>Void</code>
-Prepare the HTML document for readability to scrape it.
+## prepDocument(document) ⇒ <code>Void</code>
+Prepare the HTML document for readability to process it.
 This includes things like stripping javascript, CSS, and handling terrible markup.
 
 **Kind**: global function  
+
+| Param | Type |
+| --- | --- |
+| document | <code>String</code> | 
+
 <a name="cleanStyles"></a>
 
 ## cleanStyles(element) ⇒ <code>Void</code>

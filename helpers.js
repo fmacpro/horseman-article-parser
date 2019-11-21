@@ -36,8 +36,10 @@ module.exports.setCleanRules = function (rules) {
 }
 
 /**
- * Prepare the HTML document for readability to scrape it.
+ * Prepare the HTML document for readability to process it.
  * This includes things like stripping javascript, CSS, and handling terrible markup.
+ *
+ * @param {String} document
  *
  * @return {Void}
  **/
