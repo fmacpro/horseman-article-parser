@@ -1,7 +1,7 @@
 ## Constants
 
 <dl>
-<dt><a href="#getInnerText">getInnerText</a> ⇒</dt>
+<dt><a href="#getInnerText">getInnerText</a> ⇒ <code>String</code></dt>
 <dd><p>Get the inner text of a node - cross browser compatibly.
 This also strips out any excess whitespace to be found.</p>
 </dd>
@@ -32,41 +32,41 @@ This also strips out any excess whitespace to be found.</p>
 <dd><p>Prepare the HTML document for readability to scrape it.
 This includes things like stripping javascript, CSS, and handling terrible markup.</p>
 </dd>
-<dt><a href="#cleanStyles">cleanStyles(Element)</a> ⇒</dt>
+<dt><a href="#cleanStyles">cleanStyles(Element)</a> ⇒ <code>Void</code></dt>
 <dd><p>Remove the style attribute on every e and under.</p>
 </dd>
-<dt><a href="#killBreaks">killBreaks(Element)</a> ⇒</dt>
+<dt><a href="#killBreaks">killBreaks(Element)</a> ⇒ <code>Void</code></dt>
 <dd><p>Remove extraneous break tags from a node.</p>
 </dd>
-<dt><a href="#getCharCount">getCharCount(Element, string)</a> ⇒</dt>
+<dt><a href="#getCharCount">getCharCount(Element, string)</a> ⇒ <code>Number</code></dt>
 <dd><p>Get the number of times a string s appears in the node e.</p>
 </dd>
-<dt><a href="#getLinkDensity">getLinkDensity(Element)</a> ⇒</dt>
+<dt><a href="#getLinkDensity">getLinkDensity(Element)</a> ⇒ <code>Number</code></dt>
 <dd><p>Get the density of links as a percentage of the content
 This is the amount of text that is inside a link divided by the total text in the node.</p>
 </dd>
-<dt><a href="#getClassWeight">getClassWeight(Element)</a> ⇒</dt>
+<dt><a href="#getClassWeight">getClassWeight(Element)</a> ⇒ <code>Number</code></dt>
 <dd><p>Get an elements class/id weight. Uses regular expressions to tell if this
 element looks good or bad.</p>
 </dd>
-<dt><a href="#clean">clean(Element, string)</a> ⇒</dt>
+<dt><a href="#clean">clean(Element, string)</a> ⇒ <code>Void</code></dt>
 <dd><p>Clean a node of all elements of type &quot;tag&quot;.
 (Unless it&#39;s a youtube/vimeo video. People love movies.)</p>
 </dd>
-<dt><a href="#cleanConditionally">cleanConditionally()</a> ⇒</dt>
+<dt><a href="#cleanConditionally">cleanConditionally()</a> ⇒ <code>Void</code></dt>
 <dd><p>Clean an element of all tags of type &quot;tag&quot; if they look fishy.
 &quot;Fishy&quot; is an algorithm based on content length, classnames, link density, number of images &amp; embeds, etc.</p>
 </dd>
 <dt><a href="#fixLinks">fixLinks()</a></dt>
 <dd><p>Converts relative urls to absolute for images and links</p>
 </dd>
-<dt><a href="#cleanHeaders">cleanHeaders(Element)</a> ⇒</dt>
+<dt><a href="#cleanHeaders">cleanHeaders(Element)</a> ⇒ <code>Void</code></dt>
 <dd><p>Clean out spurious headers from an Element. Checks things like classnames and link density.</p>
 </dd>
-<dt><a href="#cleanSingleHeader">cleanSingleHeader(Element)</a> ⇒</dt>
+<dt><a href="#cleanSingleHeader">cleanSingleHeader(Element)</a> ⇒ <code>Void</code></dt>
 <dd><p>Remove the header that doesn&#39;t have next sibling.</p>
 </dd>
-<dt><a href="#initializeNode">initializeNode(Element)</a> ⇒</dt>
+<dt><a href="#initializeNode">initializeNode(Element)</a> ⇒ <code>Void</code></dt>
 <dd><p>Initialize a node with the readability object. Also checks the
 className/id for special names to add to its score.</p>
 </dd>
@@ -74,12 +74,11 @@ className/id for special names to add to its score.</p>
 
 <a name="getInnerText"></a>
 
-## getInnerText ⇒
+## getInnerText ⇒ <code>String</code>
 Get the inner text of a node - cross browser compatibly.
 This also strips out any excess whitespace to be found.
 
 **Kind**: global constant  
-**Returns**: string  
 
 | Param |
 | --- |
@@ -173,11 +172,10 @@ This includes things like stripping javascript, CSS, and handling terrible marku
 **Kind**: global function  
 <a name="cleanStyles"></a>
 
-## cleanStyles(Element) ⇒
+## cleanStyles(Element) ⇒ <code>Void</code>
 Remove the style attribute on every e and under.
 
 **Kind**: global function  
-**Returns**: void  
 
 | Param |
 | --- |
@@ -185,11 +183,10 @@ Remove the style attribute on every e and under.
 
 <a name="killBreaks"></a>
 
-## killBreaks(Element) ⇒
+## killBreaks(Element) ⇒ <code>Void</code>
 Remove extraneous break tags from a node.
 
 **Kind**: global function  
-**Returns**: void  
 
 | Param |
 | --- |
@@ -197,11 +194,11 @@ Remove extraneous break tags from a node.
 
 <a name="getCharCount"></a>
 
-## getCharCount(Element, string) ⇒
+## getCharCount(Element, string) ⇒ <code>Number</code>
 Get the number of times a string s appears in the node e.
 
 **Kind**: global function  
-**Returns**: number (integer)  
+**Returns**: <code>Number</code> - (integer)  
 
 | Param | Description |
 | --- | --- |
@@ -210,12 +207,12 @@ Get the number of times a string s appears in the node e.
 
 <a name="getLinkDensity"></a>
 
-## getLinkDensity(Element) ⇒
+## getLinkDensity(Element) ⇒ <code>Number</code>
 Get the density of links as a percentage of the content
 This is the amount of text that is inside a link divided by the total text in the node.
 
 **Kind**: global function  
-**Returns**: number (float)  
+**Returns**: <code>Number</code> - (float)  
 
 | Param |
 | --- |
@@ -223,12 +220,12 @@ This is the amount of text that is inside a link divided by the total text in th
 
 <a name="getClassWeight"></a>
 
-## getClassWeight(Element) ⇒
+## getClassWeight(Element) ⇒ <code>Number</code>
 Get an elements class/id weight. Uses regular expressions to tell if this
 element looks good or bad.
 
 **Kind**: global function  
-**Returns**: number (Integer)  
+**Returns**: <code>Number</code> - (Integer)  
 
 | Param |
 | --- |
@@ -236,12 +233,11 @@ element looks good or bad.
 
 <a name="clean"></a>
 
-## clean(Element, string) ⇒
+## clean(Element, string) ⇒ <code>Void</code>
 Clean a node of all elements of type "tag".
 (Unless it's a youtube/vimeo video. People love movies.)
 
 **Kind**: global function  
-**Returns**: void  
 
 | Param | Description |
 | --- | --- |
@@ -250,12 +246,11 @@ Clean a node of all elements of type "tag".
 
 <a name="cleanConditionally"></a>
 
-## cleanConditionally() ⇒
+## cleanConditionally() ⇒ <code>Void</code>
 Clean an element of all tags of type "tag" if they look fishy.
 "Fishy" is an algorithm based on content length, classnames, link density, number of images & embeds, etc.
 
 **Kind**: global function  
-**Returns**: void  
 <a name="cleanConditionally..p"></a>
 
 ### cleanConditionally~p
@@ -271,11 +266,10 @@ Converts relative urls to absolute for images and links
 **Kind**: global function  
 <a name="cleanHeaders"></a>
 
-## cleanHeaders(Element) ⇒
+## cleanHeaders(Element) ⇒ <code>Void</code>
 Clean out spurious headers from an Element. Checks things like classnames and link density.
 
 **Kind**: global function  
-**Returns**: void  
 
 | Param |
 | --- |
@@ -283,11 +277,10 @@ Clean out spurious headers from an Element. Checks things like classnames and li
 
 <a name="cleanSingleHeader"></a>
 
-## cleanSingleHeader(Element) ⇒
+## cleanSingleHeader(Element) ⇒ <code>Void</code>
 Remove the header that doesn't have next sibling.
 
 **Kind**: global function  
-**Returns**: void  
 
 | Param |
 | --- |
@@ -295,12 +288,11 @@ Remove the header that doesn't have next sibling.
 
 <a name="initializeNode"></a>
 
-## initializeNode(Element) ⇒
+## initializeNode(Element) ⇒ <code>Void</code>
 Initialize a node with the readability object. Also checks the
 className/id for special names to add to its score.
 
 **Kind**: global function  
-**Returns**: void  
 
 | Param |
 | --- |
