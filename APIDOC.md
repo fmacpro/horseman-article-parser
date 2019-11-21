@@ -76,6 +76,9 @@ element looks good or bad.</p>
 <dt><a href="#cleanSingleHeader">cleanSingleHeader(element)</a> ⇒ <code>Void</code></dt>
 <dd><p>Remove the header that doesn&#39;t have next sibling.</p>
 </dd>
+<dt><a href="#prepArticle">prepArticle(element)</a> ⇒ <code>Void</code></dt>
+<dd><p>Cleans the article content</p>
+</dd>
 <dt><a href="#initializeNode">initializeNode(element)</a> ⇒ <code>Void</code></dt>
 <dd><p>Initialize a node with the readability object. Also checks the
 className/id for special names to add to its score.</p>
@@ -362,6 +365,17 @@ Clean out spurious headers from an Element. Checks things like classnames and li
 
 ## cleanSingleHeader(element) ⇒ <code>Void</code>
 Remove the header that doesn't have next sibling.
+
+**Kind**: global function  
+
+| Param | Type |
+| --- | --- |
+| element | <code>jQuery</code> | 
+
+<a name="prepArticle"></a>
+
+## prepArticle(element) ⇒ <code>Void</code>
+Cleans the article content
 
 **Kind**: global function  
 

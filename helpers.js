@@ -571,6 +571,13 @@ function cleanSingleHeader (e) {
   }
 }
 
+/**
+ * Cleans the article content
+ *
+ * @param {jQuery} element
+ * @return {Void}
+ **/
+
 function prepArticle (articleContent) {
   cleanStyles(articleContent)
   killBreaks(articleContent)
