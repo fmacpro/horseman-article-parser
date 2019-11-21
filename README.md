@@ -166,7 +166,9 @@ var options = {
 
 ## Development
 
-Please feel free to fork the repo or open pull requests to the development branch. I've used [eslint](https://eslint.org/) for linting. 
+Please feel free to fork the repo or open pull requests to the development branch. I've used [eslint](https://eslint.org/) for linting.
+
+[Module API Docs](https://github.com/fmacpro/horseman-article-parser/blob/development/APIDOC.md) 
 
 Build the dependencies with:
 ```
@@ -181,6 +183,11 @@ npm run lint
 Test the package with:
 ```
 npm run test
+```
+
+Update API docs with:
+```
+npm run docs
 ```
 
 ## Dependencies
