@@ -16,12 +16,12 @@ npm install horseman-article-parser --save
 
 #### parseArticle(options, socket) ⇒ <code>Object</code>
 
-**Returns**: <code>Object</code> - article parser results object  
-
 | Param | Type | Description |
 | --- | --- | --- |
 | options | <code>Object</code> | the options object |
 | socket | <code>Object</code> | the optional socket |
+
+**Returns**: <code>Object</code> - article parser results object  
 
 ### Usage Example
 
