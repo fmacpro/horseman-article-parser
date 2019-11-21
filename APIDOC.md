@@ -1,12 +1,3 @@
-## Constants
-
-<dl>
-<dt><a href="#getInnerText">getInnerText</a> ⇒ <code>String</code></dt>
-<dd><p>Get the inner text of a node - cross browser compatibly.
-This also strips out any excess whitespace to be found.</p>
-</dd>
-</dl>
-
 ## Functions
 
 <dl>
@@ -37,6 +28,10 @@ This includes things like stripping javascript, CSS, and handling terrible marku
 </dd>
 <dt><a href="#killBreaks">killBreaks(Element)</a> ⇒ <code>Void</code></dt>
 <dd><p>Remove extraneous break tags from a node.</p>
+</dd>
+<dt><a href="#getInnerText">getInnerText(Element)</a> ⇒ <code>String</code></dt>
+<dd><p>Get the inner text of a node - cross browser compatibly.
+This also strips out any excess whitespace to be found.</p>
 </dd>
 <dt><a href="#getCharCount">getCharCount(Element, string)</a> ⇒ <code>Number</code></dt>
 <dd><p>Get the number of times a string s appears in the node e.</p>
@@ -71,18 +66,6 @@ element looks good or bad.</p>
 className/id for special names to add to its score.</p>
 </dd>
 </dl>
-
-<a name="getInnerText"></a>
-
-## getInnerText ⇒ <code>String</code>
-Get the inner text of a node - cross browser compatibly.
-This also strips out any excess whitespace to be found.
-
-**Kind**: global constant  
-
-| Param |
-| --- |
-| Element | 
 
 <a name="parseArticle"></a>
 
@@ -185,6 +168,18 @@ Remove the style attribute on every e and under.
 
 ## killBreaks(Element) ⇒ <code>Void</code>
 Remove extraneous break tags from a node.
+
+**Kind**: global function  
+
+| Param |
+| --- |
+| Element | 
+
+<a name="getInnerText"></a>
+
+## getInnerText(Element) ⇒ <code>String</code>
+Get the inner text of a node - cross browser compatibly.
+This also strips out any excess whitespace to be found.
 
 **Kind**: global function  
 
