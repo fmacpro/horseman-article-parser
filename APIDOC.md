@@ -23,28 +23,28 @@
 <dd><p>Prepare the HTML document for readability to scrape it.
 This includes things like stripping javascript, CSS, and handling terrible markup.</p>
 </dd>
-<dt><a href="#cleanStyles">cleanStyles(Element)</a> ⇒ <code>Void</code></dt>
+<dt><a href="#cleanStyles">cleanStyles(element)</a> ⇒ <code>Void</code></dt>
 <dd><p>Remove the style attribute on every e and under.</p>
 </dd>
-<dt><a href="#killBreaks">killBreaks(Element)</a> ⇒ <code>Void</code></dt>
+<dt><a href="#killBreaks">killBreaks(element)</a> ⇒ <code>Void</code></dt>
 <dd><p>Remove extraneous break tags from a node.</p>
 </dd>
-<dt><a href="#getInnerText">getInnerText(Element)</a> ⇒ <code>String</code></dt>
+<dt><a href="#getInnerText">getInnerText(element)</a> ⇒ <code>String</code></dt>
 <dd><p>Get the inner text of a node - cross browser compatibly.
 This also strips out any excess whitespace to be found.</p>
 </dd>
-<dt><a href="#getCharCount">getCharCount(Element, string)</a> ⇒ <code>Number</code></dt>
+<dt><a href="#getCharCount">getCharCount(element, string)</a> ⇒ <code>Number</code></dt>
 <dd><p>Get the number of times a string s appears in the node e.</p>
 </dd>
-<dt><a href="#getLinkDensity">getLinkDensity(Element)</a> ⇒ <code>Number</code></dt>
+<dt><a href="#getLinkDensity">getLinkDensity(element)</a> ⇒ <code>Number</code></dt>
 <dd><p>Get the density of links as a percentage of the content
 This is the amount of text that is inside a link divided by the total text in the node.</p>
 </dd>
-<dt><a href="#getClassWeight">getClassWeight(Element)</a> ⇒ <code>Number</code></dt>
+<dt><a href="#getClassWeight">getClassWeight(element)</a> ⇒ <code>Number</code></dt>
 <dd><p>Get an elements class/id weight. Uses regular expressions to tell if this
 element looks good or bad.</p>
 </dd>
-<dt><a href="#clean">clean(Element, string)</a> ⇒ <code>Void</code></dt>
+<dt><a href="#clean">clean(element, string)</a> ⇒ <code>Void</code></dt>
 <dd><p>Clean a node of all elements of type &quot;tag&quot;.
 (Unless it&#39;s a youtube/vimeo video. People love movies.)</p>
 </dd>
@@ -55,13 +55,13 @@ element looks good or bad.</p>
 <dt><a href="#fixLinks">fixLinks()</a></dt>
 <dd><p>Converts relative urls to absolute for images and links</p>
 </dd>
-<dt><a href="#cleanHeaders">cleanHeaders(Element)</a> ⇒ <code>Void</code></dt>
+<dt><a href="#cleanHeaders">cleanHeaders(element)</a> ⇒ <code>Void</code></dt>
 <dd><p>Clean out spurious headers from an Element. Checks things like classnames and link density.</p>
 </dd>
-<dt><a href="#cleanSingleHeader">cleanSingleHeader(Element)</a> ⇒ <code>Void</code></dt>
+<dt><a href="#cleanSingleHeader">cleanSingleHeader(element)</a> ⇒ <code>Void</code></dt>
 <dd><p>Remove the header that doesn&#39;t have next sibling.</p>
 </dd>
-<dt><a href="#initializeNode">initializeNode(Element)</a> ⇒ <code>Void</code></dt>
+<dt><a href="#initializeNode">initializeNode(element)</a> ⇒ <code>Void</code></dt>
 <dd><p>Initialize a node with the readability object. Also checks the
 className/id for special names to add to its score.</p>
 </dd>
@@ -155,89 +155,89 @@ This includes things like stripping javascript, CSS, and handling terrible marku
 **Kind**: global function  
 <a name="cleanStyles"></a>
 
-## cleanStyles(Element) ⇒ <code>Void</code>
+## cleanStyles(element) ⇒ <code>Void</code>
 Remove the style attribute on every e and under.
 
 **Kind**: global function  
 
-| Param |
-| --- |
-| Element | 
+| Param | Type |
+| --- | --- |
+| element | <code>jQuery</code> | 
 
 <a name="killBreaks"></a>
 
-## killBreaks(Element) ⇒ <code>Void</code>
+## killBreaks(element) ⇒ <code>Void</code>
 Remove extraneous break tags from a node.
 
 **Kind**: global function  
 
-| Param |
-| --- |
-| Element | 
+| Param | Type |
+| --- | --- |
+| element | <code>jQuery</code> | 
 
 <a name="getInnerText"></a>
 
-## getInnerText(Element) ⇒ <code>String</code>
+## getInnerText(element) ⇒ <code>String</code>
 Get the inner text of a node - cross browser compatibly.
 This also strips out any excess whitespace to be found.
 
 **Kind**: global function  
 
-| Param |
-| --- |
-| Element | 
+| Param | Type |
+| --- | --- |
+| element | <code>jQuery</code> | 
 
 <a name="getCharCount"></a>
 
-## getCharCount(Element, string) ⇒ <code>Number</code>
+## getCharCount(element, string) ⇒ <code>Number</code>
 Get the number of times a string s appears in the node e.
 
 **Kind**: global function  
 **Returns**: <code>Number</code> - (integer)  
 
-| Param | Description |
-| --- | --- |
-| Element |  |
-| string | what to split on. Default is "," |
+| Param | Type | Description |
+| --- | --- | --- |
+| element | <code>jQuery</code> |  |
+| string |  | what to split on. Default is "," |
 
 <a name="getLinkDensity"></a>
 
-## getLinkDensity(Element) ⇒ <code>Number</code>
+## getLinkDensity(element) ⇒ <code>Number</code>
 Get the density of links as a percentage of the content
 This is the amount of text that is inside a link divided by the total text in the node.
 
 **Kind**: global function  
 **Returns**: <code>Number</code> - (float)  
 
-| Param |
-| --- |
-| Element | 
+| Param | Type |
+| --- | --- |
+| element | <code>jQuery</code> | 
 
 <a name="getClassWeight"></a>
 
-## getClassWeight(Element) ⇒ <code>Number</code>
+## getClassWeight(element) ⇒ <code>Number</code>
 Get an elements class/id weight. Uses regular expressions to tell if this
 element looks good or bad.
 
 **Kind**: global function  
 **Returns**: <code>Number</code> - (Integer)  
 
-| Param |
-| --- |
-| Element | 
+| Param | Type |
+| --- | --- |
+| element | <code>jQuery</code> | 
 
 <a name="clean"></a>
 
-## clean(Element, string) ⇒ <code>Void</code>
+## clean(element, string) ⇒ <code>Void</code>
 Clean a node of all elements of type "tag".
 (Unless it's a youtube/vimeo video. People love movies.)
 
 **Kind**: global function  
 
-| Param | Description |
-| --- | --- |
-| Element |  |
-| string | tag to clean |
+| Param | Type | Description |
+| --- | --- | --- |
+| element | <code>jQuery</code> |  |
+| string |  | tag to clean |
 
 <a name="cleanConditionally"></a>
 
@@ -261,35 +261,35 @@ Converts relative urls to absolute for images and links
 **Kind**: global function  
 <a name="cleanHeaders"></a>
 
-## cleanHeaders(Element) ⇒ <code>Void</code>
+## cleanHeaders(element) ⇒ <code>Void</code>
 Clean out spurious headers from an Element. Checks things like classnames and link density.
 
 **Kind**: global function  
 
-| Param |
-| --- |
-| Element | 
+| Param | Type |
+| --- | --- |
+| element | <code>jQuery</code> | 
 
 <a name="cleanSingleHeader"></a>
 
-## cleanSingleHeader(Element) ⇒ <code>Void</code>
+## cleanSingleHeader(element) ⇒ <code>Void</code>
 Remove the header that doesn't have next sibling.
 
 **Kind**: global function  
 
-| Param |
-| --- |
-| Element | 
+| Param | Type |
+| --- | --- |
+| element | <code>jQuery</code> | 
 
 <a name="initializeNode"></a>
 
-## initializeNode(Element) ⇒ <code>Void</code>
+## initializeNode(element) ⇒ <code>Void</code>
 Initialize a node with the readability object. Also checks the
 className/id for special names to add to its score.
 
 **Kind**: global function  
 
-| Param |
-| --- |
-| Element | 
+| Param | Type |
+| --- | --- |
+| element | <code>jQuery</code> | 
 

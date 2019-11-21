@@ -90,7 +90,7 @@ module.exports.prepDocument = function (document) {
  * grabArticle - Using a variety of metrics (content score, classname, element types), find the content that is
  *               most likely to be the stuff a user wants to read. Then return it wrapped up in a div.
  *
- * @return {Element}
+ * @return {jQuery}
  **/
 module.exports.grabArticle = function (document, preserveUnlikelyCandidates) {
   /**
@@ -280,7 +280,7 @@ module.exports.grabArticle = function (document, preserveUnlikelyCandidates) {
 /**
  * Remove the style attribute on every e and under.
  *
- * @param Element
+ * @param {jQuery} element
  * @return {Void}
  **/
 function cleanStyles (e) {
@@ -306,7 +306,7 @@ function cleanStyles (e) {
 /**
  * Remove extraneous break tags from a node.
  *
- * @param Element
+ * @param {jQuery} element
  * @return {Void}
  **/
 function killBreaks (e) {
@@ -317,7 +317,7 @@ function killBreaks (e) {
  * Get the inner text of a node - cross browser compatibly.
  * This also strips out any excess whitespace to be found.
  *
- * @param Element
+ * @param {jQuery} element
  * @return {String}
  **/
 function getInnerText (e, normalizeSpaces) {
@@ -334,7 +334,7 @@ function getInnerText (e, normalizeSpaces) {
 /**
  * Get the number of times a string s appears in the node e.
  *
- * @param Element
+ * @param {jQuery} element
  * @param string - what to split on. Default is ","
  * @return {Number} (integer)
  **/
@@ -347,7 +347,7 @@ function getCharCount (e, s) {
  * Get the density of links as a percentage of the content
  * This is the amount of text that is inside a link divided by the total text in the node.
  *
- * @param Element
+ * @param {jQuery} element
  * @return {Number} (float)
  **/
 function getLinkDensity (e) {
@@ -368,7 +368,7 @@ function getLinkDensity (e) {
  * Get an elements class/id weight. Uses regular expressions to tell if this
  * element looks good or bad.
  *
- * @param Element
+ * @param {jQuery} element
  * @return {Number} (Integer)
  **/
 function getClassWeight (e) {
@@ -395,7 +395,7 @@ function getClassWeight (e) {
  * Clean a node of all elements of type "tag".
  * (Unless it's a youtube/vimeo video. People love movies.)
  *
- * @param Element
+ * @param {jQuery} element
  * @param string tag to clean
  * @return {Void}
  **/
@@ -532,7 +532,7 @@ function fixLinks (e) {
 /**
  * Clean out spurious headers from an Element. Checks things like classnames and link density.
  *
- * @param Element
+ * @param {jQuery} element
  * @return {Void}
  **/
 function cleanHeaders (e) {
@@ -549,7 +549,7 @@ function cleanHeaders (e) {
 /**
  * Remove the header that doesn't have next sibling.
  *
- * @param Element
+ * @param {jQuery} element
  * @return {Void}
  **/
 
@@ -616,7 +616,7 @@ function prepArticle (articleContent) {
  * Initialize a node with the readability object. Also checks the
  * className/id for special names to add to its score.
  *
- * @param Element
+ * @param {jQuery} element
  * @return {Void}
  **/
 function initializeNode (node) {
