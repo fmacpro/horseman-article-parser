@@ -320,7 +320,7 @@ function killBreaks (e) {
  * @param Element
  * @return {String}
  **/
-const getInnerText = exports.getInnerText = function (e, normalizeSpaces) {
+function getInnerText (e, normalizeSpaces) {
   let textContent = ''
 
   normalizeSpaces = (typeof normalizeSpaces === 'undefined') ? true : normalizeSpaces
