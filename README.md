@@ -12,6 +12,17 @@ Node.js & NPM
 npm install horseman-article-parser --save
 ```
 
+### Usage
+
+#### parseArticle(options, socket) ⇒ <code>Object</code>
+
+| Param | Type | Description |
+| --- | --- | --- |
+| options | <code>Object</code> | the options object |
+| socket | <code>Object</code> | the optional socket |
+
+**Returns**: <code>Object</code> - article parser results object  
+
 ### Usage Example
 
 ```
@@ -155,7 +166,9 @@ var options = {
 
 ## Development
 
-Please feel free to fork the repo or open pull requests to the development branch. I've used [eslint](https://eslint.org/) for linting. 
+Please feel free to fork the repo or open pull requests to the development branch. I've used [eslint](https://eslint.org/) for linting.
+
+[Module API Docs](https://github.com/fmacpro/horseman-article-parser/blob/development/APIDOC.md) 
 
 Build the dependencies with:
 ```
@@ -170,6 +183,11 @@ npm run lint
 Test the package with:
 ```
 npm run test
+```
+
+Update API docs with:
+```
+npm run docs
 ```
 
 ## Dependencies
@@ -201,6 +219,7 @@ npm run test
 - [eslint-plugin-node](https://ghub.io/eslint-plugin-node): Additional ESLint&#39;s rules for Node.js
 - [eslint-plugin-promise](https://ghub.io/eslint-plugin-promise): Enforce best practices for JavaScript promises
 - [eslint-plugin-standard](https://ghub.io/eslint-plugin-standard): ESlint Plugin for the Standard Linter
+- [jsdoc-to-markdown](https://github.com/jsdoc2md/jsdoc-to-markdown): Generates markdown API documentation from jsdoc annotated source code.
 
 
 ## License

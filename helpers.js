@@ -36,10 +36,12 @@ module.exports.setCleanRules = function (rules) {
 }
 
 /**
- * Prepare the HTML document for readability to scrape it.
+ * Prepare the HTML document for readability to process it.
  * This includes things like stripping javascript, CSS, and handling terrible markup.
  *
- * @return void
+ * @param {String} document
+ *
+ * @return {Void}
  **/
 module.exports.prepDocument = function (document) {
   const frames = document.getElementsByTagName('frame')
@@ -90,7 +92,7 @@ module.exports.prepDocument = function (document) {
  * grabArticle - Using a variety of metrics (content score, classname, element types), find the content that is
  *               most likely to be the stuff a user wants to read. Then return it wrapped up in a div.
  *
- * @return Element
+ * @return {jQuery}
  **/
 module.exports.grabArticle = function (document, preserveUnlikelyCandidates) {
   /**
@@ -280,8 +282,8 @@ module.exports.grabArticle = function (document, preserveUnlikelyCandidates) {
 /**
  * Remove the style attribute on every e and under.
  *
- * @param Element
- * @return void
+ * @param {jQuery} element
+ * @return {Void}
  **/
 function cleanStyles (e) {
   if (!e) return
@@ -306,8 +308,8 @@ function cleanStyles (e) {
 /**
  * Remove extraneous break tags from a node.
  *
- * @param Element
- * @return void
+ * @param {jQuery} element
+ * @return {Void}
  **/
 function killBreaks (e) {
   e.innerHTML = e.innerHTML.replace(regexps.killBreaksRe, '<br />')
@@ -317,10 +319,10 @@ function killBreaks (e) {
  * Get the inner text of a node - cross browser compatibly.
  * This also strips out any excess whitespace to be found.
  *
- * @param Element
- * @return string
+ * @param {jQuery} element
+ * @return {String}
  **/
-const getInnerText = exports.getInnerText = function (e, normalizeSpaces) {
+function getInnerText (e, normalizeSpaces) {
   let textContent = ''
 
   normalizeSpaces = (typeof normalizeSpaces === 'undefined') ? true : normalizeSpaces
@@ -334,9 +336,9 @@ const getInnerText = exports.getInnerText = function (e, normalizeSpaces) {
 /**
  * Get the number of times a string s appears in the node e.
  *
- * @param Element
- * @param string - what to split on. Default is ","
- * @return number (integer)
+ * @param {jQuery} element
+ * @param {string} string - character to split on. Default is ","
+ * @return {Number} (integer)
  **/
 function getCharCount (e, s) {
   s = s || ','
@@ -347,8 +349,8 @@ function getCharCount (e, s) {
  * Get the density of links as a percentage of the content
  * This is the amount of text that is inside a link divided by the total text in the node.
  *
- * @param Element
- * @return number (float)
+ * @param {jQuery} element
+ * @return {Number} (float)
  **/
 function getLinkDensity (e) {
   const links = e.getElementsByTagName('a')
@@ -368,8 +370,8 @@ function getLinkDensity (e) {
  * Get an elements class/id weight. Uses regular expressions to tell if this
  * element looks good or bad.
  *
- * @param Element
- * @return number (Integer)
+ * @param {jQuery} element
+ * @return {Number} (Integer)
  **/
 function getClassWeight (e) {
   let weight = 0
@@ -395,9 +397,9 @@ function getClassWeight (e) {
  * Clean a node of all elements of type "tag".
  * (Unless it's a youtube/vimeo video. People love movies.)
  *
- * @param Element
+ * @param {jQuery} element
  * @param string tag to clean
- * @return void
+ * @return {Void}
  **/
 function clean (e, tag) {
   const targetList = e.getElementsByTagName(tag)
@@ -433,7 +435,7 @@ function clean (e, tag) {
  * Clean an element of all tags of type "tag" if they look fishy.
  * "Fishy" is an algorithm based on content length, classnames, link density, number of images & embeds, etc.
  *
- * @return void
+ * @return {Void}
  **/
 function cleanConditionally (e, tag) {
   const tagsList = e.getElementsByTagName(tag)
@@ -500,6 +502,11 @@ function cleanConditionally (e, tag) {
 
 /**
  * Converts relative urls to absolute for images and links
+ *
+ * @param {jQuery} element
+ *
+ * @return {Void}
+ *
  **/
 function fixLinks (e) {
   if (!e.ownerDocument.originalURL) {
@@ -532,8 +539,8 @@ function fixLinks (e) {
 /**
  * Clean out spurious headers from an Element. Checks things like classnames and link density.
  *
- * @param Element
- * @return void
+ * @param {jQuery} element
+ * @return {Void}
  **/
 function cleanHeaders (e) {
   for (let headerIndex = 1; headerIndex < 7; headerIndex++) {
@@ -549,8 +556,8 @@ function cleanHeaders (e) {
 /**
  * Remove the header that doesn't have next sibling.
  *
- * @param Element
- * @return void
+ * @param {jQuery} element
+ * @return {Void}
  **/
 
 function cleanSingleHeader (e) {
@@ -563,6 +570,13 @@ function cleanSingleHeader (e) {
     }
   }
 }
+
+/**
+ * Cleans the article content
+ *
+ * @param {jQuery} element
+ * @return {Void}
+ **/
 
 function prepArticle (articleContent) {
   cleanStyles(articleContent)
@@ -616,8 +630,8 @@ function prepArticle (articleContent) {
  * Initialize a node with the readability object. Also checks the
  * className/id for special names to add to its score.
  *
- * @param Element
- * @return void
+ * @param {jQuery} element
+ * @return {Void}
  **/
 function initializeNode (node) {
   node.readability = { contentScore: 0 }

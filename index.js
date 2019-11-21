@@ -19,49 +19,67 @@ const jsdom = require('jsdom')
 const { JSDOM } = jsdom
 const helpers = require('./helpers')
 
-module.exports = {
-  parseArticle: async function (options, socket) {
-    let article = {}
+/**
+ * main article parser module export function
+ *
+ * @param {Object} options - the options object
+ * @param {Object} socket - the optional socket
+ *
+ * @return {Object} article parser results object
+ *
+ */
 
-    if (typeof socket === 'undefined') {
-      socket = { emit: function (type, status) { console.log(status) } }
-    }
+module.exports.parseArticle = async function (options, socket) {
+  let article = {}
 
-    if (typeof options.enabled === 'undefined') {
-      options.enabled = []
-    }
-
-    if (typeof options.puppeteer === 'undefined') {
-      options.puppeteer = {}
-    }
-
-    if (typeof options.puppeteer.launch === 'undefined') {
-      options.puppeteer.launch = {
-        headless: true,
-        defaultViewport: null
-      }
-    }
-
-    if (typeof options.puppeteer.goto === 'undefined') {
-      options.puppeteer.goto = {
-        waitUntil: 'domcontentloaded'
-      }
-    }
-
-    const actions = [articleParser(options, socket)]
-
-    if (options.enabled.includes('lighthouse')) {
-      actions.push(lighthouseAnalysis(options, socket))
-    }
-
-    const results = await Promise.all(actions)
-
-    article = results[0]
-    article.lighthouse = results[1]
-
-    return article
+  if (typeof socket === 'undefined') {
+    socket = { emit: function (type, status) { console.log(status) } }
   }
+
+  if (typeof options.enabled === 'undefined') {
+    options.enabled = []
+  }
+
+  if (typeof options.puppeteer === 'undefined') {
+    options.puppeteer = {}
+  }
+
+  if (typeof options.puppeteer.launch === 'undefined') {
+    options.puppeteer.launch = {
+      headless: true,
+      defaultViewport: null
+    }
+  }
+
+  if (typeof options.puppeteer.goto === 'undefined') {
+    options.puppeteer.goto = {
+      waitUntil: 'domcontentloaded'
+    }
+  }
+
+  const actions = [articleParser(options, socket)]
+
+  if (options.enabled.includes('lighthouse')) {
+    actions.push(lighthouseAnalysis(options, socket))
+  }
+
+  const results = await Promise.all(actions)
+
+  article = results[0]
+  article.lighthouse = results[1]
+
+  return article
 }
+
+/**
+ * article scraping function
+ *
+ * @param {Object} options - the options object
+ * @param {Object} socket - the optional socket
+ *
+ * @return {Object} article parser results object
+ *
+ */
 
 const articleParser = async function (options, socket) {
   const article = {}
@@ -284,7 +302,7 @@ const articleParser = async function (options, socket) {
   article.processed.text.html = await getHtmlText(article.processed.text.formatted)
 
   // Raw Text (text prepared for keyword analysis & named entity recongnition)
-  article.processed.text.raw = await getRawText(article.processed.html, article.title.text)
+  article.processed.text.raw = await getRawText(article.processed.html)
 
   // Excerpt
   article.excerpt = helpers.capitalizeFirstLetter(article.processed.text.raw.replace(/^(.{200}[^\s]*).*/, '$1'))
@@ -342,7 +360,7 @@ const articleParser = async function (options, socket) {
   if (options.enabled.includes('spelling')) {
     socket.emit('parse:status', 'Check Spelling')
 
-    article.spelling = await spellCheck(article.processed.text.formatted, article.topics, options.retextspell)
+    article.spelling = await spellCheck(article.processed.text.formatted, options.retextspell)
   }
 
   // Evaluate keywords & keyphrases
@@ -369,28 +387,29 @@ const articleParser = async function (options, socket) {
   return article
 }
 
-const spellCheck = function (text, topics, options) {
+/**
+ * checks the spelling of the article
+ *
+ * @param {String} text - the string of text to run the spellcheck against
+ * @param {Object} options - [retext-spell options]{@link https://github.com/retextjs/retext-spell}
+ * @param {Array} options.dictionary - by default is set to [en-gb]{@link https://github.com/wooorm/dictionaries/tree/master/dictionaries/en-GB}.
+ *
+ * @return {Object} object containing potentially misspelled words
+ *
+ */
+
+const spellCheck = function (text, options) {
   text = text.replace(/[0-9]{1,}[a-zA-Z]{1,}/gi, '')
 
   return new Promise(function (resolve, reject) {
-    let ignoreList = _.map(topics, 'normal')
-    ignoreList = ignoreList.join(' ')
-    ignoreList = helpers.toTitleCase(ignoreList) + ' ' + ignoreList.toUpperCase()
-    ignoreList = ignoreList.split(' ')
-
     if (typeof options === 'undefined') {
       options = {
-        dictionary: dictionary,
-        ignore: ignoreList
+        dictionary: dictionary
       }
     }
 
     if (typeof options.dictionary === 'undefined') {
       options.dictionary = dictionary
-    }
-
-    if (typeof options.personalDictionary === 'undefined') {
-      options.personalDictionary = []
     }
 
     retext()
@@ -407,7 +426,16 @@ const spellCheck = function (text, topics, options) {
   })
 }
 
-const getRawText = function (html, title, options) {
+/**
+ * takes the article body and returns the raw text of the article
+ *
+ * @param {String} html - the html string to process
+ *
+ * @return {String} raw text of the article in lower case
+ *
+ */
+
+const getRawText = function (html) {
   return new Promise(function (resolve, reject) {
     // Lowercase for analysis
     const options = {
@@ -431,6 +459,18 @@ const getRawText = function (html, title, options) {
     resolve(rawText)
   })
 }
+
+/**
+ * takes the article body and the derived title and returns the formatted text of the article with links made absolute.
+ *
+ * @param {String} html - the body html string to process
+ * @param {String} title - the title string to process
+ * @param {String} baseurl - the base url of the page being scraped
+ * @param {Object} options - the [htmltotext]{@link https://github.com/werk85/node-html-to-text} formatting options
+ *
+ * @return {String} formatted text of the article
+ *
+ */
 
 const getFormattedText = function (html, title, baseurl, options) {
   return new Promise(function (resolve, reject) {
@@ -463,6 +503,15 @@ const getFormattedText = function (html, title, baseurl, options) {
   })
 }
 
+/**
+ * takes the formatted article body text and returns the "clean" html text of the article
+ *
+ * @param {String} text - the formatted text string to process
+ *
+ * @return {String} the clean html text of the article
+ *
+ */
+
 const getHtmlText = function (text) {
   return new Promise(function (resolve, reject) {
     // Replace windows line breaks with linux line breaks & split each line into array
@@ -483,6 +532,16 @@ const getHtmlText = function (text) {
   })
 }
 
+/**
+ * takes a string of html and runs it through [clean-html]{@link https://github.com/dave-kennedy/clean-html}
+ *
+ * @param {String} html - the html to clean
+ * @param {Object} options - the [clean-html options]{@link https://github.com/dave-kennedy/clean-html#options}
+ *
+ * @return {String} the cleaned html
+ *
+ */
+
 const htmlCleaner = function (html, options) {
   return new Promise(function (resolve, reject) {
     if (typeof options === 'undefined') {
@@ -498,6 +557,16 @@ const htmlCleaner = function (html, options) {
     })
   })
 }
+
+/**
+ * takes a string of html and runs it through [retext-keywords]{@link https://github.com/retextjs/retext-keywords} and returns keyword and keyphrase suggestions
+ *
+ * @param {String} html - the html to process
+ * @param {Object} options - the [retext-keywords options]{@link https://github.com/retextjs/retext-keywords#api}
+ *
+ * @return {Object} the keyword and keyphrase suggestions
+ *
+ */
 
 const keywordParser = function (html, options) {
   return new Promise(function (resolve, reject) {
@@ -547,6 +616,16 @@ const keywordParser = function (html, options) {
   })
 }
 
+/**
+ * runs a google lighthouse audit on the target article
+ *
+ * @param {Object} options - the article parser options object
+  * @param {Object} options.puppeteer.launch - the pupperteer launch options
+ *
+ * @return {Object} the google lighthouse analysis
+ *
+ */
+
 const lighthouseAnalysis = async function (options, socket) {
   socket.emit('parse:status', 'Starting Lighthouse')
 
@@ -564,6 +643,15 @@ const lighthouseAnalysis = async function (options, socket) {
 
   return results.lhr
 }
+
+/**
+ * gets the best available title for the article
+ *
+ * @param {String} document - the html document
+ *
+ * @return {String} the title of the article
+ *
+ */
 
 const getTitle = function (document) {
   var title = findMetaTitle(document) || document.title
@@ -583,6 +671,15 @@ const getTitle = function (document) {
 
   return title
 }
+
+/**
+ * gets the best available meta title of the article
+ *
+ * @param {String} document - the html document
+ *
+ * @return {String} the best available meta title of the article
+ *
+ */
 
 const findMetaTitle = function (document) {
   var metaTags = document.getElementsByTagName('meta')
