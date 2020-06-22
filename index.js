@@ -47,7 +47,8 @@ module.exports.parseArticle = async function (options, socket) {
   if (typeof options.puppeteer.launch === 'undefined') {
     options.puppeteer.launch = {
       headless: true,
-      defaultViewport: null
+      defaultViewport: null,
+      handleSIGINT: false
     }
   }
 
@@ -273,6 +274,8 @@ const articleParser = async function (options, socket) {
     content = helpers.grabArticle(dom.window.document).innerHTML
   }
 
+  await browser.close();
+
   // Turn relative links into absolute links & assign processed html
   article.processed.html = await absolutify(content, article.baseurl)
 
@@ -363,8 +366,6 @@ const articleParser = async function (options, socket) {
     // Evaluate processed content keywords & keyphrases
     Object.assign(article.processed, await keywordParser(article.processed.text.raw, options.retextkeywords))
   }
-
-  await browser.close()
 
   socket.emit('parse:status', 'Horseman Anaysis Complete')
 
