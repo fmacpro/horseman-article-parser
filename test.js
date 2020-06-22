@@ -2,7 +2,7 @@ const parser = require('./index.js')
 const fs = require('fs')
 
 const options = {
-  url: 'https://en.wikipedia.org/wiki/Act_of_Parliament_(UK)',
+  url: 'https://www.theguardian.com/world/2020/jun/22/boris-johnson-theres-may-ignored-claims-russia-had-likely-hold-over-donald-trump-ex-spy-christopher-steele-claims',
   enabled: ['lighthouse', 'screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords']
   // enabled: ['links', 'sentiment', 'entities', 'spelling', 'keywords']
 }

@@ -47,7 +47,8 @@ module.exports.parseArticle = async function (options, socket) {
   if (typeof options.puppeteer.launch === 'undefined') {
     options.puppeteer.launch = {
       headless: true,
-      defaultViewport: null
+      defaultViewport: null,
+      handleSIGINT: false
     }
   }
 
@@ -273,6 +274,8 @@ const articleParser = async function (options, socket) {
     content = helpers.grabArticle(dom.window.document).innerHTML
   }
 
+  await browser.close();
+
   // Turn relative links into absolute links & assign processed html
   article.processed.html = await absolutify(content, article.baseurl)
 
@@ -328,32 +331,16 @@ const articleParser = async function (options, socket) {
     socket.emit('parse:status', 'Named Entity Recognition')
 
     // People
-    article.people = nlp(article.processed.text.raw).people().out('topk')
-
-    article.people.sort(function (a, b) {
-      return (a.percent > b.percent) ? -1 : 1
-    })
+    article.people = nlp(article.processed.text.raw).people().json()
 
     // Places
-    article.places = nlp(article.processed.text.raw).places().out('topk')
-
-    article.places.sort(function (a, b) {
-      return (a.percent > b.percent) ? -1 : 1
-    })
+    article.places = nlp(article.processed.text.raw).places().json()
 
     // Orgs & Places
-    article.orgs = nlp(article.processed.text.raw).organizations().out('topk')
-
-    article.orgs.sort(function (a, b) {
-      return (a.percent > b.percent) ? -1 : 1
-    })
+    article.orgs = nlp(article.processed.text.raw).organizations().json()
 
     // Topics
-    article.topics = nlp(article.processed.text.raw).topics().out('topk')
-
-    article.topics.sort(function (a, b) {
-      return (a.percent > b.percent) ? -1 : 1
-    })
+    article.topics = nlp(article.processed.text.raw).topics().json()
   }
 
   // Spelling
@@ -379,8 +366,6 @@ const articleParser = async function (options, socket) {
     // Evaluate processed content keywords & keyphrases
     Object.assign(article.processed, await keywordParser(article.processed.text.raw, options.retextkeywords))
   }
-
-  await browser.close()
 
   socket.emit('parse:status', 'Horseman Anaysis Complete')
 
