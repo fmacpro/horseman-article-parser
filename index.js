@@ -328,32 +328,16 @@ const articleParser = async function (options, socket) {
     socket.emit('parse:status', 'Named Entity Recognition')
 
     // People
-    article.people = nlp(article.processed.text.raw).people().out('topk')
-
-    article.people.sort(function (a, b) {
-      return (a.percent > b.percent) ? -1 : 1
-    })
+    article.people = nlp(article.processed.text.raw).people().json()
 
     // Places
-    article.places = nlp(article.processed.text.raw).places().out('topk')
-
-    article.places.sort(function (a, b) {
-      return (a.percent > b.percent) ? -1 : 1
-    })
+    article.places = nlp(article.processed.text.raw).places().json()
 
     // Orgs & Places
-    article.orgs = nlp(article.processed.text.raw).organizations().out('topk')
-
-    article.orgs.sort(function (a, b) {
-      return (a.percent > b.percent) ? -1 : 1
-    })
+    article.orgs = nlp(article.processed.text.raw).organizations().json()
 
     // Topics
-    article.topics = nlp(article.processed.text.raw).topics().out('topk')
-
-    article.topics.sort(function (a, b) {
-      return (a.percent > b.percent) ? -1 : 1
-    })
+    article.topics = nlp(article.processed.text.raw).topics().json()
   }
 
   // Spelling
