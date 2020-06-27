@@ -2,7 +2,7 @@ const parser = require('./index.js')
 const fs = require('fs')
 
 const options = {
-  url: 'https://www.theguardian.com/world/2020/jun/22/boris-johnson-theres-may-ignored-claims-russia-had-likely-hold-over-donald-trump-ex-spy-christopher-steele-claims',
+  url: 'https://www.theguardian.com/travel/2020/jun/26/britons-to-be-allowed-to-holiday-abroad-from-july-via-air-bridges',
   enabled: ['lighthouse', 'screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords']
   // enabled: ['links', 'sentiment', 'entities', 'spelling', 'keywords']
 }
