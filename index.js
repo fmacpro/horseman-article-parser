@@ -1,8 +1,8 @@
 const puppeteer = require('puppeteer-extra')
-const stealth = require('puppeteer-extra-plugin-stealth')();
+const stealth = require('puppeteer-extra-plugin-stealth')()
 // https://github.com/berstend/puppeteer-extra/issues/211
-stealth.onBrowser = () => {};
-puppeteer.use(stealth);
+stealth.onBrowser = () => {}
+puppeteer.use(stealth)
 
 const lighthouse = require('lighthouse')
 const retext = require('retext')
@@ -280,7 +280,7 @@ const articleParser = async function (options, socket) {
     content = helpers.grabArticle(dom.window.document).innerHTML
   }
 
-  browser.close();
+  browser.close()
 
   // Turn relative links into absolute links & assign processed html
   article.processed.html = await absolutify(content, article.baseurl)
