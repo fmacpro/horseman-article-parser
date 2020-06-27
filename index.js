@@ -1,6 +1,9 @@
 const puppeteer = require('puppeteer-extra')
-const pluginStealth = require('puppeteer-extra-plugin-stealth')
-puppeteer.use(pluginStealth())
+const stealth = require('puppeteer-extra-plugin-stealth')();
+// https://github.com/berstend/puppeteer-extra/issues/211
+stealth.onBrowser = () => {};
+puppeteer.use(stealth);
+
 const lighthouse = require('lighthouse')
 const retext = require('retext')
 const nlcstToString = require('nlcst-to-string')
