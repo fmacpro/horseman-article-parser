@@ -1,6 +1,9 @@
 const puppeteer = require('puppeteer-extra')
-const pluginStealth = require('puppeteer-extra-plugin-stealth')
-puppeteer.use(pluginStealth())
+const stealth = require('puppeteer-extra-plugin-stealth')()
+// https://github.com/berstend/puppeteer-extra/issues/211
+stealth.onBrowser = () => {}
+puppeteer.use(stealth)
+
 const lighthouse = require('lighthouse')
 const retext = require('retext')
 const nlcstToString = require('nlcst-to-string')
@@ -112,6 +115,9 @@ const articleParser = async function (options, socket) {
 
   const page = await browser.newPage()
 
+  // Ignore content security policies
+  page.setBypassCSP(true)
+
   await page.setRequestInterception(true)
 
   page.on('request', request => {
@@ -135,7 +141,7 @@ const articleParser = async function (options, socket) {
 
   if (!response) {
     socket.emit('parse:status', 'Failed to fetch ' + options.url + ' (timeout)')
-    await browser.close()
+    browser.close()
     return false
   }
 
@@ -166,7 +172,7 @@ const articleParser = async function (options, socket) {
 
   if (article.status === 403 || article.status === 404) {
     socket.emit('parse:status', 'Failed to fetch ' + options.url + ' ' + article.status)
-    await browser.close()
+    browser.close()
     return false
   }
 
@@ -274,7 +280,7 @@ const articleParser = async function (options, socket) {
     content = helpers.grabArticle(dom.window.document).innerHTML
   }
 
-  await browser.close();
+  browser.close()
 
   // Turn relative links into absolute links & assign processed html
   article.processed.html = await absolutify(content, article.baseurl)
@@ -622,7 +628,7 @@ const lighthouseAnalysis = async function (options, socket) {
     output: 'json'
   })
 
-  await browser.close()
+  browser.close()
 
   socket.emit('parse:status', 'Lighthouse Analysis Complete')
 
