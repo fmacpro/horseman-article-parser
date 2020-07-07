@@ -657,7 +657,7 @@ const getTitle = function (document, options) {
  */
 
 const findMetaTitle = function (document) {
-  const metaTags = document.getElementsByTagName('meta')
+  let metaTags = document.getElementsByTagName('meta')
   let tag
 
   for (let i = 0; i < metaTags.length; i++) {
