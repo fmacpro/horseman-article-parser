@@ -89,6 +89,11 @@ var options = {
       waitUntil: 'domcontentloaded'
     }
   },
+  title: {
+    useBestTitlePart: false, // true turns on the title processing
+    commonSeparatingCharacters: [' | ', ' _ ', ' - ', '«', '»', ' — ', ' — ', ' – '],
+    minimumTitlePartLength: 10
+  },
   // clean-html options (https://ghub.io/clean-html)
   cleanhtml: {
     'add-remove-tags': ['blockquote', 'span'],
@@ -131,6 +136,18 @@ If you want to pass cookies to puppeteer use the following
 var options = {
   puppeteer: {
     cookies: [{ name: 'cookie1', value: 'val1', domain: '.domain1' },{ name: 'cookie2', value: 'val2', domain: '.domain2' }]
+  }
+}
+```
+
+To use the built in document title processing set at least `useBestTitlePart: true`
+
+```
+var options = {
+  title: {
+    useBestTitlePart: true, // true turns on the title processing
+    commonSeparatingCharacters: [' | ', ' _ ', ' - ', '«', '»', ' — ', ' — ', ' – '],
+    minimumTitlePartLength: 10
   }
 }
 ```

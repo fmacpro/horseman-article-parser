@@ -2,8 +2,13 @@ const parser = require('./index.js')
 const fs = require('fs')
 
 const options = {
-  url: 'https://www.theguardian.com/education/2020/jul/07/headteachers-across-england-call-for-exams-to-be-cut-back-next-year',
-  enabled: ['lighthouse', 'screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords']
+  url: 'https://www.theguardian.com/society/2020/jul/08/denial-of-womens-concerns-contributed-to-medical-scandals-says-inquiry',
+  enabled: ['lighthouse', 'screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords'],
+  title: {
+    useBestTitlePart: true, // true turns on the title processing
+    commonSeparatingCharacters: [' | ', ' _ ', ' - ', '«', '»', ' — ', ' — ', ' – '],
+    minimumTitlePartLength: 10
+  }
   // enabled: ['links', 'sentiment', 'entities', 'spelling', 'keywords']
 }
 

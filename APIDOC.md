@@ -34,6 +34,9 @@
 <dt><a href="#findMetaTitle">findMetaTitle(document)</a> ⇒ <code>String</code></dt>
 <dd><p>gets the best available meta title of the article</p>
 </dd>
+<dt><a href="#setDefaultOptions">setDefaultOptions(options)</a> ⇒ <code>Object</code></dt>
+<dd><p>sets the default options</p>
+</dd>
 <dt><a href="#prepDocument">prepDocument(document)</a> ⇒ <code>Void</code></dt>
 <dd><p>Prepare the HTML document for readability to process it.
 This includes things like stripping javascript, CSS, and handling terrible markup.</p>
@@ -226,6 +229,18 @@ gets the best available meta title of the article
 | Param | Type | Description |
 | --- | --- | --- |
 | document | <code>String</code> | the html document |
+
+<a name="setDefaultOptions"></a>
+
+## setDefaultOptions(options) ⇒ <code>Object</code>
+sets the default options
+
+**Kind**: global function  
+**Returns**: <code>Object</code> - options with defaults set if options are not specified  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| options | <code>Object</code> | the options object |
 
 <a name="prepDocument"></a>
 
