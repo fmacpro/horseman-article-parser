@@ -1,4 +1,67 @@
-var url = require('url')
+const url = require('url')
+
+/**
+ * sets the default options
+ *
+ * @param {Object} options - the options object
+ *
+ * @return {Object} options with defaults set if options are not specified
+ *
+ */
+
+module.exports.setDefaultOptions = function (options) {
+  if (!options.hasOwnProperty('enabled')) {
+    options.enabled = []
+  }
+
+  if (!options.hasOwnProperty('puppeteer')) {
+    options.puppeteer = {}
+  }
+
+  if (!options.puppeteer.hasOwnProperty('launch')) {
+    options.puppeteer.launch = {
+      headless: true,
+      defaultViewport: null,
+      handleSIGINT: false
+    }
+  }
+
+  if (!options.puppeteer.hasOwnProperty('goto')) {
+    options.puppeteer.goto = {
+      waitUntil: 'domcontentloaded'
+    }
+  }
+
+  if (!options.hasOwnProperty('striptags')) {
+    options.striptags = []
+  }
+
+  if (!options.hasOwnProperty('blockedResourceTypes')) {
+    options.blockedResourceTypes = []
+  }
+
+  if (!options.hasOwnProperty('skippedResources')) {
+    options.skippedResources = []
+  }
+
+  if (!options.hasOwnProperty('title')) {
+    options.title = {}
+  }
+
+  if (!options.title.hasOwnProperty('useBestTitlePart')) {
+    options.title.useBestTitlePart = false
+  }
+
+  if (!options.title.hasOwnProperty('minimumTitlePartLength')) {
+    options.title.minimumTitlePartLength = 10
+  }
+
+  if (!options.title.hasOwnProperty('commonSeparatingCharacters')) {
+    options.title.commonSeparatingCharacters = [' | ', ' _ ', ' - ', '«', '»', ' — ', ' — ', ' – ']
+  }
+
+  return options
+}
 
 module.exports.capitalizeFirstLetter = function (string) {
   return string.charAt(0).toUpperCase() + string.slice(1)

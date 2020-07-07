@@ -33,33 +33,11 @@ const helpers = require('./helpers')
  */
 
 module.exports.parseArticle = async function (options, socket) {
-  let article = {}
-
   if (typeof socket === 'undefined') {
     socket = { emit: function (type, status) { console.log(status) } }
   }
 
-  if (typeof options.enabled === 'undefined') {
-    options.enabled = []
-  }
-
-  if (typeof options.puppeteer === 'undefined') {
-    options.puppeteer = {}
-  }
-
-  if (typeof options.puppeteer.launch === 'undefined') {
-    options.puppeteer.launch = {
-      headless: true,
-      defaultViewport: null,
-      handleSIGINT: false
-    }
-  }
-
-  if (typeof options.puppeteer.goto === 'undefined') {
-    options.puppeteer.goto = {
-      waitUntil: 'domcontentloaded'
-    }
-  }
+  options = helpers.setDefaultOptions(options)
 
   const actions = [articleParser(options, socket)]
 
@@ -69,7 +47,8 @@ module.exports.parseArticle = async function (options, socket) {
 
   const results = await Promise.all(actions)
 
-  article = results[0]
+  const article = results[0]
+
   article.lighthouse = results[1]
 
   return article
@@ -95,18 +74,6 @@ const articleParser = async function (options, socket) {
   article.processed = {}
   article.processed.text = {}
   article.lighthouse = {}
-
-  if (typeof options.striptags === 'undefined') {
-    options.striptags = []
-  }
-
-  if (typeof options.blockedResourceTypes === 'undefined') {
-    options.blockedResourceTypes = []
-  }
-
-  if (typeof options.skippedResources === 'undefined') {
-    options.skippedResources = []
-  }
 
   socket.emit('parse:status', 'Starting Horseman')
 
@@ -200,7 +167,7 @@ const articleParser = async function (options, socket) {
   socket.emit('parse:status', 'Evaluating Meta Data')
 
   const meta = await page.evaluate(() => {
-    const j = window.$
+    var j = window.$
 
     var arr = j('meta')
     var meta = {}
@@ -228,7 +195,7 @@ const articleParser = async function (options, socket) {
 
   // HTML Cleaning
   let html = await page.evaluate((options) => {
-    const j = window.$
+    var j = window.$
 
     for (var i = 0; i < options.length; i++) {
       j(options[i]).remove()
@@ -253,7 +220,7 @@ const articleParser = async function (options, socket) {
   await helpers.prepDocument(dom.window.document)
 
   // Title
-  article.title.text = await getTitle(dom.window.document)
+  article.title.text = await getTitle(dom.window.document, options.title)
 
   let content = ''
 
@@ -261,7 +228,7 @@ const articleParser = async function (options, socket) {
   if (article.host === 'twitter.com') { // Twitter Content
     // Tweet
     content = await page.evaluate(() => {
-      const j = window.$
+      var j = window.$
 
       j('.permalink-tweet-container .js-tweet-text-container .twitter-timeline-link').remove()
 
@@ -644,12 +611,16 @@ const lighthouseAnalysis = async function (options, socket) {
  *
  */
 
-const getTitle = function (document) {
+const getTitle = function (document, options) {
   const title = findMetaTitle(document) || document.title
-  let betterTitle
-  const commonSeparatingCharacters = [' | ', ' _ ', ' - ', '«', '»', '—']
 
-  commonSeparatingCharacters.forEach(function (char) {
+  if (options.useBestTitlePart === false) {
+    return title
+  }
+
+  let betterTitle
+
+  options.commonSeparatingCharacters.forEach(function (char) {
     const tmpArray = title.split(char)
 
     // if there are at least 2 parts
@@ -659,19 +630,17 @@ const getTitle = function (document) {
       const possibleTitle2 = tmpArray[1].trim()
 
       // If the first part of the title is longer than the second part
-      if (possibleTitle1.length > possibleTitle2) {
+      if (possibleTitle1.length > possibleTitle2.length) {
         // set title to the first part
         betterTitle = possibleTitle1
       } else {
-        // otherise set it to the second part
+        // otherwise set it to the second part
         betterTitle = possibleTitle2
       }
     }
   })
 
-  // note: I'm not sure about 10 characters being sensible here either.
-  // look at exposing more of this title selection functionality to the config
-  if (betterTitle && betterTitle.length > 10) {
+  if (betterTitle && betterTitle.length > options.minimumTitlePartLength) {
     return betterTitle
   }
 
@@ -688,10 +657,10 @@ const getTitle = function (document) {
  */
 
 const findMetaTitle = function (document) {
-  var metaTags = document.getElementsByTagName('meta')
-  var tag
+  const metaTags = document.getElementsByTagName('meta')
+  let tag
 
-  for (var i = 0; i < metaTags.length; i++) {
+  for (let i = 0; i < metaTags.length; i++) {
     tag = metaTags[i]
 
     if (tag.getAttribute('property') === 'og:title' || tag.getAttribute('name') === 'twitter:title') {
