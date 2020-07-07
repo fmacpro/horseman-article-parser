@@ -645,17 +645,32 @@ const lighthouseAnalysis = async function (options, socket) {
  */
 
 const getTitle = function (document) {
-  var title = findMetaTitle(document) || document.title
-  var betterTitle
-  var commonSeparatingCharacters = [' | ', ' _ ', ' - ', '«', '»', '—']
+  const title = findMetaTitle(document) || document.title
+  let betterTitle
+  const commonSeparatingCharacters = [' | ', ' _ ', ' - ', '«', '»', '—']
 
   commonSeparatingCharacters.forEach(function (char) {
-    var tmpArray = title.split(char)
+    const tmpArray = title.split(char)
+
+    // if there are at least 2 parts
+    // note: this probably needs to be improved to deal with cases where more than 2 separators are used
     if (tmpArray.length > 1) {
-      betterTitle = tmpArray[0].trim()
+      const possibleTitle1 = tmpArray[0].trim()
+      const possibleTitle2 = tmpArray[1].trim()
+
+      // If the first part of the title is longer than the second part
+      if (possibleTitle1.length > possibleTitle2) {
+        // set title to the first part
+        betterTitle = possibleTitle1
+      } else {
+        // otherise set it to the second part
+        betterTitle = possibleTitle2
+      }
     }
   })
 
+  // note: I'm not sure about 10 characters being sensible here either.
+  // look at exposing more of this title selection functionality to the config
   if (betterTitle && betterTitle.length > 10) {
     return betterTitle
   }
