@@ -140,18 +140,6 @@ var options = {
 }
 ```
 
-To use the built in document title processing set at least `useBestTitlePart: true`
-
-```
-var options = {
-  title: {
-    useBestTitlePart: true, // true turns on the title processing
-    commonSeparatingCharacters: [' | ', ' _ ', ' - ', '«', '»', ' — ', ' — ', ' – '],
-    minimumTitlePartLength: 10
-  }
-}
-```
-
 To strip tags before processing use the following
 
 ```

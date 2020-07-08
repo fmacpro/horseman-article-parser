@@ -612,37 +612,13 @@ const lighthouseAnalysis = async function (options, socket) {
  */
 
 const getTitle = function (document, options) {
-  const title = findMetaTitle(document) || document.title
+  let title = findMetaTitle(document) || document.title
 
-  if (options.useBestTitlePart === false) {
-    return title
-  }
+  // replace all 3 types of line breaks with a space
+  title = title.replace(/(\r\n|\n|\r)/gm, ' ')
 
-  let betterTitle
-
-  options.commonSeparatingCharacters.forEach(function (char) {
-    const tmpArray = title.split(char)
-
-    // if there are at least 2 parts
-    // note: this probably needs to be improved to deal with cases where more than 2 separators are used
-    if (tmpArray.length > 1) {
-      const possibleTitle1 = tmpArray[0].trim()
-      const possibleTitle2 = tmpArray[1].trim()
-
-      // If the first part of the title is longer than the second part
-      if (possibleTitle1.length > possibleTitle2.length) {
-        // set title to the first part
-        betterTitle = possibleTitle1
-      } else {
-        // otherwise set it to the second part
-        betterTitle = possibleTitle2
-      }
-    }
-  })
-
-  if (betterTitle && betterTitle.length > options.minimumTitlePartLength) {
-    return betterTitle
-  }
+  // replace all double white spaces with single spaces
+  title = title.replace(/\s+/g, ' ')
 
   return title
 }
@@ -657,7 +633,7 @@ const getTitle = function (document, options) {
  */
 
 const findMetaTitle = function (document) {
-  let metaTags = document.getElementsByTagName('meta')
+  const metaTags = document.getElementsByTagName('meta')
   let tag
 
   for (let i = 0; i < metaTags.length; i++) {

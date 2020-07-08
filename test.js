@@ -2,13 +2,8 @@ const parser = require('./index.js')
 const fs = require('fs')
 
 const options = {
-  url: 'https://www.theguardian.com/society/2020/jul/08/denial-of-womens-concerns-contributed-to-medical-scandals-says-inquiry',
-  enabled: ['lighthouse', 'screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords'],
-  title: {
-    useBestTitlePart: true, // true turns on the title processing
-    commonSeparatingCharacters: [' | ', ' _ ', ' - ', '«', '»', ' — ', ' — ', ' – '],
-    minimumTitlePartLength: 10
-  }
+  url: 'https://www.theguardian.com/uk-news/2020/jul/08/rishi-sunak-unveils-stamp-duty-holiday-and-hospitality-vat-cut-furloughed-coronavirus',
+  enabled: ['lighthouse', 'screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords']
   // enabled: ['links', 'sentiment', 'entities', 'spelling', 'keywords']
 }
 
