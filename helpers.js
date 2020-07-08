@@ -48,18 +48,6 @@ module.exports.setDefaultOptions = function (options) {
     options.title = {}
   }
 
-  if (!options.title.hasOwnProperty('useBestTitlePart')) {
-    options.title.useBestTitlePart = false
-  }
-
-  if (!options.title.hasOwnProperty('minimumTitlePartLength')) {
-    options.title.minimumTitlePartLength = 10
-  }
-
-  if (!options.title.hasOwnProperty('commonSeparatingCharacters')) {
-    options.title.commonSeparatingCharacters = [' | ', ' _ ', ' - ', '«', '»', ' — ', ' — ', ' – ']
-  }
-
   return options
 }
 
