@@ -91,11 +91,6 @@ var options = {
     // Ignore content security policy
     setBypassCSP: true 
   },
-  title: {
-    useBestTitlePart: false, // true turns on the title processing
-    commonSeparatingCharacters: [' | ', ' _ ', ' - ', '«', '»', ' — ', ' — ', ' – '],
-    minimumTitlePartLength: 10
-  },
   // clean-html options (https://ghub.io/clean-html)
   cleanhtml: {
     'add-remove-tags': ['blockquote', 'span'],
