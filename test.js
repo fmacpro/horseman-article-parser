@@ -1,10 +1,20 @@
 const parser = require('./index.js')
 const fs = require('fs')
 
+/** add some names | https://observablehq.com/@spencermountain/compromise-plugins */
+const testPlugin = function (Doc, world) {
+  world.addWords({
+    rishi: 'FirstName',
+    sunak: 'LastName'
+  })
+}
+
 const options = {
-  url: 'https://www.theguardian.com/uk-news/2020/jul/08/rishi-sunak-unveils-stamp-duty-holiday-and-hospitality-vat-cut-furloughed-coronavirus',
-  enabled: ['lighthouse', 'screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords']
-  // enabled: ['links', 'sentiment', 'entities', 'spelling', 'keywords']
+  url: 'https://www.theguardian.com/commentisfree/2020/jul/08/the-guardian-view-on-rishi-sunak-right-words-right-focus-wrong-policies',
+  enabled: ['lighthouse', 'screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords'],
+  nlp: {
+    plugins: [testPlugin]
+  }
 }
 
 parser.parseArticle(options)

@@ -87,7 +87,9 @@ var options = {
     // puppeteer goto options (https://github.com/GoogleChrome/puppeteer/blob/master/docs/api.md#pagegotourl-options)
     goto: {
       waitUntil: 'domcontentloaded'
-    }
+    },
+    // Ignore content security policy
+    setBypassCSP: true 
   },
   title: {
     useBestTitlePart: false, // true turns on the title processing
@@ -160,14 +162,54 @@ there are some additional "complex" options available
 
 ```
 var options = {
+
   // array of html elements to stip before analysis
   striptags: [],
+
+  // array of resource types to block e.g. ['image' ]
+  blockedResourceTypes: [],
+
+  // array of resource source names (all resources from 
+  // these sources are skipped) e.g. [ 'google', 'facebook' ]
+  skippedResources: [],
+
   // readability options (https://ghub.io/node-readability)
   readability: {},
+
   // retext spell options (https://ghub.io/retext-spell)
   retextspell: {}
+
+  // compromise nlp options
+  nlp: { plugins: [ myPlugin, anotherPlugin ] }
+
 }
 ```
+
+### Using Compromise plugins to improve results
+
+Compromise is the natural language processor that allows `horseman-article-parser` to return 
+topics e.g. people, places & organisations. You can now pass custom plugins to compromise to modify or add to the word lists like so.
+This allows us to match - for example - names which are not in the base compromise word lists.
+
+```
+/** add some names
+let testPlugin = function(Doc, world) {
+  world.addWords({
+    'rishi': 'FirstName',
+    'sunak': 'LastName',
+  })
+}
+
+const options = {
+  url: 'https://www.theguardian.com/commentisfree/2020/jul/08/the-guardian-view-on-rishi-sunak-right-words-right-focus-wrong-policies',
+  enabled: ['lighthouse', 'screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords'],
+  nlp: {
+    plugins: [testPlugin]
+  }
+}
+```
+
+Check out the compromise plugin [docs](https://observablehq.com/@spencermountain/compromise-plugins) for more info.
 
 ## Development
 

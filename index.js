@@ -39,6 +39,13 @@ module.exports.parseArticle = async function (options, socket) {
 
   options = helpers.setDefaultOptions(options)
 
+  // Allow nlp plugins to be passed in (https://observablehq.com/@spencermountain/compromise-plugins)
+  if (options.nlp.plugins.length >= 1) {
+    for (const plugin of options.nlp.plugins) {
+      nlp.extend(plugin)
+    }
+  }
+
   const actions = [articleParser(options, socket)]
 
   if (options.enabled.includes('lighthouse')) {
@@ -83,7 +90,7 @@ const articleParser = async function (options, socket) {
   const page = await browser.newPage()
 
   // Ignore content security policies
-  page.setBypassCSP(true)
+  await page.setBypassCSP(options.puppeteer.setBypassCSP)
 
   await page.setRequestInterception(true)
 
