@@ -183,8 +183,7 @@ var options = {
 ### Using Compromise plugins to improve results
 
 Compromise is the natural language processor that allows `horseman-article-parser` to return 
-topics e.g. people, places & organisations. You can now pass custom plugins to compromise to modify or add to the word lists like so.
-This allows us to match - for example - names which are not in the base compromise word lists.
+topics e.g. people, places & organisations. You can now pass custom plugins to compromise to modify or add to the word lists like so:
 
 ```
 /** add some names
@@ -203,6 +202,7 @@ const options = {
   }
 }
 ```
+This allows us to match - for example - names which are not in the base compromise word lists.
 
 Check out the compromise plugin [docs](https://observablehq.com/@spencermountain/compromise-plugins) for more info.
 
