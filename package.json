@@ -1,6 +1,6 @@
 {
   "name": "horseman-article-parser",
-  "version": "0.8.5",
+  "version": "0.8.51",
   "description": "Web Page Inspection Tool. Sentiment Analysis, Keyword Extraction, Named Entity Recognition & Spell Check",
   "main": "index.js",
   "scripts": {
@@ -26,8 +26,8 @@
     "html-to-text": "^5.1.1",
     "jquery": "^3.5.0",
     "jsdom": "^16.2.2",
-    "lighthouse": "^6.0.0",
-    "lodash": "^4.17.15",
+    "lighthouse": "^6.2.0",
+    "lodash": "^4.17.19",
     "nlcst-to-string": "^2.0.4",
     "puppeteer": "^4.0.1",
     "puppeteer-extra": "^3.1.9",
