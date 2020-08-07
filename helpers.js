@@ -32,6 +32,10 @@ module.exports.setDefaultOptions = function (options) {
     }
   }
 
+  if (!options.puppeteer.hasOwnProperty('setBypassCSP')) {
+    options.puppeteer.setBypassCSP = true
+  }
+
   if (!options.hasOwnProperty('striptags')) {
     options.striptags = []
   }
@@ -46,6 +50,14 @@ module.exports.setDefaultOptions = function (options) {
 
   if (!options.hasOwnProperty('title')) {
     options.title = {}
+  }
+
+  if (!options.hasOwnProperty('nlp')) {
+    options.nlp = {}
+  }
+
+  if (!options.nlp.hasOwnProperty('plugins')) {
+    options.nlp.plugins = []
   }
 
   return options
