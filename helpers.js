@@ -28,7 +28,7 @@ module.exports.setDefaultOptions = function (options) {
 
   if (!options.puppeteer.hasOwnProperty('goto')) {
     options.puppeteer.goto = {
-      waitUntil: 'domcontentloaded'
+      waitUntil: 'networkidle2'
     }
   }
 
@@ -75,7 +75,7 @@ module.exports.toTitleCase = function (str) {
 
 // All of the regular expressions in use within readability.
 const regexps = {
-  unlikelyCandidatesRe: /combx|modal|comment|disqus|foot|header|menu|meta|nav|rss|shoutbox|sidebar|sponsor|social|teaserlist|time|tweet|twitter/i,
+  unlikelyCandidatesRe: /combx|modal|comment|disqus|foot|header|menu|meta|nav|rss|shoutbox|sponsor|social|teaserlist|time|tweet|twitter/i,
   okMaybeItsACandidateRe: /and|article|body|column|main|story|entry|^post/im,
   positiveRe: /article|body|content|entry|hentry|page|pagination|post|section|chapter|description|main|blog|text/i,
   negativeRe: /combx|comment|contact|foot|footer|footnote|link|media|meta|promo|related|scroll|shoutbox|sponsor|utility|tags|widget/i,

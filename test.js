@@ -10,7 +10,7 @@ const testPlugin = function (Doc, world) {
 }
 
 const options = {
-  url: 'https://www.theguardian.com/commentisfree/2020/jul/08/the-guardian-view-on-rishi-sunak-right-words-right-focus-wrong-policies',
+  url: 'https://www.bbc.com/news/health-55040635',
   enabled: ['lighthouse', 'screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords'],
   nlp: {
     plugins: [testPlugin]

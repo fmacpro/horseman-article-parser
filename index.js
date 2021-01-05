@@ -98,7 +98,8 @@ const articleParser = async function (options, socket) {
     const requestUrl = request._url.split('?')[0].split('#')[0]
     if (
       options.blockedResourceTypes.indexOf(request.resourceType()) !== -1 ||
-      options.skippedResources.some(resource => requestUrl.indexOf(resource) !== -1)
+      options.skippedResources.some(resource => requestUrl.indexOf(resource) !== -1) ||
+      request.isNavigationRequest() && request.redirectChain().length
     ) {
       request.abort()
     } else {
@@ -166,7 +167,6 @@ const articleParser = async function (options, socket) {
   // Take mobile screenshot
   if (options.enabled.includes('screenshot')) {
     socket.emit('parse:status', 'Taking Mobile Screenshot')
-
     article.mobile = await page.screenshot({ encoding: 'base64', type: 'jpeg', quality: 60 })
   }
 
