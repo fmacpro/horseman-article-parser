@@ -200,6 +200,12 @@ const articleParser = async function (options, socket) {
   article.meta.description = {}
   article.meta.description.text = metaDescription
 
+  // Save the original HTML of the document
+  article.html = await page.evaluate(() => {
+    var j = window.$
+    return j('html').html()
+  })
+
   // HTML Cleaning
   let html = await page.evaluate((options) => {
     var j = window.$

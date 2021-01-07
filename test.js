@@ -38,7 +38,8 @@ parser.parseArticle(options)
       spelling: article.spelling,
       meta: article.meta,
       links: article.links,
-      lighthouse: article.lighthouse
+      lighthouse: article.lighthouse,
+      html: article.html
     }
 
     const json = JSON.stringify(response, null, 4)
