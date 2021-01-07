@@ -98,7 +98,8 @@ const articleParser = async function (options, socket) {
     const requestUrl = request._url.split('?')[0].split('#')[0]
     if (
       options.blockedResourceTypes.indexOf(request.resourceType()) !== -1 ||
-      options.skippedResources.some(resource => requestUrl.indexOf(resource) !== -1)
+      options.skippedResources.some(resource => requestUrl.indexOf(resource) !== -1) ||
+      (request.isNavigationRequest() && request.redirectChain().length)
     ) {
       request.abort()
     } else {
@@ -107,7 +108,7 @@ const articleParser = async function (options, socket) {
   })
 
   // Inject jQuery - https://stackoverflow.com/a/50598512
-  const jquery = await page.evaluate(() => window.fetch('https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js').then((res) => res.text()))
+  const jquery = await page.evaluate(() => window.fetch('https://code.jquery.com/jquery-3.5.1.min.js').then((res) => res.text()))
 
   const response = await page.goto(options.url, options.puppeteer.goto).catch(function () {
     return false
@@ -166,7 +167,6 @@ const articleParser = async function (options, socket) {
   // Take mobile screenshot
   if (options.enabled.includes('screenshot')) {
     socket.emit('parse:status', 'Taking Mobile Screenshot')
-
     article.mobile = await page.screenshot({ encoding: 'base64', type: 'jpeg', quality: 60 })
   }
 
@@ -199,6 +199,12 @@ const articleParser = async function (options, socket) {
   const metaDescription = article.meta.description
   article.meta.description = {}
   article.meta.description.text = metaDescription
+
+  // Save the original HTML of the document
+  article.html = await page.evaluate(() => {
+    var j = window.$
+    return j('html').html()
+  })
 
   // HTML Cleaning
   let html = await page.evaluate((options) => {
@@ -251,7 +257,7 @@ const articleParser = async function (options, socket) {
       return window.ytInitialData.contents.twoColumnWatchNextResults.results.results.contents[1].videoSecondaryInfoRenderer.description.runs[0].text
     })
   } else { // General Content
-    content = helpers.grabArticle(dom.window.document).innerHTML
+    content = helpers.grabArticle(dom.window.document, false, options.regex).innerHTML
   }
 
   browser.close()

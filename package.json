@@ -1,6 +1,6 @@
 {
   "name": "horseman-article-parser",
-  "version": "0.8.51",
+  "version": "0.8.52",
   "description": "Web Page Inspection Tool. Sentiment Analysis, Keyword Extraction, Named Entity Recognition & Spell Check",
   "main": "index.js",
   "scripts": {
@@ -21,33 +21,33 @@
   "dependencies": {
     "absolutify": "^0.1.0",
     "clean-html": "^1.5.0",
-    "compromise": "^13.3.1",
-    "dictionary-en-gb": "^2.2.2",
+    "compromise": "^13.8.0",
+    "dictionary-en-gb": "^2.3.0",
     "html-to-text": "^5.1.1",
     "jquery": "^3.5.0",
-    "jsdom": "^16.2.2",
-    "lighthouse": "^6.2.0",
-    "lodash": "^4.17.19",
+    "jsdom": "^16.4.0",
+    "lighthouse": "^6.5.0",
+    "lodash": "^4.17.20",
     "nlcst-to-string": "^2.0.4",
     "puppeteer": "^4.0.1",
-    "puppeteer-extra": "^3.1.9",
-    "puppeteer-extra-plugin-stealth": "^2.4.9",
+    "puppeteer-extra": "^3.1.15",
+    "puppeteer-extra-plugin-stealth": "^2.6.5",
     "retext": "^7.0.1",
     "retext-keywords": "^5.0.0",
     "retext-pos": "^2.0.2",
     "retext-spell": "^3.0.0",
     "sentiment": "^5.0.1",
     "url": "^0.11.0",
-    "vfile-reporter-json": "^2.0.1"
+    "vfile-reporter-json": "^2.0.2"
   },
   "devDependencies": {
     "eslint": "^6.8.0",
     "eslint-config-standard": "^14.1.1",
-    "eslint-plugin-import": "^2.21.2",
+    "eslint-plugin-import": "^2.22.1",
     "eslint-plugin-json": "^1.4.0",
     "eslint-plugin-node": "^9.2.0",
     "eslint-plugin-promise": "^4.2.1",
-    "eslint-plugin-standard": "^4.0.1",
+    "eslint-plugin-standard": "^4.1.0",
     "jsdoc-to-markdown": "^5.0.3"
   }
 }

@@ -10,7 +10,7 @@ const testPlugin = function (Doc, world) {
 }
 
 const options = {
-  url: 'https://www.theguardian.com/commentisfree/2020/jul/08/the-guardian-view-on-rishi-sunak-right-words-right-focus-wrong-policies',
+  url: 'https://www.theguardian.com/commentisfree/2021/jan/07/what-happened-in-washington-dc-is-happening-around-the-world',
   enabled: ['lighthouse', 'screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords'],
   nlp: {
     plugins: [testPlugin]
@@ -38,7 +38,8 @@ parser.parseArticle(options)
       spelling: article.spelling,
       meta: article.meta,
       links: article.links,
-      lighthouse: article.lighthouse
+      lighthouse: article.lighthouse,
+      html: article.html
     }
 
     const json = JSON.stringify(response, null, 4)
