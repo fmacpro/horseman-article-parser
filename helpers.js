@@ -60,6 +60,58 @@ module.exports.setDefaultOptions = function (options) {
     options.nlp.plugins = []
   }
 
+  if (!options.hasOwnProperty('regex')) {
+    options.regex = {}
+  }
+
+  if (!options.regex.hasOwnProperty('unlikelyCandidatesRe')) {
+    options.regex.unlikelyCandidatesRe = /combx|modal|comment|disqus|foot|header|menu|meta|nav|rss|shoutbox|sponsor|social|teaserlist|time|tweet|twitter/i
+  }
+
+  if (!options.regex.hasOwnProperty('okMaybeItsACandidateRe')) {
+    options.regex.okMaybeItsACandidateRe = /and|article|body|column|main|story|entry|^post/im
+  }
+
+  if (!options.regex.hasOwnProperty('positiveRe')) {
+    options.regex.positiveRe = /article|body|content|entry|hentry|page|pagination|post|section|chapter|description|main|blog|text/i
+  }
+
+  if (!options.regex.hasOwnProperty('negativeRe')) {
+    options.regex.negativeRe = /combx|comment|contact|foot|footer|footnote|link|media|meta|promo|related|scroll|shoutbox|sponsor|utility|tags|widget/i
+  }
+
+  if (!options.regex.hasOwnProperty('divToPElementsRe')) {
+    options.regex.divToPElementsRe = /<(a|blockquote|dl|div|img|ol|p|pre|table|ul)/i
+  }
+
+  if (!options.regex.hasOwnProperty('replaceBrsRe')) {
+    options.regex.replaceBrsRe = /(<br[^>]*>[ \n\r\t]*){2,}/gi
+  }
+
+  if (!options.regex.hasOwnProperty('replaceFontsRe')) {
+    options.regex.replaceFontsRe = /<(\/?)font[^>]*>/gi
+  }
+
+  if (!options.regex.hasOwnProperty('trimRe')) {
+    options.regex.trimRe = /^\s+|\s+$/g
+  }
+
+  if (!options.regex.hasOwnProperty('normalizeRe')) {
+    options.regex.normalizeRe = /\s{2,}/g
+  }
+
+  if (!options.regex.hasOwnProperty('killBreaksRe')) {
+    options.regex.killBreaksRe = /(<br\s*\/?>(\s|&nbsp;?)*){1,}/g
+  }
+
+  if (!options.regex.hasOwnProperty('videoRe')) {
+    options.regex.videoRe = /http:\/\/(www\.)?(youtube|vimeo|youku|tudou|56|yinyuetai)\.com/i
+  }
+
+  if (!options.regex.hasOwnProperty('attributeRe')) {
+    options.regex.attributeRe = /blog|post|article/i
+  }
+
   return options
 }
 
@@ -71,22 +123,6 @@ module.exports.toTitleCase = function (str) {
   return str.replace(/\w\S*/g, function (txt) {
     return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
   })
-}
-
-// All of the regular expressions in use within readability.
-const regexps = {
-  unlikelyCandidatesRe: /combx|modal|comment|disqus|foot|header|menu|meta|nav|rss|shoutbox|sponsor|social|teaserlist|time|tweet|twitter/i,
-  okMaybeItsACandidateRe: /and|article|body|column|main|story|entry|^post/im,
-  positiveRe: /article|body|content|entry|hentry|page|pagination|post|section|chapter|description|main|blog|text/i,
-  negativeRe: /combx|comment|contact|foot|footer|footnote|link|media|meta|promo|related|scroll|shoutbox|sponsor|utility|tags|widget/i,
-  divToPElementsRe: /<(a|blockquote|dl|div|img|ol|p|pre|table|ul)/i,
-  replaceBrsRe: /(<br[^>]*>[ \n\r\t]*){2,}/gi,
-  replaceFontsRe: /<(\/?)font[^>]*>/gi,
-  trimRe: /^\s+|\s+$/g,
-  normalizeRe: /\s{2,}/g,
-  killBreaksRe: /(<br\s*\/?>(\s|&nbsp;?)*){1,}/g,
-  videoRe: /http:\/\/(www\.)?(youtube|vimeo|youku|tudou|56|yinyuetai)\.com/i,
-  attributeRe: /blog|post|article/i
 }
 
 let debug
@@ -157,7 +193,7 @@ module.exports.prepDocument = function (document) {
  *
  * @return {jQuery}
  **/
-module.exports.grabArticle = function (document, preserveUnlikelyCandidates) {
+module.exports.grabArticle = function (document, preserveUnlikelyCandidates, regexps) {
   /**
    * First, node prepping. Trash nodes that look cruddy (like ones with the class name "comment", etc), and turn divs
    * into P tags where they have been used inappropriately (as in, where they contain no other block level elements.)
@@ -223,20 +259,20 @@ module.exports.grabArticle = function (document, preserveUnlikelyCandidates) {
     const paragraph = allParagraphs[i]
     const parentNode = paragraph.parentNode
     const grandParentNode = parentNode.parentNode
-    const innerText = getInnerText(paragraph)
+    const innerText = getInnerText(paragraph, true, regexps)
 
     // If this paragraph is less than 25 characters, don't even count it.
     if (innerText.length < 25) continue
 
     // Initialize readability data for the parent.
     if (typeof parentNode.readability === 'undefined') {
-      initializeNode(parentNode)
+      initializeNode(parentNode, regexps)
       candidates.push(parentNode)
     }
 
     // Initialize readability data for the grandparent.
     if (typeof grandParentNode.readability === 'undefined') {
-      initializeNode(grandParentNode)
+      initializeNode(grandParentNode, regexps)
       candidates.push(grandParentNode)
     }
 
@@ -266,7 +302,7 @@ module.exports.grabArticle = function (document, preserveUnlikelyCandidates) {
      * Scale the final candidates score based on link density. Good content should have a
      * relatively small link density (5% or less) and be mostly unaffected by this operation.
      **/
-    candidate.readability.contentScore = candidate.readability.contentScore * (1 - getLinkDensity(candidate))
+    candidate.readability.contentScore = candidate.readability.contentScore * (1 - getLinkDensity(candidate, regexps))
 
     dbg('Candidate: ' + candidate + ' (' + candidate.className + ':' + candidate.id + ') with score ' + candidate.readability.contentScore)
 
@@ -286,7 +322,7 @@ module.exports.grabArticle = function (document, preserveUnlikelyCandidates) {
     topCandidate.innerHTML = document.body.innerHTML
     document.body.innerHTML = ''
     document.body.appendChild(topCandidate)
-    initializeNode(topCandidate)
+    initializeNode(topCandidate, regexps)
   }
 
   /**
@@ -313,8 +349,8 @@ module.exports.grabArticle = function (document, preserveUnlikelyCandidates) {
     }
 
     if (siblingNode.nodeName === 'P') {
-      const linkDensity = getLinkDensity(siblingNode)
-      const nodeContent = getInnerText(siblingNode)
+      const linkDensity = getLinkDensity(siblingNode, regexps)
+      const nodeContent = getInnerText(siblingNode, true, regexps)
       const nodeLength = nodeContent.length
 
       if (nodeLength > 80 && linkDensity < 0.25) {
@@ -337,7 +373,7 @@ module.exports.grabArticle = function (document, preserveUnlikelyCandidates) {
   /**
    * So we have all of the content that we need. Now we clean it up for presentation.
    **/
-  prepArticle(articleContent)
+  prepArticle(articleContent, regexps)
 
   return articleContent
 }
@@ -374,7 +410,7 @@ function cleanStyles (e) {
  * @param {jQuery} element
  * @return {Void}
  **/
-function killBreaks (e) {
+function killBreaks (e, regexps) {
   e.innerHTML = e.innerHTML.replace(regexps.killBreaksRe, '<br />')
 }
 
@@ -385,7 +421,7 @@ function killBreaks (e) {
  * @param {jQuery} element
  * @return {String}
  **/
-function getInnerText (e, normalizeSpaces) {
+function getInnerText (e, normalizeSpaces, regexps) {
   let textContent = ''
 
   normalizeSpaces = (typeof normalizeSpaces === 'undefined') ? true : normalizeSpaces
@@ -403,9 +439,9 @@ function getInnerText (e, normalizeSpaces) {
  * @param {string} string - character to split on. Default is ","
  * @return {Number} (integer)
  **/
-function getCharCount (e, s) {
+function getCharCount (e, s, regexps) {
   s = s || ','
-  return getInnerText(e).split(s).length
+  return getInnerText(e, true, regexps).split(s).length
 }
 
 /**
@@ -415,16 +451,16 @@ function getCharCount (e, s) {
  * @param {jQuery} element
  * @return {Number} (float)
  **/
-function getLinkDensity (e) {
+function getLinkDensity (e, regexps) {
   const links = e.getElementsByTagName('a')
 
-  const textLength = getInnerText(e).length
+  const textLength = getInnerText(e, true, regexps).length
   let linkLength = 0
   for (let i = 0, il = links.length; i < il; i++) {
     const href = links[i].getAttribute('href')
     // hack for <h2><a href="#menu"></a></h2> / <h2><a></a></h2>
     if (!href || (href.length > 0 && href[0] === '#')) continue
-    linkLength += getInnerText(links[i]).length
+    linkLength += getInnerText(links[i], true, regexps).length
   }
   return linkLength / textLength
 }
@@ -436,7 +472,7 @@ function getLinkDensity (e) {
  * @param {jQuery} element
  * @return {Number} (Integer)
  **/
-function getClassWeight (e) {
+function getClassWeight (e, regexps) {
   let weight = 0
 
   /* Look for a special classname */
@@ -464,7 +500,7 @@ function getClassWeight (e) {
  * @param string tag to clean
  * @return {Void}
  **/
-function clean (e, tag) {
+function clean (e, tag, regexps) {
   const targetList = e.getElementsByTagName(tag)
   const isEmbed = (tag === 'object' || tag === 'embed')
 
@@ -500,7 +536,7 @@ function clean (e, tag) {
  *
  * @return {Void}
  **/
-function cleanConditionally (e, tag) {
+function cleanConditionally (e, tag, regexps) {
   const tagsList = e.getElementsByTagName(tag)
   const curTagsLength = tagsList.length
 
@@ -511,13 +547,13 @@ function cleanConditionally (e, tag) {
    * TODO: Consider taking into account original contentScore here.
    **/
   for (let i = curTagsLength - 1; i >= 0; i--) {
-    const weight = getClassWeight(tagsList[i])
+    const weight = getClassWeight(tagsList[i], regexps)
 
     dbg('Cleaning Conditionally ' + tagsList[i] + ' (' + tagsList[i].className + ':' + tagsList[i].id + ')' + ((typeof tagsList[i].readability !== 'undefined') ? (' with score ' + tagsList[i].readability.contentScore) : ''))
 
     if (weight < 0) {
       tagsList[i].parentNode.removeChild(tagsList[i])
-    } else if (getCharCount(tagsList[i], ',') < 10) {
+    } else if (getCharCount(tagsList[i], ',', regexps) < 10) {
       /**
        * If there are not very many commas, and the number of
        * non-paragraph elements is more than paragraphs or other ominous signs, remove the element.
@@ -536,8 +572,8 @@ function cleanConditionally (e, tag) {
         }
       }
 
-      const linkDensity = getLinkDensity(tagsList[i])
-      const contentLength = getInnerText(tagsList[i]).length
+      const linkDensity = getLinkDensity(tagsList[i], regexps)
+      const contentLength = getInnerText(tagsList[i], true, regexps).length
       let toRemove = false
 
       if (img > p && img > 1) {
@@ -605,11 +641,11 @@ function fixLinks (e) {
  * @param {jQuery} element
  * @return {Void}
  **/
-function cleanHeaders (e) {
+function cleanHeaders (e, regexps) {
   for (let headerIndex = 1; headerIndex < 7; headerIndex++) {
     const headers = e.getElementsByTagName('h' + headerIndex)
     for (let i = headers.length - 1; i >= 0; --i) {
-      if (getClassWeight(headers[i]) < 0 || getLinkDensity(headers[i]) > 0.33) {
+      if (getClassWeight(headers[i], regexps) < 0 || getLinkDensity(headers[i], regexps) > 0.33) {
         headers[i].parentNode.removeChild(headers[i])
       }
     }
@@ -641,30 +677,30 @@ function cleanSingleHeader (e) {
  * @return {Void}
  **/
 
-function prepArticle (articleContent) {
+function prepArticle (articleContent, regexps) {
   cleanStyles(articleContent)
-  killBreaks(articleContent)
+  killBreaks(articleContent, regexps)
 
   /* Clean out junk from the article content */
-  clean(articleContent, 'form')
-  clean(articleContent, 'object')
+  clean(articleContent, 'form', regexps)
+  clean(articleContent, 'object', regexps)
   if (articleContent.getElementsByTagName('h1').length === 1) {
-    clean(articleContent, 'h1')
+    clean(articleContent, 'h1', regexps)
   }
   /**
    * If there is only one h2, they are probably using it
    * as a header and not a subheader, so remove it since we already have a header.
    ***/
-  if (articleContent.getElementsByTagName('h2').length === 1) clean(articleContent, 'h2')
+  if (articleContent.getElementsByTagName('h2').length === 1) clean(articleContent, 'h2', regexps)
 
-  clean(articleContent, 'iframe')
+  clean(articleContent, 'iframe', regexps)
 
-  cleanHeaders(articleContent)
+  cleanHeaders(articleContent, regexps)
 
   /* Do these last as the previous stuff may have removed junk that will affect these */
-  cleanConditionally(articleContent, 'table')
-  cleanConditionally(articleContent, 'ul')
-  cleanConditionally(articleContent, 'div')
+  cleanConditionally(articleContent, 'table', regexps)
+  cleanConditionally(articleContent, 'ul', regexps)
+  cleanConditionally(articleContent, 'div', regexps)
 
   /* Remove extra paragraphs */
   const articleParagraphs = articleContent.getElementsByTagName('p')
@@ -673,7 +709,7 @@ function prepArticle (articleContent) {
     const embedCount = articleParagraphs[i].getElementsByTagName('embed').length
     const objectCount = articleParagraphs[i].getElementsByTagName('object').length
 
-    if (imgCount === 0 && embedCount === 0 && objectCount === 0 && getInnerText(articleParagraphs[i], false) === '') {
+    if (imgCount === 0 && embedCount === 0 && objectCount === 0 && getInnerText(articleParagraphs[i], true, regexps) === '') {
       articleParagraphs[i].parentNode.removeChild(articleParagraphs[i])
     }
   }
@@ -696,7 +732,7 @@ function prepArticle (articleContent) {
  * @param {jQuery} element
  * @return {Void}
  **/
-function initializeNode (node) {
+function initializeNode (node, regexps) {
   node.readability = { contentScore: 0 }
 
   switch (node.tagName) {
@@ -748,5 +784,5 @@ function initializeNode (node) {
     }
   }
 
-  node.readability.contentScore += getClassWeight(node)
+  node.readability.contentScore += getClassWeight(node, regexps)
 }

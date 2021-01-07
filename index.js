@@ -99,7 +99,7 @@ const articleParser = async function (options, socket) {
     if (
       options.blockedResourceTypes.indexOf(request.resourceType()) !== -1 ||
       options.skippedResources.some(resource => requestUrl.indexOf(resource) !== -1) ||
-      request.isNavigationRequest() && request.redirectChain().length
+      (request.isNavigationRequest() && request.redirectChain().length)
     ) {
       request.abort()
     } else {
@@ -251,7 +251,7 @@ const articleParser = async function (options, socket) {
       return window.ytInitialData.contents.twoColumnWatchNextResults.results.results.contents[1].videoSecondaryInfoRenderer.description.runs[0].text
     })
   } else { // General Content
-    content = helpers.grabArticle(dom.window.document).innerHTML
+    content = helpers.grabArticle(dom.window.document, false, options.regex).innerHTML
   }
 
   browser.close()
