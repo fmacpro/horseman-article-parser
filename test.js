@@ -10,7 +10,7 @@ const testPlugin = function (Doc, world) {
 }
 
 const options = {
-  url: 'https://www.bbc.com/news/health-55040635',
+  url: 'https://www.theguardian.com/commentisfree/2021/jan/07/what-happened-in-washington-dc-is-happening-around-the-world',
   enabled: ['lighthouse', 'screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords'],
   nlp: {
     plugins: [testPlugin]
