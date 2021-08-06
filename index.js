@@ -247,7 +247,18 @@ const articleParser = async function (options, socket) {
 
       return j('.permalink-tweet-container .js-tweet-text-container').html()
     })
-  } else if (article.host === 'www.youtube.com') { // Youtube Content
+  }
+  else if (article.host === 'www.bbc.co.uk') { // BBC Content
+    // BBC
+    content = await page.evaluate(() => {
+      var j = window.$
+
+      j('article section, article figure, article header').remove()
+
+      return j('article').html()
+    })
+  }
+  else if (article.host === 'www.youtube.com') { // Youtube Content
     // Video Title
     article.title.text = await page.evaluate(() => {
       return window.ytInitialData.contents.twoColumnWatchNextResults.results.results.contents[0].videoPrimaryInfoRenderer.title.runs[0].text
@@ -256,7 +267,8 @@ const articleParser = async function (options, socket) {
     content = await page.evaluate(() => {
       return window.ytInitialData.contents.twoColumnWatchNextResults.results.results.contents[1].videoSecondaryInfoRenderer.description.runs[0].text
     })
-  } else { // General Content
+  }
+  else { // General Content
     content = helpers.grabArticle(dom.window.document, false, options.regex).innerHTML
   }
 
