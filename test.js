@@ -11,7 +11,7 @@ const testPlugin = function (Doc, world) {
 
 const options = {
   url: 'https://www.theguardian.com/commentisfree/2021/jan/07/what-happened-in-washington-dc-is-happening-around-the-world',
-  enabled: ['lighthouse', 'screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords'],
+  enabled: ['lighthouse', 'screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords', 'siteicon'],
   nlp: {
     plugins: [testPlugin]
   }
@@ -24,6 +24,7 @@ parser.parseArticle(options)
       excerpt: article.excerpt,
       metadescription: article.meta.description.text,
       url: article.url,
+      siteicon: article.siteicon,
       sentiment: { score: article.sentiment.score, comparative: article.sentiment.comparative },
       keyphrases: article.processed.keyphrases,
       keywords: article.processed.keywords,
