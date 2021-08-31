@@ -170,6 +170,15 @@ const articleParser = async function (options, socket) {
     article.mobile = await page.screenshot({ encoding: 'base64', type: 'jpeg', quality: 60 })
   }
 
+  // Evaluate site icon url
+  if (options.enabled.includes('siteicon')) {
+    socket.emit('parse:status', 'Evaluating site icon')
+    article.siteicon = await page.evaluate(() => {
+      var j = window.$
+      return j('link[rel~="icon"]').prop('href')
+    })
+  }
+
   // Evaluate meta
   socket.emit('parse:status', 'Evaluating Meta Data')
 
