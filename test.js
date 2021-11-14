@@ -10,8 +10,27 @@ const testPlugin = function (Doc, world) {
 }
 
 const options = {
-  url: 'https://www.theguardian.com/commentisfree/2021/jan/07/what-happened-in-washington-dc-is-happening-around-the-world',
+  url: 'https://www.bbc.co.uk/news/uk-59284505',
   enabled: ['lighthouse', 'screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords', 'siteicon'],
+  rules: [
+    {
+      host: 'www.bbc.co.uk',
+      content: () => {
+        var j = window.$
+        j('article section, article figure, article header').remove()
+        return j('article').html()
+      }
+    },
+    {
+      host: 'www.youtube.com',
+      title: () => {
+        return window.ytInitialData.contents.twoColumnWatchNextResults.results.results.contents[0].videoPrimaryInfoRenderer.title.runs[0].text
+      },
+      content: () => {
+        return window.ytInitialData.contents.twoColumnWatchNextResults.results.results.contents[1].videoSecondaryInfoRenderer.description.runs[0].text
+      }
+    }
+  ],
   nlp: {
     plugins: [testPlugin]
   }

@@ -241,44 +241,35 @@ const articleParser = async function (options, socket) {
   await helpers.setCleanRules(options.readability.cleanRulers || [])
   await helpers.prepDocument(dom.window.document)
 
-  // Title
+  // Derived Title & Content
   article.title.text = await getTitle(dom.window.document, options.title)
+  let content = helpers.grabArticle(dom.window.document, false, options.regex).innerHTML
 
-  let content = ''
+  // Title & Content based on defined config rules
+  if ( options.rules ) {
 
-  // Content
-  if (article.host === 'twitter.com') { // Twitter Content
-    // Tweet
-    content = await page.evaluate(() => {
-      var j = window.$
+    let rules = options.rules;
 
-      j('.permalink-tweet-container .js-tweet-text-container .twitter-timeline-link').remove()
+    for ( let i = 0; i < rules.length; i++ ) {
 
-      return j('.permalink-tweet-container .js-tweet-text-container').html()
-    })
-  }
-  else if (article.host === 'www.bbc.co.uk') { // BBC Content
-    // BBC
-    content = await page.evaluate(() => {
-      var j = window.$
+      if ( article.host === rules[i].host ) {
 
-      j('article section, article figure, article header').remove()
+        if ( rules[i].title ) {
 
-      return j('article').html()
-    })
-  }
-  else if (article.host === 'www.youtube.com') { // Youtube Content
-    // Video Title
-    article.title.text = await page.evaluate(() => {
-      return window.ytInitialData.contents.twoColumnWatchNextResults.results.results.contents[0].videoPrimaryInfoRenderer.title.runs[0].text
-    })
-    // Video Description
-    content = await page.evaluate(() => {
-      return window.ytInitialData.contents.twoColumnWatchNextResults.results.results.contents[1].videoSecondaryInfoRenderer.description.runs[0].text
-    })
-  }
-  else { // General Content
-    content = helpers.grabArticle(dom.window.document, false, options.regex).innerHTML
+          article.title.text = await page.evaluate( rules[i].title )
+
+        }
+
+        if ( rules[i].content ) {
+
+          content = await page.evaluate( rules[i].content )
+
+        }
+
+      }
+
+    }
+
   }
 
   browser.close()
