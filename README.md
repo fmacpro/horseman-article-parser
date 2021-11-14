@@ -127,6 +127,31 @@ var options = {
 }
 ```
 
+You may pass rules for returning an articles title & contents. This is useful in a case 
+where the parser is unable to return the desired title or content e.g.
+
+```
+rules: [
+  {
+    host: 'www.bbc.co.uk',
+    content: () => {
+      var j = window.$
+      j('article section, article figure, article header').remove()
+      return j('article').html()
+    }
+  },
+  {
+    host: 'www.youtube.com',
+    title: () => {
+      return window.ytInitialData.contents.twoColumnWatchNextResults.results.results.contents[0].videoPrimaryInfoRenderer.title.runs[0].text
+    },
+    content: () => {
+      return window.ytInitialData.contents.twoColumnWatchNextResults.results.results.contents[1].videoSecondaryInfoRenderer.description.runs[0].text
+    }
+  }
+]
+```
+
 If you want to pass cookies to puppeteer use the following
 
 ```
