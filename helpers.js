@@ -1,4 +1,3 @@
-const url = require('url')
 
 /**
  * sets the default options
@@ -22,7 +21,8 @@ module.exports.setDefaultOptions = function (options) {
     options.puppeteer.launch = {
       headless: true,
       defaultViewport: null,
-      handleSIGINT: false
+      handleSIGINT: false,
+      channel: 'chrome'
     }
   }
 
@@ -613,8 +613,8 @@ function fixLinks (e) {
   }
 
   function fixLink (link) {
-    const fixed = url.URL(e.ownerDocument.originalURL, link)
-    return fixed
+    const fixed = new URL(link, e.ownerDocument.originalURL)
+    return fixed.toString()
   }
 
   let i
