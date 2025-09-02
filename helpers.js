@@ -21,8 +21,7 @@ module.exports.setDefaultOptions = function (options) {
     options.puppeteer.launch = {
       headless: true,
       defaultViewport: null,
-      handleSIGINT: false,
-      channel: 'chrome'
+      handleSIGINT: false
     }
   }
 

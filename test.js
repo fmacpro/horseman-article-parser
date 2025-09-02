@@ -10,7 +10,7 @@ const testPlugin = function (Doc, world) {
 }
 
 const options = {
-  url: 'https://www.bbc.co.uk/news/uk-59284505',
+  url: 'https://www.theguardian.com/business/2025/sep/02/uk-hit-by-fresh-sell-off-in-government-bond-markets-as-pound-weakens',
   enabled: ['lighthouse', 'screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords', 'siteicon'],
   rules: [
     {
@@ -33,6 +33,15 @@ const options = {
   ],
   nlp: {
     plugins: [testPlugin]
+  },
+  puppeteer: {
+    launch: {
+      headless: true,
+      defaultViewport: null,
+      handleSIGINT: false,
+      ignoreHTTPSErrors: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--ignore-certificate-errors']
+    }
   }
 }
 

@@ -4,7 +4,9 @@ const stealth = require('puppeteer-extra-plugin-stealth')()
 stealth.onBrowser = () => {}
 puppeteer.use(stealth)
 
-const lighthouse = require('lighthouse')
+const lighthouseImport = require('lighthouse')
+const lighthouse = lighthouseImport.default || lighthouseImport
+const fs = require('fs')
 const retext = require('retext')
 const nlcstToString = require('nlcst-to-string')
 const pos = require('retext-pos')
@@ -95,7 +97,7 @@ const articleParser = async function (options, socket) {
   await page.setRequestInterception(true)
 
   page.on('request', request => {
-    const requestUrl = request._url.split('?')[0].split('#')[0]
+    const requestUrl = request.url().split('?')[0].split('#')[0]
     if (
       options.blockedResourceTypes.indexOf(request.resourceType()) !== -1 ||
       options.skippedResources.some(resource => requestUrl.indexOf(resource) !== -1) ||
@@ -107,17 +109,17 @@ const articleParser = async function (options, socket) {
     }
   })
 
-  // Inject jQuery - https://stackoverflow.com/a/50598512
-  const jquery = await page.evaluate(() => window.fetch('https://code.jquery.com/jquery-3.5.1.min.js').then((res) => res.text()))
+  // Inject jQuery from local package to avoid external network fetch
+  const jquery = await fs.promises.readFile(require.resolve('jquery/dist/jquery.min.js'), 'utf8')
 
-  const response = await page.goto(options.url, options.puppeteer.goto).catch(function () {
-    return false
-  })
-
-  if (!response) {
-    socket.emit('parse:status', 'Failed to fetch ' + options.url + ' (timeout)')
-    browser.close()
-    return false
+  let response
+  try {
+    response = await page.goto(options.url, options.puppeteer.goto)
+  } catch (e) {
+    const message = 'Failed to fetch ' + options.url + ': ' + e.message
+    socket.emit('parse:status', message)
+    await browser.close()
+    throw new Error(message)
   }
 
   // Inject cookies if set
@@ -146,9 +148,10 @@ const articleParser = async function (options, socket) {
   socket.emit('parse:status', 'Status ' + article.status)
 
   if (article.status === 403 || article.status === 404) {
-    socket.emit('parse:status', 'Failed to fetch ' + options.url + ' ' + article.status)
-    browser.close()
-    return false
+    const message = 'Failed to fetch ' + options.url + ' ' + article.status
+    socket.emit('parse:status', message)
+    await browser.close()
+    throw new Error(message)
   }
 
   // Evaluate URL
