@@ -5,8 +5,7 @@
   "main": "index.js",
   "scripts": {
     "lint": "./node_modules/.bin/eslint . --ext .json --ext .js --fix",
-    "test": "node test.js",
-    "docs": "./node_modules/jsdoc-to-markdown/bin/cli.js index.js helpers.js | tee ./APIDOC.md"
+    "test": "node test.js"
   },
   "repository": {
     "type": "git",
@@ -30,8 +29,9 @@
     "lodash": "^4.17.21",
     "nlcst-to-string": "^2.0.4",
     "puppeteer": "^24.18.0",
-    "puppeteer-extra": "^3.1.9",
-    "puppeteer-extra-plugin-stealth": "^2.7.8",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "puppeteer-extra-plugin-user-data-dir": "file:overrides/puppeteer-extra-plugin-user-data-dir",
     "retext": "^7.0.1",
     "retext-keywords": "^5.0.0",
     "retext-pos": "^2.0.2",
@@ -40,13 +40,13 @@
     "vfile-reporter-json": "^2.0.2"
   },
   "devDependencies": {
-    "eslint": "^7.32.0",
-    "eslint-config-standard": "^14.1.1",
-    "eslint-plugin-import": "^2.22.1",
-    "eslint-plugin-json": "^1.4.0",
-    "eslint-plugin-node": "^9.2.0",
-    "eslint-plugin-promise": "^4.2.1",
-    "eslint-plugin-standard": "^4.1.0",
-    "jsdoc-to-markdown": "^9.1.2"
+    "eslint": "^9.34.0",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-json": "^4.0.1",
+    "eslint-plugin-n": "^17.21.3",
+    "eslint-plugin-promise": "^7.2.1"
+  },
+  "overrides": {
+    "puppeteer-extra-plugin-user-data-dir": "file:overrides/puppeteer-extra-plugin-user-data-dir"
   }
 }

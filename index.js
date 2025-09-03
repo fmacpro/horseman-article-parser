@@ -1,8 +1,7 @@
 const puppeteer = require('puppeteer-extra')
-const stealth = require('puppeteer-extra-plugin-stealth')()
-// https://github.com/berstend/puppeteer-extra/issues/211
-stealth.onBrowser = () => {}
-puppeteer.use(stealth)
+const StealthPlugin = require('puppeteer-extra-plugin-stealth')
+
+puppeteer.use(StealthPlugin())
 
 const lighthouseImport = require('lighthouse')
 const lighthouse = lighthouseImport.default || lighthouseImport
