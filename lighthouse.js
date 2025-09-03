@@ -1,7 +1,7 @@
-const lighthouseImport = require('lighthouse')
+import lighthouseImport from 'lighthouse'
 const lighthouse = lighthouseImport.default || lighthouseImport
 
-module.exports = async function lighthouseAnalysis (browser, options, socket) {
+export default async function lighthouseAnalysis (browser, options, socket) {
   socket.emit('parse:status', 'Starting Lighthouse')
 
   const results = await lighthouse(options.url, {

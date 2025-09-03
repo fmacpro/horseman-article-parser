@@ -1,10 +1,10 @@
-const retext = require('retext')
-const nlcstToString = require('nlcst-to-string')
-const pos = require('retext-pos')
-const keywords = require('retext-keywords')
-const _ = require('lodash')
+import retext from 'retext'
+import nlcstToString from 'nlcst-to-string'
+import pos from 'retext-pos'
+import keywords from 'retext-keywords'
+import _ from 'lodash'
 
-module.exports = async function keywordParser (html, options = { maximum: 10 }) {
+export default async function keywordParser (html, options = { maximum: 10 }) {
   const file = await retext().use(pos).use(keywords, options).process(html)
 
   const keywordsArr = file.data.keywords.map(keyword => ({

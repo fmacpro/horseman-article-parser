@@ -26,14 +26,14 @@ npm install horseman-article-parser --save
 ### Usage Example
 
 ```
-var parser = require('horseman-article-parser');
+import { parseArticle } from 'horseman-article-parser';
 
-var options = {
+const options = {
   url: "https://www.theguardian.com/politics/2018/sep/24/theresa-may-calls-for-immigration-based-on-skills-and-wealth",
   enabled: ['lighthouse', 'screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords']
 }
 
-parser.parseArticle(options)
+parseArticle(options)
   .then(function (article) {
 
     var response = {

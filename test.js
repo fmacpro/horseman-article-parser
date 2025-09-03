@@ -1,6 +1,6 @@
-const parser = require('./index.js')
-const fs = require('fs')
-const assert = require('assert')
+import { parseArticle } from './index.js'
+import fs from 'fs'
+import assert from 'assert'
 
 /** add some names | https://observablehq.com/@spencermountain/compromise-plugins */
 const testPlugin = function (Doc, world) {
@@ -48,7 +48,7 @@ const options = {
 
 ;(async () => {
   try {
-    const article = await parser.parseArticle(options)
+    const article = await parseArticle(options)
     assert.ok(article.title.text, 'article title missing')
 
     const response = {
