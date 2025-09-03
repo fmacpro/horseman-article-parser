@@ -260,7 +260,11 @@ npm run docs
 ## Dependencies
 
 - [Puppeteer](https://github.com/GoogleChrome/puppeteer/): High-level API to control Chrome or Chromium over the DevTools Protocol
-- [compromise](https://ghub.io/compromise): natural language processing in the browser
+- [puppeteer-extra](https://github.com/berstend/puppeteer-extra): Framework for puppeteer plugins
+- [puppeteer-extra-plugin-stealth](https://github.com/berstend/puppeteer-extra/tree/master/packages/puppeteer-extra-plugin-stealth): Plugin to evade detection
+- [puppeteer-extra-plugin-user-data-dir](overrides/puppeteer-extra-plugin-user-data-dir): Persist and reuse Chromium user data
+- [lighthouse](https://github.com/GoogleChrome/lighthouse): Automated auditing, performance metrics, and best practices
+- [compromise](https://ghub.io/compromise): Natural language processing in the browser
 - [retext](https://ghub.io/retext): Natural language processor powered by plugins
 - [retext-pos](https://github.com/retextjs/retext-pos): Plugin to add part-of-speech (POS) tags
 - [retext-keywords](https://ghub.io/retext-keywords): Keyword extraction with Retext
@@ -268,25 +272,22 @@ npm run docs
 - [sentiment](https://ghub.io/sentiment): AFINN-based sentiment analysis for Node.js
 - [jquery](https://ghub.io/jquery): JavaScript library for DOM operations
 - [jsdom](https://ghub.io/jsdom): A JavaScript implementation of many web standards
-- [lodash](https://ghub.io/lodash): Lodash modular utilities.
+- [lodash](https://ghub.io/lodash): Lodash modular utilities
 - [absolutify](https://ghub.io/absolutify): Relative to Absolute URL Replacer
 - [clean-html](https://ghub.io/clean-html): HTML cleaner and beautifier
 - [dictionary-en-gb](https://ghub.io/dictionary-en-gb): English (United Kingdom) spelling dictionary in UTF-8
-- [html-to-text](https://ghub.io/html-to-text): Advanced html to plain text converter
+- [html-to-text](https://ghub.io/html-to-text): Advanced HTML to plain text converter
 - [nlcst-to-string](https://ghub.io/nlcst-to-string): Stringify NLCST
 - [vfile-reporter-json](https://ghub.io/vfile-reporter-json): JSON reporter for virtual files
 
 
 ## Dev Dependencies
 
-- [eslint](https://ghub.io/eslint): An AST-based pattern checker for JavaScript.
-- [eslint-config-standard](https://ghub.io/eslint-config-standard): JavaScript Standard Style - ESLint Shareable Config
-- [eslint-plugin-import](https://ghub.io/eslint-plugin-import): Import with sanity.
+- [eslint](https://ghub.io/eslint): An AST-based pattern checker for JavaScript
+- [eslint-plugin-import](https://ghub.io/eslint-plugin-import): Import with sanity
 - [eslint-plugin-json](https://ghub.io/eslint-plugin-json): Lint JSON files
-- [eslint-plugin-node](https://ghub.io/eslint-plugin-node): Additional ESLint&#39;s rules for Node.js
+- [eslint-plugin-n](https://ghub.io/eslint-plugin-n): Additional ESLint rules for Node.js
 - [eslint-plugin-promise](https://ghub.io/eslint-plugin-promise): Enforce best practices for JavaScript promises
-- [eslint-plugin-standard](https://ghub.io/eslint-plugin-standard): ESlint Plugin for the Standard Linter
-- [jsdoc-to-markdown](https://github.com/jsdoc2md/jsdoc-to-markdown): Generates markdown API documentation from jsdoc annotated source code.
 
 
 ## License

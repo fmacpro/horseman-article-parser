@@ -263,7 +263,7 @@ Remove the style attribute on every e and under.
 
 | Param | Type |
 | --- | --- |
-| element | <code>jQuery</code> | 
+| element | <code>jQuery</code> |
 
 <a name="killBreaks"></a>
 
@@ -404,9 +404,32 @@ Cleans the article content
 Initialize a node with the readability object. Also checks the
 className/id for special names to add to its score.
 
-**Kind**: global function  
+**Kind**: global function
 
 | Param | Type |
 | --- | --- |
-| element | <code>jQuery</code> | 
+| element | <code>jQuery</code> |
+
+## Dependencies
+
+- [Puppeteer](https://github.com/GoogleChrome/puppeteer/)
+- [puppeteer-extra](https://github.com/berstend/puppeteer-extra)
+- [puppeteer-extra-plugin-stealth](https://github.com/berstend/puppeteer-extra/tree/master/packages/puppeteer-extra-plugin-stealth)
+- [puppeteer-extra-plugin-user-data-dir](overrides/puppeteer-extra-plugin-user-data-dir)
+- [lighthouse](https://github.com/GoogleChrome/lighthouse)
+- [compromise](https://ghub.io/compromise)
+- [retext](https://ghub.io/retext)
+- [retext-pos](https://github.com/retextjs/retext-pos)
+- [retext-keywords](https://ghub.io/retext-keywords)
+- [retext-spell](https://ghub.io/retext-spell)
+- [sentiment](https://ghub.io/sentiment)
+- [jquery](https://ghub.io/jquery)
+- [jsdom](https://ghub.io/jsdom)
+- [lodash](https://ghub.io/lodash)
+- [absolutify](https://ghub.io/absolutify)
+- [clean-html](https://ghub.io/clean-html)
+- [dictionary-en-gb](https://ghub.io/dictionary-en-gb)
+- [html-to-text](https://ghub.io/html-to-text)
+- [nlcst-to-string](https://ghub.io/nlcst-to-string)
+- [vfile-reporter-json](https://ghub.io/vfile-reporter-json)
 
