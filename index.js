@@ -421,7 +421,7 @@ const spellCheck = function (text, options) {
  */
 
 const getRawText = function (html) {
-  return new Promise(function (resolve, reject) {
+  return new Promise(function (resolve) {
     // Lowercase for analysis
     const options = {
       wordwrap: null,
@@ -458,7 +458,7 @@ const getRawText = function (html) {
  */
 
 const getFormattedText = function (html, title, baseurl, options) {
-  return new Promise(function (resolve, reject) {
+  return new Promise(function (resolve) {
     if (typeof options === 'undefined') {
       options = {
         wordwrap: 100,
@@ -498,7 +498,7 @@ const getFormattedText = function (html, title, baseurl, options) {
  */
 
 const getHtmlText = function (text) {
-  return new Promise(function (resolve, reject) {
+  return new Promise(function (resolve) {
     // Replace windows line breaks with linux line breaks & split each line into array
     const textArray = text.replace('\r\n', '\n').split('\n')
     // Check length of text array (no of lines)
@@ -528,7 +528,7 @@ const getHtmlText = function (text) {
  */
 
 const htmlCleaner = function (html, options) {
-  return new Promise(function (resolve, reject) {
+  return new Promise(function (resolve) {
     if (typeof options === 'undefined') {
       options = {
         'add-remove-tags': ['blockquote', 'span'],
@@ -638,7 +638,7 @@ const lighthouseAnalysis = async function (options, socket) {
  *
  */
 
-const getTitle = function (document, options) {
+const getTitle = function (document) {
   let title = findMetaTitle(document) || document.title
 
   // replace all 3 types of line breaks with a space

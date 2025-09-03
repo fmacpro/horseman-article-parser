@@ -46,7 +46,7 @@ const options = {
 }
 
 parser.parseArticle(options)
-  .then(function (article) {
+  .then(async function (article) {
     const response = {
       title: article.title.text,
       excerpt: article.excerpt,
@@ -71,12 +71,11 @@ parser.parseArticle(options)
       html: article.html
     }
 
-    const json = JSON.stringify(response, null, 4)
-    fs.writeFile('testresults.json', json, 'utf8', function (err) {
-      if (err) throw err
+      const json = JSON.stringify(response, null, 4)
+      await fs.promises.writeFile('testresults.json', json, 'utf8')
       console.log('Results written to testresults.json')
+      return undefined
     })
-  })
   .catch(function (error) {
     console.log(error.message)
     console.log(error.stack)

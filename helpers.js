@@ -150,11 +150,13 @@ module.exports.prepDocument = function (document) {
     Array.prototype.slice.call(frames, 0).forEach(function (frame) {
       const frameSize = frame.offsetWidth + frame.offsetHeight
       let canAccessFrame = false
-      try {
-        if (frame.contentWindow.document.body) {
-          canAccessFrame = true
+        try {
+          if (frame.contentWindow.document.body) {
+            canAccessFrame = true
+          }
+        } catch {
+          // ignore access errors
         }
-      } catch (e) {}
 
       if (canAccessFrame && frameSize > bestFrameSize) {
         bestFrame = frame
@@ -715,11 +717,11 @@ function prepArticle (articleContent, regexps) {
 
   cleanSingleHeader(articleContent)
 
-  try {
-    articleContent.innerHTML = articleContent.innerHTML.replace(/<br[^>]*>\s*<p/gi, '<p')
-  } catch (e) {
-    dbg('Cleaning innerHTML of breaks failed. This is an IE strict-block-elements bug. Ignoring.')
-  }
+    try {
+      articleContent.innerHTML = articleContent.innerHTML.replace(/<br[^>]*>\s*<p/gi, '<p')
+    } catch {
+      dbg('Cleaning innerHTML of breaks failed. This is an IE strict-block-elements bug. Ignoring.')
+    }
 
   fixLinks(articleContent)
 }
