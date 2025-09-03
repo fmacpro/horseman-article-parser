@@ -1,23 +1,32 @@
-const puppeteer = require('puppeteer-extra')
-const StealthPlugin = require('puppeteer-extra-plugin-stealth')
+import puppeteer from 'puppeteer-extra'
+import StealthPlugin from 'puppeteer-extra-plugin-stealth'
 
 puppeteer.use(StealthPlugin())
 
-const fs = require('fs')
-const retext = require('retext')
-const cleaner = require('clean-html')
-const Sentiment = require('sentiment')
-const spell = require('retext-spell')
-const dictionary = require('dictionary-en-gb')
-const report = require('vfile-reporter-json')
-const htmlToText = require('html-to-text')
-const nlp = require('compromise')
-const absolutify = require('absolutify')
-const jsdom = require('jsdom')
-const { JSDOM } = jsdom
-const helpers = require('./helpers')
-const keywordParser = require('./keywordParser')
-const lighthouseAnalysis = require('./lighthouse')
+import fs from 'fs'
+import retext from 'retext'
+import cleaner from 'clean-html'
+import Sentiment from 'sentiment'
+import spell from 'retext-spell'
+import dictionary from 'dictionary-en-gb'
+import report from 'vfile-reporter-json'
+import { htmlToText } from 'html-to-text'
+import nlp from 'compromise'
+import absolutify from 'absolutify'
+import { JSDOM } from 'jsdom'
+import jquery from 'jquery'
+import { createRequire } from 'module'
+import {
+  setDefaultOptions,
+  setCleanRules,
+  prepDocument,
+  grabArticle,
+  capitalizeFirstLetter
+} from './helpers.js'
+import keywordParser from './keywordParser.js'
+import lighthouseAnalysis from './lighthouse.js'
+
+const require = createRequire(import.meta.url)
 
 /**
  * main article parser module export function
@@ -29,9 +38,9 @@ const lighthouseAnalysis = require('./lighthouse')
  *
  */
 
-module.exports.parseArticle = async function (options, socket = { emit: (type, status) => console.log(status) }) {
+export async function parseArticle (options, socket = { emit: (type, status) => console.log(status) }) {
 
-  options = helpers.setDefaultOptions(options)
+  options = setDefaultOptions(options)
 
   // Allow nlp plugins to be passed in (https://observablehq.com/@spencermountain/compromise-plugins)
   if (options.nlp.plugins.length >= 1) {
@@ -108,7 +117,10 @@ const articleParser = async function (browser, options, socket) {
     })
 
     // Inject jQuery from local package to avoid external network fetch
-    const jquery = await fs.promises.readFile(require.resolve('jquery/dist/jquery.min.js'), 'utf8')
+    const jquerySource = await fs.promises.readFile(
+      require.resolve('jquery/dist/jquery.min.js'),
+      'utf8'
+    )
 
     let response
     try {
@@ -135,7 +147,7 @@ const articleParser = async function (browser, options, socket) {
     }
   }
 
-  await page.evaluate(jquery)
+    await page.evaluate(jquerySource)
 
   socket.emit('parse:status', 'Fetching ' + options.url)
 
@@ -236,12 +248,12 @@ const articleParser = async function (browser, options, socket) {
 
   const dom = new JSDOM(html)
 
-  await helpers.setCleanRules(options.readability.cleanRulers || [])
-  await helpers.prepDocument(dom.window.document)
+  await setCleanRules(options.readability.cleanRulers || [])
+  await prepDocument(dom.window.document)
 
   // Derived Title & Content
   article.title.text = await getTitle(dom.window.document, options.title)
-  let content = helpers.grabArticle(dom.window.document, false, options.regex).innerHTML
+  let content = grabArticle(dom.window.document, false, options.regex).innerHTML
 
   // Title & Content based on defined config rules
   if ( options.rules ) {
@@ -278,7 +290,7 @@ const articleParser = async function (browser, options, socket) {
     socket.emit('parse:status', 'Evaluating Links')
 
     const { window } = new JSDOM(article.processed.html)
-    const $ = require('jquery')(window)
+    const $ = jquery(window)
 
     const arr = window.$('a')
     const links = []
@@ -302,7 +314,7 @@ const articleParser = async function (browser, options, socket) {
   article.processed.text.raw = await getRawText(article.processed.html)
 
   // Excerpt
-  article.excerpt = helpers.capitalizeFirstLetter(article.processed.text.raw.replace(/^(.{200}[^\s]*).*/, '$1'))
+  article.excerpt = capitalizeFirstLetter(article.processed.text.raw.replace(/^(.{200}[^\s]*).*/, '$1'))
 
   // Sentiment
   if (options.enabled.includes('sentiment')) {
@@ -431,7 +443,7 @@ const getRawText = function (html) {
     }
 
     // HTML > Text
-    let rawText = htmlToText.fromString(html, options)
+    let rawText = htmlToText(html, options)
 
     // Normalise
     rawText = nlp(rawText)
@@ -472,7 +484,7 @@ const getFormattedText = function (html, title, baseurl, options) {
     }
 
     // HTML > Text
-    const text = htmlToText.fromString(html, options)
+    const text = htmlToText(html, options)
 
     // If uppercase is set uppercase the title
     if (options.uppercaseHeadings === true) {

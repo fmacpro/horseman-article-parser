@@ -8,9 +8,9 @@
  *
  */
 
-const _ = require('lodash')
+import _ from 'lodash'
 
-module.exports.setDefaultOptions = function (options = {}) {
+export function setDefaultOptions (options = {}) {
   const defaults = {
     enabled: [],
     puppeteer: {
@@ -46,11 +46,11 @@ module.exports.setDefaultOptions = function (options = {}) {
   return _.defaultsDeep({}, options, defaults)
 }
 
-module.exports.capitalizeFirstLetter = function (string) {
+export function capitalizeFirstLetter (string) {
   return string.charAt(0).toUpperCase() + string.slice(1)
 }
 
-module.exports.toTitleCase = function (str) {
+export function toTitleCase (str) {
   return str.replace(/\w\S*/g, function (txt) {
     return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
   })
@@ -61,7 +61,7 @@ const dbg = (debug) ? console.log : function () {}
 
 let cleanRules = []
 
-module.exports.setCleanRules = function (rules) {
+export function setCleanRules (rules) {
   cleanRules = rules
 }
 
@@ -73,7 +73,7 @@ module.exports.setCleanRules = function (rules) {
  *
  * @return {Void}
  **/
-module.exports.prepDocument = function (document) {
+export function prepDocument (document) {
   const frames = document.getElementsByTagName('frame')
   if (frames.length > 0) {
     let bestFrame = null
@@ -126,7 +126,7 @@ module.exports.prepDocument = function (document) {
  *
  * @return {jQuery}
  **/
-module.exports.grabArticle = function (document, preserveUnlikelyCandidates, regexps) {
+export function grabArticle (document, preserveUnlikelyCandidates, regexps) {
   /**
    * First, node prepping. Trash nodes that look cruddy (like ones with the class name "comment", etc), and turn divs
    * into P tags where they have been used inappropriately (as in, where they contain no other block level elements.)

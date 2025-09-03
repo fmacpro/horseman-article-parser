@@ -2,9 +2,10 @@
   "name": "horseman-article-parser",
   "version": "0.9.0",
   "description": "Web Page Inspection Tool. Sentiment Analysis, Keyword Extraction, Named Entity Recognition & Spell Check",
+  "type": "module",
   "main": "index.js",
   "scripts": {
-    "lint": "npx eslint . --ext .json --ext .js --fix",
+    "lint": "node ./node_modules/eslint/bin/eslint.js . --ext .json --ext .js --fix",
     "test": "node test.js"
   },
   "repository": {
