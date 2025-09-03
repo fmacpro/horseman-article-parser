@@ -3,14 +3,8 @@ const StealthPlugin = require('puppeteer-extra-plugin-stealth')
 
 puppeteer.use(StealthPlugin())
 
-const lighthouseImport = require('lighthouse')
-const lighthouse = lighthouseImport.default || lighthouseImport
 const fs = require('fs')
 const retext = require('retext')
-const nlcstToString = require('nlcst-to-string')
-const pos = require('retext-pos')
-const keywords = require('retext-keywords')
-const _ = require('lodash')
 const cleaner = require('clean-html')
 const Sentiment = require('sentiment')
 const spell = require('retext-spell')
@@ -22,6 +16,8 @@ const absolutify = require('absolutify')
 const jsdom = require('jsdom')
 const { JSDOM } = jsdom
 const helpers = require('./helpers')
+const keywordParser = require('./keywordParser')
+const lighthouseAnalysis = require('./lighthouse')
 
 /**
  * main article parser module export function
@@ -44,21 +40,19 @@ module.exports.parseArticle = async function (options, socket = { emit: (type, s
     }
   }
 
-  const actions = [articleParser(options, socket)]
+  const browser = await puppeteer.launch(options.puppeteer.launch)
 
-  if (options.enabled.includes('lighthouse')) {
-    actions.push(lighthouseAnalysis(options, socket))
+  try {
+    const article = await articleParser(browser, options, socket)
+
+    if (options.enabled.includes('lighthouse')) {
+      article.lighthouse = await lighthouseAnalysis(browser, options, socket)
+    }
+
+    return article
+  } finally {
+    await browser.close()
   }
-
-  const results = await Promise.all(actions)
-
-  const article = results[0]
-
-  if (typeof results[1] !== 'undefined') {
-    article.lighthouse = results[1]
-  }
-
-  return article
 }
 
 /**
@@ -71,7 +65,7 @@ module.exports.parseArticle = async function (options, socket = { emit: (type, s
  *
  */
 
-const articleParser = async function (options, socket) {
+const articleParser = async function (browser, options, socket) {
   const article = {}
   article.meta = {}
   article.meta.title = {}
@@ -83,17 +77,16 @@ const articleParser = async function (options, socket) {
   article.lighthouse = {}
 
   socket.emit('parse:status', 'Starting Horseman')
-
-  // Init puppeteer
-  const browser = await puppeteer.launch(options.puppeteer.launch)
+  const page = await browser.newPage()
 
   try {
-    const page = await browser.newPage()
-
     // Ignore content security policies
     await page.setBypassCSP(options.puppeteer.setBypassCSP)
 
     await page.setRequestInterception(true)
+
+    const blockedResourceTypes = new Set(options.blockedResourceTypes)
+    const skippedResources = new Set(options.skippedResources)
 
     page.on('request', request => {
       let requestUrl
@@ -104,8 +97,8 @@ const articleParser = async function (options, socket) {
         requestUrl = request.url()
       }
       if (
-        options.blockedResourceTypes.indexOf(request.resourceType()) !== -1 ||
-        options.skippedResources.some(resource => requestUrl.indexOf(resource) !== -1) ||
+        blockedResourceTypes.has(request.resourceType()) ||
+        [...skippedResources].some(resource => requestUrl.includes(resource)) ||
         (request.isNavigationRequest() && request.redirectChain().length)
       ) {
         request.abort()
@@ -370,9 +363,9 @@ const articleParser = async function (options, socket) {
 
   socket.emit('parse:status', 'Horseman Anaysis Complete')
 
-  return article
+    return article
   } finally {
-    await browser.close()
+    await page.close()
   }
 }
 
@@ -557,53 +550,6 @@ const htmlCleaner = function (html, options) {
  *
  */
 
-const keywordParser = function (html, options) {
-  return new Promise(function (resolve, reject) {
-    if (typeof options === 'undefined') {
-      options = { maximum: 10 }
-    }
-
-    retext()
-      .use(pos)
-      .use(keywords, options)
-      .process(html, function (error, file) {
-        if (error) {
-          reject(error)
-        }
-
-        const keywords = []
-        const keyphrases = []
-
-        file.data.keywords.forEach(function (keyword) {
-          keywords.push({
-            keyword: nlcstToString(keyword.matches[0].node),
-            score: keyword.score
-          })
-        })
-
-        file.data.keyphrases.forEach(function (phrase) {
-          const nodes = phrase.matches[0].nodes
-          const tree = _.map(nodes)
-
-          keyphrases.push({
-            keyphrase: nlcstToString(tree, ''),
-            score: phrase.score,
-            weight: phrase.weight
-          })
-        })
-
-        keyphrases.sort(function (a, b) {
-          return (a.score > b.score) ? -1 : 1
-        })
-
-        resolve({ keywords: keywords, keyphrases: keyphrases })
-      }
-      )
-      .catch(function (error) {
-        reject(error)
-      })
-  })
-}
 
 /**
  * runs a google lighthouse audit on the target article
@@ -615,23 +561,6 @@ const keywordParser = function (html, options) {
  *
  */
 
-const lighthouseAnalysis = async function (options, socket) {
-  socket.emit('parse:status', 'Starting Lighthouse')
-
-  // Init puppeteer
-  const browser = await puppeteer.launch(options.puppeteer.launch)
-
-  const results = await lighthouse(options.url, {
-    port: (new URL(browser.wsEndpoint())).port,
-    output: 'json'
-  })
-
-  await browser.close()
-
-  socket.emit('parse:status', 'Lighthouse Analysis Complete')
-
-  return results.lhr
-}
 
 /**
  * gets the best available title for the article
