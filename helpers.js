@@ -8,110 +8,42 @@
  *
  */
 
-module.exports.setDefaultOptions = function (options) {
-  if (!options.hasOwnProperty('enabled')) {
-    options.enabled = []
-  }
+const _ = require('lodash')
 
-  if (!options.hasOwnProperty('puppeteer')) {
-    options.puppeteer = {}
-  }
-
-  if (!options.puppeteer.hasOwnProperty('launch')) {
-    options.puppeteer.launch = {
-      headless: true,
-      defaultViewport: null,
-      handleSIGINT: false
+module.exports.setDefaultOptions = function (options = {}) {
+  const defaults = {
+    enabled: [],
+    puppeteer: {
+      launch: {
+        headless: true,
+        defaultViewport: null,
+        handleSIGINT: false
+      },
+      goto: { waitUntil: 'networkidle2' },
+      setBypassCSP: true
+    },
+    striptags: [],
+    blockedResourceTypes: [],
+    skippedResources: [],
+    title: {},
+    nlp: { plugins: [] },
+    regex: {
+      unlikelyCandidatesRe: /combx|modal|comment|disqus|foot|header|menu|meta|nav|rss|shoutbox|sponsor|social|teaserlist|time|tweet|twitter/i,
+      okMaybeItsACandidateRe: /and|article|body|column|main|story|entry|^post/im,
+      positiveRe: /article|body|content|entry|hentry|page|pagination|post|section|chapter|description|main|blog|text/i,
+      negativeRe: /combx|comment|contact|foot|footer|footnote|link|media|meta|promo|related|scroll|shoutbox|sponsor|utility|tags|widget/i,
+      divToPElementsRe: /<(a|blockquote|dl|div|img|ol|p|pre|table|ul)/i,
+      replaceBrsRe: /(<br[^>]*>[ \n\r\t]*){2,}/gi,
+      replaceFontsRe: /<(\/?)font[^>]*>/gi,
+      trimRe: /^\s+|\s+$/g,
+      normalizeRe: /\s{2,}/g,
+      killBreaksRe: /(<br\s*\/?>(\s|&nbsp;?)*){1,}/g,
+      videoRe: /http:\/\/(www\.)?(youtube|vimeo|youku|tudou|56|yinyuetai)\.com/i,
+      attributeRe: /blog|post|article/i
     }
   }
 
-  if (!options.puppeteer.hasOwnProperty('goto')) {
-    options.puppeteer.goto = {
-      waitUntil: 'networkidle2'
-    }
-  }
-
-  if (!options.puppeteer.hasOwnProperty('setBypassCSP')) {
-    options.puppeteer.setBypassCSP = true
-  }
-
-  if (!options.hasOwnProperty('striptags')) {
-    options.striptags = []
-  }
-
-  if (!options.hasOwnProperty('blockedResourceTypes')) {
-    options.blockedResourceTypes = []
-  }
-
-  if (!options.hasOwnProperty('skippedResources')) {
-    options.skippedResources = []
-  }
-
-  if (!options.hasOwnProperty('title')) {
-    options.title = {}
-  }
-
-  if (!options.hasOwnProperty('nlp')) {
-    options.nlp = {}
-  }
-
-  if (!options.nlp.hasOwnProperty('plugins')) {
-    options.nlp.plugins = []
-  }
-
-  if (!options.hasOwnProperty('regex')) {
-    options.regex = {}
-  }
-
-  if (!options.regex.hasOwnProperty('unlikelyCandidatesRe')) {
-    options.regex.unlikelyCandidatesRe = /combx|modal|comment|disqus|foot|header|menu|meta|nav|rss|shoutbox|sponsor|social|teaserlist|time|tweet|twitter/i
-  }
-
-  if (!options.regex.hasOwnProperty('okMaybeItsACandidateRe')) {
-    options.regex.okMaybeItsACandidateRe = /and|article|body|column|main|story|entry|^post/im
-  }
-
-  if (!options.regex.hasOwnProperty('positiveRe')) {
-    options.regex.positiveRe = /article|body|content|entry|hentry|page|pagination|post|section|chapter|description|main|blog|text/i
-  }
-
-  if (!options.regex.hasOwnProperty('negativeRe')) {
-    options.regex.negativeRe = /combx|comment|contact|foot|footer|footnote|link|media|meta|promo|related|scroll|shoutbox|sponsor|utility|tags|widget/i
-  }
-
-  if (!options.regex.hasOwnProperty('divToPElementsRe')) {
-    options.regex.divToPElementsRe = /<(a|blockquote|dl|div|img|ol|p|pre|table|ul)/i
-  }
-
-  if (!options.regex.hasOwnProperty('replaceBrsRe')) {
-    options.regex.replaceBrsRe = /(<br[^>]*>[ \n\r\t]*){2,}/gi
-  }
-
-  if (!options.regex.hasOwnProperty('replaceFontsRe')) {
-    options.regex.replaceFontsRe = /<(\/?)font[^>]*>/gi
-  }
-
-  if (!options.regex.hasOwnProperty('trimRe')) {
-    options.regex.trimRe = /^\s+|\s+$/g
-  }
-
-  if (!options.regex.hasOwnProperty('normalizeRe')) {
-    options.regex.normalizeRe = /\s{2,}/g
-  }
-
-  if (!options.regex.hasOwnProperty('killBreaksRe')) {
-    options.regex.killBreaksRe = /(<br\s*\/?>(\s|&nbsp;?)*){1,}/g
-  }
-
-  if (!options.regex.hasOwnProperty('videoRe')) {
-    options.regex.videoRe = /http:\/\/(www\.)?(youtube|vimeo|youku|tudou|56|yinyuetai)\.com/i
-  }
-
-  if (!options.regex.hasOwnProperty('attributeRe')) {
-    options.regex.attributeRe = /blog|post|article/i
-  }
-
-  return options
+  return _.defaultsDeep({}, options, defaults)
 }
 
 module.exports.capitalizeFirstLetter = function (string) {

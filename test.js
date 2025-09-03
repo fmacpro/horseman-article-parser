@@ -1,5 +1,6 @@
 const parser = require('./index.js')
 const fs = require('fs')
+const assert = require('assert')
 
 /** add some names | https://observablehq.com/@spencermountain/compromise-plugins */
 const testPlugin = function (Doc, world) {
@@ -34,19 +35,22 @@ const options = {
   nlp: {
     plugins: [testPlugin]
   },
-  puppeteer: {
-    launch: {
-      headless: true,
-      defaultViewport: null,
-      handleSIGINT: false,
-      ignoreHTTPSErrors: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--ignore-certificate-errors']
+    puppeteer: {
+      launch: {
+        headless: true,
+        defaultViewport: null,
+        handleSIGINT: false,
+        ignoreHTTPSErrors: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--ignore-certificate-errors']
+      }
     }
   }
-}
 
-parser.parseArticle(options)
-  .then(async function (article) {
+;(async () => {
+  try {
+    const article = await parser.parseArticle(options)
+    assert.ok(article.title.text, 'article title missing')
+
     const response = {
       title: article.title.text,
       excerpt: article.excerpt,
@@ -71,12 +75,12 @@ parser.parseArticle(options)
       html: article.html
     }
 
-      const json = JSON.stringify(response, null, 4)
-      await fs.promises.writeFile('testresults.json', json, 'utf8')
-      console.log('Results written to testresults.json')
-      return undefined
-    })
-  .catch(function (error) {
-    console.log(error.message)
-    console.log(error.stack)
-  })
+    const json = JSON.stringify(response, null, 4)
+    await fs.promises.writeFile('testresults.json', json, 'utf8')
+    console.log('Results written to testresults.json')
+  } catch (error) {
+    console.error(error.message)
+    console.error(error.stack)
+    throw error
+  }
+})()
