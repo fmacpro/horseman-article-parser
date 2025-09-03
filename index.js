@@ -33,10 +33,7 @@ const helpers = require('./helpers')
  *
  */
 
-module.exports.parseArticle = async function (options, socket) {
-  if (typeof socket === 'undefined') {
-    socket = { emit: function (type, status) { console.log(status) } }
-  }
+module.exports.parseArticle = async function (options, socket = { emit: (type, status) => console.log(status) }) {
 
   options = helpers.setDefaultOptions(options)
 
@@ -57,7 +54,9 @@ module.exports.parseArticle = async function (options, socket) {
 
   const article = results[0]
 
-  article.lighthouse = results[1]
+  if (typeof results[1] !== 'undefined') {
+    article.lighthouse = results[1]
+  }
 
   return article
 }
@@ -88,38 +87,44 @@ const articleParser = async function (options, socket) {
   // Init puppeteer
   const browser = await puppeteer.launch(options.puppeteer.launch)
 
-  const page = await browser.newPage()
-
-  // Ignore content security policies
-  await page.setBypassCSP(options.puppeteer.setBypassCSP)
-
-  await page.setRequestInterception(true)
-
-  page.on('request', request => {
-    const requestUrl = request.url().split('?')[0].split('#')[0]
-    if (
-      options.blockedResourceTypes.indexOf(request.resourceType()) !== -1 ||
-      options.skippedResources.some(resource => requestUrl.indexOf(resource) !== -1) ||
-      (request.isNavigationRequest() && request.redirectChain().length)
-    ) {
-      request.abort()
-    } else {
-      request.continue()
-    }
-  })
-
-  // Inject jQuery from local package to avoid external network fetch
-  const jquery = await fs.promises.readFile(require.resolve('jquery/dist/jquery.min.js'), 'utf8')
-
-  let response
   try {
-    response = await page.goto(options.url, options.puppeteer.goto)
-  } catch (e) {
-    const message = 'Failed to fetch ' + options.url + ': ' + e.message
-    socket.emit('parse:status', message)
-    await browser.close()
-    throw new Error(message)
-  }
+    const page = await browser.newPage()
+
+    // Ignore content security policies
+    await page.setBypassCSP(options.puppeteer.setBypassCSP)
+
+    await page.setRequestInterception(true)
+
+    page.on('request', request => {
+      let requestUrl
+      try {
+        const url = new URL(request.url())
+        requestUrl = url.origin + url.pathname
+      } catch {
+        requestUrl = request.url()
+      }
+      if (
+        options.blockedResourceTypes.indexOf(request.resourceType()) !== -1 ||
+        options.skippedResources.some(resource => requestUrl.indexOf(resource) !== -1) ||
+        (request.isNavigationRequest() && request.redirectChain().length)
+      ) {
+        request.abort()
+      } else {
+        request.continue()
+      }
+    })
+
+    // Inject jQuery from local package to avoid external network fetch
+    const jquery = await fs.promises.readFile(require.resolve('jquery/dist/jquery.min.js'), 'utf8')
+
+    let response
+    try {
+      response = await page.goto(options.url, options.puppeteer.goto)
+    } catch (e) {
+      const message = 'Failed to fetch ' + options.url + ': ' + e.message
+      socket.emit('parse:status', message)
+      throw new Error(message)
+    }
 
   // Inject cookies if set
   if (typeof options.puppeteer.cookies !== 'undefined') {
@@ -149,7 +154,6 @@ const articleParser = async function (options, socket) {
   if (article.status === 403 || article.status === 404) {
     const message = 'Failed to fetch ' + options.url + ' ' + article.status
     socket.emit('parse:status', message)
-    await browser.close()
     throw new Error(message)
   }
 
@@ -176,7 +180,7 @@ const articleParser = async function (options, socket) {
   if (options.enabled.includes('siteicon')) {
     socket.emit('parse:status', 'Evaluating site icon')
     article.siteicon = await page.evaluate(() => {
-      var j = window.$
+      const j = window.$
       return j('link[rel~="icon"]').prop('href')
     })
   }
@@ -185,13 +189,12 @@ const articleParser = async function (options, socket) {
   socket.emit('parse:status', 'Evaluating Meta Data')
 
   const meta = await page.evaluate(() => {
-    var j = window.$
+    const j = window.$
 
-    var arr = j('meta')
-    var meta = {}
-    var i = 0
+    const arr = j('meta')
+    const meta = {}
 
-    for (i = 0; i < arr.length; i++) {
+    for (let i = 0; i < arr.length; i++) {
       if (j(arr[i]).attr('name')) {
         meta[j(arr[i]).attr('name')] = j(arr[i]).attr('content')
       } else if (j(arr[i]).attr('property')) {
@@ -213,15 +216,15 @@ const articleParser = async function (options, socket) {
 
   // Save the original HTML of the document
   article.html = await page.evaluate(() => {
-    var j = window.$
+    const j = window.$
     return j('html').html()
   })
 
   // HTML Cleaning
   let html = await page.evaluate((options) => {
-    var j = window.$
+    const j = window.$
 
-    for (var i = 0; i < options.length; i++) {
+    for (let i = 0; i < options.length; i++) {
       j(options[i]).remove()
     }
 
@@ -273,8 +276,6 @@ const articleParser = async function (options, socket) {
     }
 
   }
-
-  browser.close()
 
   // Turn relative links into absolute links & assign processed html
   article.processed.html = await absolutify(content, article.baseurl)
@@ -370,6 +371,9 @@ const articleParser = async function (options, socket) {
   socket.emit('parse:status', 'Horseman Anaysis Complete')
 
   return article
+  } finally {
+    await browser.close()
+  }
 }
 
 /**
@@ -622,7 +626,7 @@ const lighthouseAnalysis = async function (options, socket) {
     output: 'json'
   })
 
-  browser.close()
+  await browser.close()
 
   socket.emit('parse:status', 'Lighthouse Analysis Complete')
 
