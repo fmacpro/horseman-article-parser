@@ -4,12 +4,8 @@ import StealthPlugin from 'puppeteer-extra-plugin-stealth'
 puppeteer.use(StealthPlugin())
 
 import fs from 'fs'
-import retext from 'retext'
 import cleaner from 'clean-html'
 import Sentiment from 'sentiment'
-import spell from 'retext-spell'
-import dictionary from 'dictionary-en-gb'
-import report from 'vfile-reporter-json'
 import { htmlToText } from 'html-to-text'
 import nlp from 'compromise'
 import absolutify from 'absolutify'
@@ -23,8 +19,9 @@ import {
   grabArticle,
   capitalizeFirstLetter
 } from './helpers.js'
-import keywordParser from './keywordParser.js'
-import lighthouseAnalysis from './lighthouse.js'
+import keywordParser from './controllers/keywordParser.js'
+import lighthouseAnalysis from './controllers/lighthouse.js'
+import spellCheck from './controllers/spellCheck.js'
 
 const require = createRequire(import.meta.url)
 
@@ -382,45 +379,6 @@ const articleParser = async function (browser, options, socket) {
 }
 
 /**
- * checks the spelling of the article
- *
- * @param {String} text - the string of text to run the spellcheck against
- * @param {Object} options - [retext-spell options]{@link https://github.com/retextjs/retext-spell}
- * @param {Array} options.dictionary - by default is set to [en-gb]{@link https://github.com/wooorm/dictionaries/tree/master/dictionaries/en-GB}.
- *
- * @return {Object} object containing potentially misspelled words
- *
- */
-
-const spellCheck = function (text, options) {
-  text = text.replace(/[0-9]{1,}[a-zA-Z]{1,}/gi, '')
-
-  return new Promise(function (resolve, reject) {
-    if (typeof options === 'undefined') {
-      options = {
-        dictionary: dictionary
-      }
-    }
-
-    if (typeof options.dictionary === 'undefined') {
-      options.dictionary = dictionary
-    }
-
-    retext()
-      .use(spell, options)
-      .process(text, function (error, file) {
-        if (error) {
-          reject(error)
-        }
-
-        let results = JSON.parse(report(file))
-        results = results[0].messages
-        resolve(results)
-      })
-  })
-}
-
-/**
  * takes the article body and returns the raw text of the article
  *
  * @param {String} html - the html string to process
@@ -551,29 +509,6 @@ const htmlCleaner = function (html, options) {
     })
   })
 }
-
-/**
- * takes a string of html and runs it through [retext-keywords]{@link https://github.com/retextjs/retext-keywords} and returns keyword and keyphrase suggestions
- *
- * @param {String} html - the html to process
- * @param {Object} options - the [retext-keywords options]{@link https://github.com/retextjs/retext-keywords#api}
- *
- * @return {Object} the keyword and keyphrase suggestions
- *
- */
-
-
-/**
- * runs a google lighthouse audit on the target article
- *
- * @param {Object} options - the article parser options object
-  * @param {Object} options.puppeteer.launch - the pupperteer launch options
- *
- * @return {Object} the google lighthouse analysis
- *
- */
-
-
 /**
  * gets the best available title for the article
  *
