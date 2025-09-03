@@ -1,5 +1,6 @@
-const parser = require('./index.js')
-const fs = require('fs')
+import { parseArticle } from './index.js'
+import fs from 'fs'
+import assert from 'assert'
 
 /** add some names | https://observablehq.com/@spencermountain/compromise-plugins */
 const testPlugin = function (Doc, world) {
@@ -10,7 +11,7 @@ const testPlugin = function (Doc, world) {
 }
 
 const options = {
-  url: 'https://www.bbc.co.uk/news/uk-59284505',
+  url: 'https://www.theguardian.com/business/2025/sep/02/uk-hit-by-fresh-sell-off-in-government-bond-markets-as-pound-weakens',
   enabled: ['lighthouse', 'screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords', 'siteicon'],
   rules: [
     {
@@ -33,11 +34,23 @@ const options = {
   ],
   nlp: {
     plugins: [testPlugin]
+  },
+    puppeteer: {
+      launch: {
+        headless: true,
+        defaultViewport: null,
+        handleSIGINT: false,
+        ignoreHTTPSErrors: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--ignore-certificate-errors']
+      }
+    }
   }
-}
 
-parser.parseArticle(options)
-  .then(function (article) {
+;(async () => {
+  try {
+    const article = await parseArticle(options)
+    assert.ok(article.title.text, 'article title missing')
+
     const response = {
       title: article.title.text,
       excerpt: article.excerpt,
@@ -63,12 +76,11 @@ parser.parseArticle(options)
     }
 
     const json = JSON.stringify(response, null, 4)
-    fs.writeFile('testresults.json', json, 'utf8', function (err) {
-      if (err) throw err
-      console.log('Results written to testresults.json')
-    })
-  })
-  .catch(function (error) {
-    console.log(error.message)
-    console.log(error.stack)
-  })
+    await fs.promises.writeFile('testresults.json', json, 'utf8')
+    console.log('Results written to testresults.json')
+  } catch (error) {
+    console.error(error.message)
+    console.error(error.stack)
+    throw error
+  }
+})()

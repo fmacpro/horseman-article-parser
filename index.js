@@ -1,26 +1,29 @@
-const puppeteer = require('puppeteer-extra')
-const stealth = require('puppeteer-extra-plugin-stealth')()
-// https://github.com/berstend/puppeteer-extra/issues/211
-stealth.onBrowser = () => {}
-puppeteer.use(stealth)
+import puppeteer from 'puppeteer-extra'
+import StealthPlugin from 'puppeteer-extra-plugin-stealth'
 
-const lighthouse = require('lighthouse')
-const retext = require('retext')
-const nlcstToString = require('nlcst-to-string')
-const pos = require('retext-pos')
-const keywords = require('retext-keywords')
-const _ = require('lodash')
-const cleaner = require('clean-html')
-const Sentiment = require('sentiment')
-const spell = require('retext-spell')
-const dictionary = require('dictionary-en-gb')
-const report = require('vfile-reporter-json')
-const htmlToText = require('html-to-text')
-const nlp = require('compromise')
-const absolutify = require('absolutify')
-const jsdom = require('jsdom')
-const { JSDOM } = jsdom
-const helpers = require('./helpers')
+puppeteer.use(StealthPlugin())
+
+import fs from 'fs'
+import cleaner from 'clean-html'
+import Sentiment from 'sentiment'
+import { htmlToText } from 'html-to-text'
+import nlp from 'compromise'
+import absolutify from 'absolutify'
+import { JSDOM } from 'jsdom'
+import jquery from 'jquery'
+import { createRequire } from 'module'
+import {
+  setDefaultOptions,
+  setCleanRules,
+  prepDocument,
+  grabArticle,
+  capitalizeFirstLetter
+} from './helpers.js'
+import keywordParser from './controllers/keywordParser.js'
+import lighthouseAnalysis from './controllers/lighthouse.js'
+import spellCheck from './controllers/spellCheck.js'
+
+const require = createRequire(import.meta.url)
 
 /**
  * main article parser module export function
@@ -32,12 +35,9 @@ const helpers = require('./helpers')
  *
  */
 
-module.exports.parseArticle = async function (options, socket) {
-  if (typeof socket === 'undefined') {
-    socket = { emit: function (type, status) { console.log(status) } }
-  }
+export async function parseArticle (options, socket = { emit: (type, status) => console.log(status) }) {
 
-  options = helpers.setDefaultOptions(options)
+  options = setDefaultOptions(options)
 
   // Allow nlp plugins to be passed in (https://observablehq.com/@spencermountain/compromise-plugins)
   if (options.nlp.plugins.length >= 1) {
@@ -46,19 +46,19 @@ module.exports.parseArticle = async function (options, socket) {
     }
   }
 
-  const actions = [articleParser(options, socket)]
+  const browser = await puppeteer.launch(options.puppeteer.launch)
 
-  if (options.enabled.includes('lighthouse')) {
-    actions.push(lighthouseAnalysis(options, socket))
+  try {
+    const article = await articleParser(browser, options, socket)
+
+    if (options.enabled.includes('lighthouse')) {
+      article.lighthouse = await lighthouseAnalysis(browser, options, socket)
+    }
+
+    return article
+  } finally {
+    await browser.close()
   }
-
-  const results = await Promise.all(actions)
-
-  const article = results[0]
-
-  article.lighthouse = results[1]
-
-  return article
 }
 
 /**
@@ -71,7 +71,7 @@ module.exports.parseArticle = async function (options, socket) {
  *
  */
 
-const articleParser = async function (options, socket) {
+const articleParser = async function (browser, options, socket) {
   const article = {}
   article.meta = {}
   article.meta.title = {}
@@ -83,42 +83,50 @@ const articleParser = async function (options, socket) {
   article.lighthouse = {}
 
   socket.emit('parse:status', 'Starting Horseman')
-
-  // Init puppeteer
-  const browser = await puppeteer.launch(options.puppeteer.launch)
-
   const page = await browser.newPage()
 
-  // Ignore content security policies
-  await page.setBypassCSP(options.puppeteer.setBypassCSP)
+  try {
+    // Ignore content security policies
+    await page.setBypassCSP(options.puppeteer.setBypassCSP)
 
-  await page.setRequestInterception(true)
+    await page.setRequestInterception(true)
 
-  page.on('request', request => {
-    const requestUrl = request._url.split('?')[0].split('#')[0]
-    if (
-      options.blockedResourceTypes.indexOf(request.resourceType()) !== -1 ||
-      options.skippedResources.some(resource => requestUrl.indexOf(resource) !== -1) ||
-      (request.isNavigationRequest() && request.redirectChain().length)
-    ) {
-      request.abort()
-    } else {
-      request.continue()
+    const blockedResourceTypes = new Set(options.blockedResourceTypes)
+    const skippedResources = new Set(options.skippedResources)
+
+    page.on('request', request => {
+      let requestUrl
+      try {
+        const url = new URL(request.url())
+        requestUrl = url.origin + url.pathname
+      } catch {
+        requestUrl = request.url()
+      }
+      if (
+        blockedResourceTypes.has(request.resourceType()) ||
+        [...skippedResources].some(resource => requestUrl.includes(resource)) ||
+        (request.isNavigationRequest() && request.redirectChain().length)
+      ) {
+        request.abort()
+      } else {
+        request.continue()
+      }
+    })
+
+    // Inject jQuery from local package to avoid external network fetch
+    const jquerySource = await fs.promises.readFile(
+      require.resolve('jquery/dist/jquery.min.js'),
+      'utf8'
+    )
+
+    let response
+    try {
+      response = await page.goto(options.url, options.puppeteer.goto)
+    } catch (e) {
+      const message = 'Failed to fetch ' + options.url + ': ' + e.message
+      socket.emit('parse:status', message)
+      throw new Error(message)
     }
-  })
-
-  // Inject jQuery - https://stackoverflow.com/a/50598512
-  const jquery = await page.evaluate(() => window.fetch('https://code.jquery.com/jquery-3.5.1.min.js').then((res) => res.text()))
-
-  const response = await page.goto(options.url, options.puppeteer.goto).catch(function () {
-    return false
-  })
-
-  if (!response) {
-    socket.emit('parse:status', 'Failed to fetch ' + options.url + ' (timeout)')
-    browser.close()
-    return false
-  }
 
   // Inject cookies if set
   if (typeof options.puppeteer.cookies !== 'undefined') {
@@ -136,7 +144,7 @@ const articleParser = async function (options, socket) {
     }
   }
 
-  await page.evaluate(jquery)
+    await page.evaluate(jquerySource)
 
   socket.emit('parse:status', 'Fetching ' + options.url)
 
@@ -146,9 +154,9 @@ const articleParser = async function (options, socket) {
   socket.emit('parse:status', 'Status ' + article.status)
 
   if (article.status === 403 || article.status === 404) {
-    socket.emit('parse:status', 'Failed to fetch ' + options.url + ' ' + article.status)
-    browser.close()
-    return false
+    const message = 'Failed to fetch ' + options.url + ' ' + article.status
+    socket.emit('parse:status', message)
+    throw new Error(message)
   }
 
   // Evaluate URL
@@ -174,7 +182,7 @@ const articleParser = async function (options, socket) {
   if (options.enabled.includes('siteicon')) {
     socket.emit('parse:status', 'Evaluating site icon')
     article.siteicon = await page.evaluate(() => {
-      var j = window.$
+      const j = window.$
       return j('link[rel~="icon"]').prop('href')
     })
   }
@@ -183,13 +191,12 @@ const articleParser = async function (options, socket) {
   socket.emit('parse:status', 'Evaluating Meta Data')
 
   const meta = await page.evaluate(() => {
-    var j = window.$
+    const j = window.$
 
-    var arr = j('meta')
-    var meta = {}
-    var i = 0
+    const arr = j('meta')
+    const meta = {}
 
-    for (i = 0; i < arr.length; i++) {
+    for (let i = 0; i < arr.length; i++) {
       if (j(arr[i]).attr('name')) {
         meta[j(arr[i]).attr('name')] = j(arr[i]).attr('content')
       } else if (j(arr[i]).attr('property')) {
@@ -211,15 +218,15 @@ const articleParser = async function (options, socket) {
 
   // Save the original HTML of the document
   article.html = await page.evaluate(() => {
-    var j = window.$
+    const j = window.$
     return j('html').html()
   })
 
   // HTML Cleaning
   let html = await page.evaluate((options) => {
-    var j = window.$
+    const j = window.$
 
-    for (var i = 0; i < options.length; i++) {
+    for (let i = 0; i < options.length; i++) {
       j(options[i]).remove()
     }
 
@@ -238,12 +245,12 @@ const articleParser = async function (options, socket) {
 
   const dom = new JSDOM(html)
 
-  await helpers.setCleanRules(options.readability.cleanRulers || [])
-  await helpers.prepDocument(dom.window.document)
+  await setCleanRules(options.readability.cleanRulers || [])
+  await prepDocument(dom.window.document)
 
   // Derived Title & Content
   article.title.text = await getTitle(dom.window.document, options.title)
-  let content = helpers.grabArticle(dom.window.document, false, options.regex).innerHTML
+  let content = grabArticle(dom.window.document, false, options.regex).innerHTML
 
   // Title & Content based on defined config rules
   if ( options.rules ) {
@@ -272,8 +279,6 @@ const articleParser = async function (options, socket) {
 
   }
 
-  browser.close()
-
   // Turn relative links into absolute links & assign processed html
   article.processed.html = await absolutify(content, article.baseurl)
 
@@ -282,7 +287,7 @@ const articleParser = async function (options, socket) {
     socket.emit('parse:status', 'Evaluating Links')
 
     const { window } = new JSDOM(article.processed.html)
-    const $ = require('jquery')(window)
+    const $ = jquery(window)
 
     const arr = window.$('a')
     const links = []
@@ -306,7 +311,7 @@ const articleParser = async function (options, socket) {
   article.processed.text.raw = await getRawText(article.processed.html)
 
   // Excerpt
-  article.excerpt = helpers.capitalizeFirstLetter(article.processed.text.raw.replace(/^(.{200}[^\s]*).*/, '$1'))
+  article.excerpt = capitalizeFirstLetter(article.processed.text.raw.replace(/^(.{200}[^\s]*).*/, '$1'))
 
   // Sentiment
   if (options.enabled.includes('sentiment')) {
@@ -367,46 +372,10 @@ const articleParser = async function (options, socket) {
 
   socket.emit('parse:status', 'Horseman Anaysis Complete')
 
-  return article
-}
-
-/**
- * checks the spelling of the article
- *
- * @param {String} text - the string of text to run the spellcheck against
- * @param {Object} options - [retext-spell options]{@link https://github.com/retextjs/retext-spell}
- * @param {Array} options.dictionary - by default is set to [en-gb]{@link https://github.com/wooorm/dictionaries/tree/master/dictionaries/en-GB}.
- *
- * @return {Object} object containing potentially misspelled words
- *
- */
-
-const spellCheck = function (text, options) {
-  text = text.replace(/[0-9]{1,}[a-zA-Z]{1,}/gi, '')
-
-  return new Promise(function (resolve, reject) {
-    if (typeof options === 'undefined') {
-      options = {
-        dictionary: dictionary
-      }
-    }
-
-    if (typeof options.dictionary === 'undefined') {
-      options.dictionary = dictionary
-    }
-
-    retext()
-      .use(spell, options)
-      .process(text, function (error, file) {
-        if (error) {
-          reject(error)
-        }
-
-        let results = JSON.parse(report(file))
-        results = results[0].messages
-        resolve(results)
-      })
-  })
+    return article
+  } finally {
+    await page.close()
+  }
 }
 
 /**
@@ -419,7 +388,7 @@ const spellCheck = function (text, options) {
  */
 
 const getRawText = function (html) {
-  return new Promise(function (resolve, reject) {
+  return new Promise(function (resolve) {
     // Lowercase for analysis
     const options = {
       wordwrap: null,
@@ -432,7 +401,7 @@ const getRawText = function (html) {
     }
 
     // HTML > Text
-    let rawText = htmlToText.fromString(html, options)
+    let rawText = htmlToText(html, options)
 
     // Normalise
     rawText = nlp(rawText)
@@ -456,7 +425,7 @@ const getRawText = function (html) {
  */
 
 const getFormattedText = function (html, title, baseurl, options) {
-  return new Promise(function (resolve, reject) {
+  return new Promise(function (resolve) {
     if (typeof options === 'undefined') {
       options = {
         wordwrap: 100,
@@ -473,7 +442,7 @@ const getFormattedText = function (html, title, baseurl, options) {
     }
 
     // HTML > Text
-    const text = htmlToText.fromString(html, options)
+    const text = htmlToText(html, options)
 
     // If uppercase is set uppercase the title
     if (options.uppercaseHeadings === true) {
@@ -496,7 +465,7 @@ const getFormattedText = function (html, title, baseurl, options) {
  */
 
 const getHtmlText = function (text) {
-  return new Promise(function (resolve, reject) {
+  return new Promise(function (resolve) {
     // Replace windows line breaks with linux line breaks & split each line into array
     const textArray = text.replace('\r\n', '\n').split('\n')
     // Check length of text array (no of lines)
@@ -526,7 +495,7 @@ const getHtmlText = function (text) {
  */
 
 const htmlCleaner = function (html, options) {
-  return new Promise(function (resolve, reject) {
+  return new Promise(function (resolve) {
     if (typeof options === 'undefined') {
       options = {
         'add-remove-tags': ['blockquote', 'span'],
@@ -540,93 +509,6 @@ const htmlCleaner = function (html, options) {
     })
   })
 }
-
-/**
- * takes a string of html and runs it through [retext-keywords]{@link https://github.com/retextjs/retext-keywords} and returns keyword and keyphrase suggestions
- *
- * @param {String} html - the html to process
- * @param {Object} options - the [retext-keywords options]{@link https://github.com/retextjs/retext-keywords#api}
- *
- * @return {Object} the keyword and keyphrase suggestions
- *
- */
-
-const keywordParser = function (html, options) {
-  return new Promise(function (resolve, reject) {
-    if (typeof options === 'undefined') {
-      options = { maximum: 10 }
-    }
-
-    retext()
-      .use(pos)
-      .use(keywords, options)
-      .process(html, function (error, file) {
-        if (error) {
-          reject(error)
-        }
-
-        const keywords = []
-        const keyphrases = []
-
-        file.data.keywords.forEach(function (keyword) {
-          keywords.push({
-            keyword: nlcstToString(keyword.matches[0].node),
-            score: keyword.score
-          })
-        })
-
-        file.data.keyphrases.forEach(function (phrase) {
-          const nodes = phrase.matches[0].nodes
-          const tree = _.map(nodes)
-
-          keyphrases.push({
-            keyphrase: nlcstToString(tree, ''),
-            score: phrase.score,
-            weight: phrase.weight
-          })
-        })
-
-        keyphrases.sort(function (a, b) {
-          return (a.score > b.score) ? -1 : 1
-        })
-
-        resolve({ keywords: keywords, keyphrases: keyphrases })
-      }
-      )
-      .catch(function (error) {
-        reject(error)
-      })
-  })
-}
-
-/**
- * runs a google lighthouse audit on the target article
- *
- * @param {Object} options - the article parser options object
-  * @param {Object} options.puppeteer.launch - the pupperteer launch options
- *
- * @return {Object} the google lighthouse analysis
- *
- */
-
-const lighthouseAnalysis = async function (options, socket) {
-  socket.emit('parse:status', 'Starting Lighthouse')
-
-  // Init puppeteer
-  const browser = await puppeteer.launch(options.puppeteer.launch)
-
-  const results = await lighthouse(options.url, {
-    port: (new URL(browser.wsEndpoint())).port,
-    output: 'json'
-  })
-
-  browser.close()
-
-  socket.emit('parse:status', 'Lighthouse Analysis Complete')
-
-  return results.lhr
-}
-
 /**
  * gets the best available title for the article
  *
@@ -636,7 +518,7 @@ const lighthouseAnalysis = async function (options, socket) {
  *
  */
 
-const getTitle = function (document, options) {
+const getTitle = function (document) {
   let title = findMetaTitle(document) || document.title
 
   // replace all 3 types of line breaks with a space

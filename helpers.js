@@ -1,4 +1,3 @@
-const url = require('url')
 
 /**
  * sets the default options
@@ -9,117 +8,49 @@ const url = require('url')
  *
  */
 
-module.exports.setDefaultOptions = function (options) {
-  if (!options.hasOwnProperty('enabled')) {
-    options.enabled = []
-  }
+import _ from 'lodash'
 
-  if (!options.hasOwnProperty('puppeteer')) {
-    options.puppeteer = {}
-  }
-
-  if (!options.puppeteer.hasOwnProperty('launch')) {
-    options.puppeteer.launch = {
-      headless: true,
-      defaultViewport: null,
-      handleSIGINT: false
+export function setDefaultOptions (options = {}) {
+  const defaults = {
+    enabled: [],
+    puppeteer: {
+      launch: {
+        headless: true,
+        defaultViewport: null,
+        handleSIGINT: false
+      },
+      goto: { waitUntil: 'networkidle2' },
+      setBypassCSP: true
+    },
+    striptags: [],
+    blockedResourceTypes: [],
+    skippedResources: [],
+    title: {},
+    nlp: { plugins: [] },
+    regex: {
+      unlikelyCandidatesRe: /combx|modal|comment|disqus|foot|header|menu|meta|nav|rss|shoutbox|sponsor|social|teaserlist|time|tweet|twitter/i,
+      okMaybeItsACandidateRe: /and|article|body|column|main|story|entry|^post/im,
+      positiveRe: /article|body|content|entry|hentry|page|pagination|post|section|chapter|description|main|blog|text/i,
+      negativeRe: /combx|comment|contact|foot|footer|footnote|link|media|meta|promo|related|scroll|shoutbox|sponsor|utility|tags|widget/i,
+      divToPElementsRe: /<(a|blockquote|dl|div|img|ol|p|pre|table|ul)/i,
+      replaceBrsRe: /(<br[^>]*>[ \n\r\t]*){2,}/gi,
+      replaceFontsRe: /<(\/?)font[^>]*>/gi,
+      trimRe: /^\s+|\s+$/g,
+      normalizeRe: /\s{2,}/g,
+      killBreaksRe: /(<br\s*\/?>(\s|&nbsp;?)*){1,}/g,
+      videoRe: /http:\/\/(www\.)?(youtube|vimeo|youku|tudou|56|yinyuetai)\.com/i,
+      attributeRe: /blog|post|article/i
     }
   }
 
-  if (!options.puppeteer.hasOwnProperty('goto')) {
-    options.puppeteer.goto = {
-      waitUntil: 'networkidle2'
-    }
-  }
-
-  if (!options.puppeteer.hasOwnProperty('setBypassCSP')) {
-    options.puppeteer.setBypassCSP = true
-  }
-
-  if (!options.hasOwnProperty('striptags')) {
-    options.striptags = []
-  }
-
-  if (!options.hasOwnProperty('blockedResourceTypes')) {
-    options.blockedResourceTypes = []
-  }
-
-  if (!options.hasOwnProperty('skippedResources')) {
-    options.skippedResources = []
-  }
-
-  if (!options.hasOwnProperty('title')) {
-    options.title = {}
-  }
-
-  if (!options.hasOwnProperty('nlp')) {
-    options.nlp = {}
-  }
-
-  if (!options.nlp.hasOwnProperty('plugins')) {
-    options.nlp.plugins = []
-  }
-
-  if (!options.hasOwnProperty('regex')) {
-    options.regex = {}
-  }
-
-  if (!options.regex.hasOwnProperty('unlikelyCandidatesRe')) {
-    options.regex.unlikelyCandidatesRe = /combx|modal|comment|disqus|foot|header|menu|meta|nav|rss|shoutbox|sponsor|social|teaserlist|time|tweet|twitter/i
-  }
-
-  if (!options.regex.hasOwnProperty('okMaybeItsACandidateRe')) {
-    options.regex.okMaybeItsACandidateRe = /and|article|body|column|main|story|entry|^post/im
-  }
-
-  if (!options.regex.hasOwnProperty('positiveRe')) {
-    options.regex.positiveRe = /article|body|content|entry|hentry|page|pagination|post|section|chapter|description|main|blog|text/i
-  }
-
-  if (!options.regex.hasOwnProperty('negativeRe')) {
-    options.regex.negativeRe = /combx|comment|contact|foot|footer|footnote|link|media|meta|promo|related|scroll|shoutbox|sponsor|utility|tags|widget/i
-  }
-
-  if (!options.regex.hasOwnProperty('divToPElementsRe')) {
-    options.regex.divToPElementsRe = /<(a|blockquote|dl|div|img|ol|p|pre|table|ul)/i
-  }
-
-  if (!options.regex.hasOwnProperty('replaceBrsRe')) {
-    options.regex.replaceBrsRe = /(<br[^>]*>[ \n\r\t]*){2,}/gi
-  }
-
-  if (!options.regex.hasOwnProperty('replaceFontsRe')) {
-    options.regex.replaceFontsRe = /<(\/?)font[^>]*>/gi
-  }
-
-  if (!options.regex.hasOwnProperty('trimRe')) {
-    options.regex.trimRe = /^\s+|\s+$/g
-  }
-
-  if (!options.regex.hasOwnProperty('normalizeRe')) {
-    options.regex.normalizeRe = /\s{2,}/g
-  }
-
-  if (!options.regex.hasOwnProperty('killBreaksRe')) {
-    options.regex.killBreaksRe = /(<br\s*\/?>(\s|&nbsp;?)*){1,}/g
-  }
-
-  if (!options.regex.hasOwnProperty('videoRe')) {
-    options.regex.videoRe = /http:\/\/(www\.)?(youtube|vimeo|youku|tudou|56|yinyuetai)\.com/i
-  }
-
-  if (!options.regex.hasOwnProperty('attributeRe')) {
-    options.regex.attributeRe = /blog|post|article/i
-  }
-
-  return options
+  return _.defaultsDeep({}, options, defaults)
 }
 
-module.exports.capitalizeFirstLetter = function (string) {
+export function capitalizeFirstLetter (string) {
   return string.charAt(0).toUpperCase() + string.slice(1)
 }
 
-module.exports.toTitleCase = function (str) {
+export function toTitleCase (str) {
   return str.replace(/\w\S*/g, function (txt) {
     return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
   })
@@ -130,7 +61,7 @@ const dbg = (debug) ? console.log : function () {}
 
 let cleanRules = []
 
-module.exports.setCleanRules = function (rules) {
+export function setCleanRules (rules) {
   cleanRules = rules
 }
 
@@ -142,7 +73,7 @@ module.exports.setCleanRules = function (rules) {
  *
  * @return {Void}
  **/
-module.exports.prepDocument = function (document) {
+export function prepDocument (document) {
   const frames = document.getElementsByTagName('frame')
   if (frames.length > 0) {
     let bestFrame = null
@@ -151,11 +82,13 @@ module.exports.prepDocument = function (document) {
     Array.prototype.slice.call(frames, 0).forEach(function (frame) {
       const frameSize = frame.offsetWidth + frame.offsetHeight
       let canAccessFrame = false
-      try {
-        if (frame.contentWindow.document.body) {
-          canAccessFrame = true
+        try {
+          if (frame.contentWindow.document.body) {
+            canAccessFrame = true
+          }
+        } catch {
+          // ignore access errors
         }
-      } catch (e) {}
 
       if (canAccessFrame && frameSize > bestFrameSize) {
         bestFrame = frame
@@ -193,7 +126,7 @@ module.exports.prepDocument = function (document) {
  *
  * @return {jQuery}
  **/
-module.exports.grabArticle = function (document, preserveUnlikelyCandidates, regexps) {
+export function grabArticle (document, preserveUnlikelyCandidates, regexps) {
   /**
    * First, node prepping. Trash nodes that look cruddy (like ones with the class name "comment", etc), and turn divs
    * into P tags where they have been used inappropriately (as in, where they contain no other block level elements.)
@@ -613,8 +546,8 @@ function fixLinks (e) {
   }
 
   function fixLink (link) {
-    const fixed = url.URL(e.ownerDocument.originalURL, link)
-    return fixed
+    const fixed = new URL(link, e.ownerDocument.originalURL)
+    return fixed.toString()
   }
 
   let i
@@ -716,11 +649,11 @@ function prepArticle (articleContent, regexps) {
 
   cleanSingleHeader(articleContent)
 
-  try {
-    articleContent.innerHTML = articleContent.innerHTML.replace(/<br[^>]*>\s*<p/gi, '<p')
-  } catch (e) {
-    dbg('Cleaning innerHTML of breaks failed. This is an IE strict-block-elements bug. Ignoring.')
-  }
+    try {
+      articleContent.innerHTML = articleContent.innerHTML.replace(/<br[^>]*>\s*<p/gi, '<p')
+    } catch {
+      dbg('Cleaning innerHTML of breaks failed. This is an IE strict-block-elements bug. Ignoring.')
+    }
 
   fixLinks(articleContent)
 }
