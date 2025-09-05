@@ -351,6 +351,53 @@ const articleParser = async function (browser, options, socket) {
     socket.emit('parse:status', 'Check Spelling')
 
     article.spelling = await spellCheck(article.processed.text.formatted, options.retextspell)
+
+    // Filter spelling results using known entities (people, orgs, places)
+    const normalize = (w) => {
+      if (typeof w !== 'string') return ''
+      return w
+        .replace(/[’']/g, '') // remove apostrophes
+        .replace(/[^A-Za-z0-9]+/g, ' ') // non-alphanumerics to space
+        .trim()
+        .toLowerCase()
+    }
+
+    const splitWords = (s) => normalize(s).split(/\s+/).filter(Boolean)
+
+    const collectEntityWords = (arr) => {
+      const out = []
+      if (!Array.isArray(arr)) return out
+      for (const e of arr) {
+        if (e && typeof e.text === 'string') out.push(...splitWords(e.text))
+        if (Array.isArray(e.terms)) {
+          for (const t of e.terms) {
+            if (t && typeof t.text === 'string') out.push(...splitWords(t.text))
+          }
+        }
+      }
+      return out
+    }
+
+    const knownWords = new Set([
+      ...collectEntityWords(article.people || []),
+      ...collectEntityWords(article.orgs || []),
+      ...collectEntityWords(article.places || [])
+    ])
+
+    article.spelling = article.spelling.filter((item) => {
+      const word = String(item.word || '')
+      const tokens = splitWords(word)
+      if (tokens.length === 0) return true
+      // consider also singular form if token ends with s
+      for (const tok of tokens) {
+        const t = tok
+        const tSingular = t.endsWith('s') && t.length > 1 ? t.slice(0, -1) : null
+        if (knownWords.has(t) || (tSingular && knownWords.has(tSingular))) {
+          return false
+        }
+      }
+      return true
+    })
   }
 
   // Evaluate keywords & keyphrases
