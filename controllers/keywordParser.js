@@ -1,5 +1,5 @@
-import retext from 'retext'
-import nlcstToString from 'nlcst-to-string'
+import { retext } from 'retext'
+import { toString as nlcstToString } from 'nlcst-to-string'
 import pos from 'retext-pos'
 import keywords from 'retext-keywords'
 import _ from 'lodash'

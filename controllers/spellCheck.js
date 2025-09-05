@@ -1,32 +1,59 @@
-import retext from 'retext'
+import { retext } from 'retext'
 import spell from 'retext-spell'
 import dictionary from 'dictionary-en-gb'
-import report from 'vfile-reporter-json'
 
-export default function spellCheck (text, options) {
+export default async function spellCheck (text, options) {
   text = text.replace(/[0-9]{1,}[a-zA-Z]{1,}/gi, '')
 
-  return new Promise(function (resolve, reject) {
-    if (typeof options === 'undefined') {
-      options = {
-        dictionary: dictionary
+  if (typeof options === 'undefined') {
+    options = { dictionary }
+  }
+
+  if (typeof options.dictionary === 'undefined') {
+    options.dictionary = dictionary
+  }
+
+  const tweaks = options.tweaks || {}
+  const ignoreUrlLike = typeof tweaks.ignoreUrlLike === 'boolean' ? tweaks.ignoreUrlLike : true
+  const includeEndPosition = !!tweaks.includeEndPosition
+  const includeOffsets = !!tweaks.includeOffsets
+
+  const isUrlLike = (w) => {
+    if (!w || typeof w !== 'string') return false
+    const s = w.trim()
+    if (/^(?:https?:\/\/|www\.)/i.test(s)) return true
+    if (/^(?:https?|ftp)$/i.test(s)) return true
+    if (/^[\w-]+(?:\.[\w-]+)+$/.test(s) && /[A-Za-z]{2,}$/.test(s)) return true
+    if (/^(?:[A-Za-z0-9]+-){4,}[A-Za-z0-9]+$/.test(s)) return true
+    return false
+  }
+
+  const file = await retext().use(spell, options).process(text)
+  const items = file.messages
+    .map((m) => {
+      const start = m.place && m.place.start ? m.place.start : undefined
+      const end = m.place && m.place.end ? m.place.end : undefined
+      const base = {
+        word: m.actual || m.ruleId || undefined,
+        line: start ? start.line : undefined,
+        column: start ? start.column : undefined,
+        reason: m.reason,
+        suggestions: Array.isArray(m.expected) ? m.expected : []
       }
-    }
+      if (includeEndPosition && end) {
+        base.endLine = end.line
+        base.endColumn = end.column
+      }
+      if (includeOffsets && start && end) {
+        base.offsetStart = start.offset
+        base.offsetEnd = end.offset
+      }
+      return base
+    })
+    .filter((item) => {
+      if (!ignoreUrlLike) return true
+      return !isUrlLike(String(item.word || ''))
+    })
 
-    if (typeof options.dictionary === 'undefined') {
-      options.dictionary = dictionary
-    }
-
-    retext()
-      .use(spell, options)
-      .process(text, function (error, file) {
-        if (error) {
-          reject(error)
-        }
-
-        let results = JSON.parse(report(file))
-        results = results[0].messages
-        resolve(results)
-      })
-  })
+  return items
 }

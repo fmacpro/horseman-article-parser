@@ -25,6 +25,8 @@ export default [
   jsonPlugin.configs.recommended,
   {
     languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
       globals: {
         jQuery: 'readonly',
         window: 'readonly'

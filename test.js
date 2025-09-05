@@ -13,6 +13,14 @@ const testPlugin = function (Doc, world) {
 const options = {
   url: 'https://www.theguardian.com/business/2025/sep/02/uk-hit-by-fresh-sell-off-in-government-bond-markets-as-pound-weakens',
   enabled: ['lighthouse', 'screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords', 'siteicon'],
+  // Exercise spelling tweaks: include end positions and offsets
+  retextspell: {
+    tweaks: {
+      ignoreUrlLike: true,
+      includeEndPosition: true,
+      includeOffsets: true
+    }
+  },
   rules: [
     {
       host: 'www.bbc.co.uk',
