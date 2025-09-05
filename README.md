@@ -1,4 +1,4 @@
-# Horseman Article Parser
+﻿# Horseman Article Parser
 
 A web page article parser which returns an object containing the article's formatted text and other attributes including sentiment, keyphrases, people, places, organisations, spelling suggestions, in-article links, meta data & lighthouse audit results. 
 
@@ -14,7 +14,7 @@ npm install horseman-article-parser --save
 
 ### Usage
 
-#### parseArticle(options, socket) ⇒ <code>Object</code>
+#### parseArticle(options, socket) â‡’ <code>Object</code>
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -106,7 +106,18 @@ var options = {
     uppercaseHeadings: true
   },
   // retext-keywords options (https://ghub.io/retext-keywords)
-  retextkeywords: { maximum: 10 }
+  retextkeywords: { maximum: 10 },
+  // retext-spell defaults and output tweaks
+  retextspell: {
+    tweaks: {
+      // filter URL/domain-like tokens and long slugs by default
+      ignoreUrlLike: true,
+      // positions: only start by default
+      includeEndPosition: false,
+      // offsets excluded by default
+      includeOffsets: false
+    }
+  }
 }
 ```
 
@@ -197,7 +208,18 @@ var options = {
   readability: {},
 
   // retext spell options (https://ghub.io/retext-spell)
-  retextspell: {}
+  retextspell: {
+    // dictionary defaults to en-GB; you can override
+    // dictionary,
+    tweaks: {
+      // Filter URL/domain-like tokens and long slugs (default: true)
+      ignoreUrlLike: true,
+      // Include end position (endLine/endColumn) in each item (default: false)
+      includeEndPosition: false,
+      // Include offsets (offsetStart/offsetEnd) in each item (default: false)
+      includeOffsets: false
+    }
+  }
 
   // compromise nlp options
   nlp: { plugins: [ myPlugin, anotherPlugin ] }
@@ -222,6 +244,14 @@ let testPlugin = function(Doc, world) {
 const options = {
   url: 'https://www.theguardian.com/commentisfree/2020/jul/08/the-guardian-view-on-rishi-sunak-right-words-right-focus-wrong-policies',
   enabled: ['lighthouse', 'screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords'],
+  // Optional: tweak spelling output/filters
+  retextspell: {
+    tweaks: {
+      ignoreUrlLike: true,
+      includeEndPosition: true,
+      includeOffsets: true
+    }
+  },
   nlp: {
     plugins: [testPlugin]
   }
@@ -278,7 +308,6 @@ npm run docs
 - [dictionary-en-gb](https://ghub.io/dictionary-en-gb): English (United Kingdom) spelling dictionary in UTF-8
 - [html-to-text](https://ghub.io/html-to-text): Advanced HTML to plain text converter
 - [nlcst-to-string](https://ghub.io/nlcst-to-string): Stringify NLCST
-- [vfile-reporter-json](https://ghub.io/vfile-reporter-json): JSON reporter for virtual files
 
 
 ## Dev Dependencies
@@ -297,3 +326,4 @@ This project is licensed under the GNU GENERAL PUBLIC LICENSE Version 3 - see th
 ## Notes
 
 Due to [node-readability](https://github.com/luin/readability) being stale I have imported the relevent functions into this project and refactored it so it doesn't use [request](https://github.com/request/request) and therfor has no vulnrabilities.
+
