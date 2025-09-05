@@ -3,7 +3,18 @@ import spell from 'retext-spell'
 import dictionary from 'dictionary-en-gb'
 
 export default async function spellCheck (text, options) {
-  text = text.replace(/[0-9]{1,}[a-zA-Z]{1,}/gi, '')
+  // Pre-clean text: remove bracketed segments and URLs before spellcheck
+  let input = text
+  // remove anything inside square brackets, e.g. [ ... ]
+  input = input.replace(/\[[^\]]*]/g, ' ')
+  // remove URLs (http/https/ftp), www.*, and domain-like strings
+  input = input.replace(/(?:https?:\/\/|ftp:\/\/)\S+/gi, ' ')
+  input = input.replace(/\bwww\.[^\s]+/gi, ' ')
+  input = input.replace(/\b[\w-]+(?:\.[\w-]+)+(?:\/\S*)?/gi, ' ')
+  // remove alphanumeric tokens like 123abc
+  input = input.replace(/[0-9]{1,}[a-zA-Z]{1,}/gi, ' ')
+  // collapse whitespace
+  input = input.replace(/\s+/g, ' ').trim()
 
   if (typeof options === 'undefined') {
     options = { dictionary }
@@ -28,7 +39,7 @@ export default async function spellCheck (text, options) {
     return false
   }
 
-  const file = await retext().use(spell, options).process(text)
+  const file = await retext().use(spell, options).process(input)
   const items = file.messages
     .map((m) => {
       const start = m.place && m.place.start ? m.place.start : undefined

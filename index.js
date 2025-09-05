@@ -9,7 +9,7 @@ import Sentiment from 'sentiment'
 import { htmlToText } from 'html-to-text'
 import nlp from 'compromise'
 import absolutify from 'absolutify'
-import { JSDOM } from 'jsdom'
+import { JSDOM, VirtualConsole } from 'jsdom'
 import jquery from 'jquery'
 import { createRequire } from 'module'
 import {
@@ -243,7 +243,9 @@ const articleParser = async function (browser, options, socket) {
     options.readability = {}
   }
 
-  const dom = new JSDOM(html)
+  const vc1 = new VirtualConsole()
+  vc1.sendTo(console, { omitJSDOMErrors: true })
+  const dom = new JSDOM(html, { virtualConsole: vc1 })
 
   await setCleanRules(options.readability.cleanRulers || [])
   await prepDocument(dom.window.document)
@@ -286,7 +288,9 @@ const articleParser = async function (browser, options, socket) {
   if (options.enabled.includes('links')) {
     socket.emit('parse:status', 'Evaluating Links')
 
-    const { window } = new JSDOM(article.processed.html)
+    const vc2 = new VirtualConsole()
+    vc2.sendTo(console, { omitJSDOMErrors: true })
+    const { window } = new JSDOM(article.processed.html, { virtualConsole: vc2 })
     const $ = jquery(window)
 
     const arr = window.$('a')
