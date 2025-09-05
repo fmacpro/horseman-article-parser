@@ -11,7 +11,7 @@ const testPlugin = function (Doc, world) {
 }
 
 const options = {
-  url: 'https://www.theguardian.com/business/2025/sep/02/uk-hit-by-fresh-sell-off-in-government-bond-markets-as-pound-weakens',
+  url: 'https://www.theguardian.com/politics/2025/sep/05/crisis-engulfs-labour-as-deputy-pm-angela-rayner-is-forced-to-step-down',
   enabled: ['lighthouse', 'screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords', 'siteicon'],
   // Exercise spelling tweaks: include end positions and offsets
   retextspell: {
