@@ -1,54 +1,59 @@
 {
-  "name": "horseman-article-parser",
-  "version": "1.0.0",
-  "description": "Web Page Inspection Tool. Sentiment Analysis, Keyword Extraction, Named Entity Recognition & Spell Check",
-  "type": "module",
-  "main": "index.js",
-  "scripts": {
-    "lint": "node ./node_modules/eslint/bin/eslint.js . --ext .json --ext .js --fix",
-    "test": "node test.js"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/fmacpro/horseman-article-parser.git"
-  },
-  "author": "Frank MacDonald",
-  "license": "GPL-3.0",
-  "bugs": {
-    "url": "https://github.com/fmacpro/horseman-article-parser/issues"
-  },
-  "homepage": "https://github.com/fmacpro/horseman-article-parser#readme",
-  "dependencies": {
-    "absolutify": "^0.1.0",
-    "clean-html": "^2.0.1",
-    "compromise": "^14.14.4",
-    "dictionary-en-gb": "^3.0.0",
-    "html-to-text": "^9.0.5",
-    "jquery": "^3.6.0",
-    "jsdom": "^26.1.0",
-    "lighthouse": "^12.8.2",
-    "lodash": "^4.17.21",
-    "nlcst-to-string": "^4.0.0",
-    "puppeteer": "^24.18.0",
-    "puppeteer-extra": "^3.3.6",
-    "puppeteer-extra-plugin-stealth": "^2.11.2",
-    "puppeteer-extra-plugin-user-data-dir": "file:overrides/puppeteer-extra-plugin-user-data-dir",
-    "retext": "^9.0.0",
-    "retext-keywords": "^8.0.2",
-    "retext-pos": "^5.0.0",
-    "retext-spell": "^6.1.0",
-    "sentiment": "^5.0.1"
-  },
-  "devDependencies": {
-    "@eslint/eslintrc": "^3.3.1",
-    "@eslint/js": "^9.34.0",
-    "eslint": "^9.34.0",
-    "eslint-plugin-import": "^2.32.0",
-    "eslint-plugin-json": "^4.0.1",
-    "eslint-plugin-n": "^17.21.3",
-    "eslint-plugin-promise": "^7.2.1"
-  },
-  "overrides": {
-    "puppeteer-extra-plugin-user-data-dir": "file:overrides/puppeteer-extra-plugin-user-data-dir"
-  }
+    "name":  "horseman-article-parser",
+    "version":  "1.0.0",
+    "description":  "Web Page Inspection Tool. Sentiment Analysis, Keyword Extraction, Named Entity Recognition \u0026 Spell Check",
+    "type":  "module",
+    "main":  "index.js",
+    "scripts":  {
+                    "lint":  "node ./node_modules/eslint/bin/eslint.js . --ext .json --ext .js --fix",
+                    "test":  "node test.js",
+                    "train:ranker": "node scripts/train-reranker.js",
+                    "batch:crawl": "node scripts/batch-crawl.js urls.txt candidates_with_url.csv",
+                    "merge:csv": "node scripts/merge-csv.js merged.csv candidates_with_url.csv",
+                    "curated:urls": "node scripts/fetch-curated-urls.js 1000"
+                },
+    "repository":  {
+                       "type":  "git",
+                       "url":  "git+https://github.com/fmacpro/horseman-article-parser.git"
+                   },
+    "author":  "Frank MacDonald",
+    "license":  "GPL-3.0",
+    "bugs":  {
+                 "url":  "https://github.com/fmacpro/horseman-article-parser/issues"
+             },
+    "homepage":  "https://github.com/fmacpro/horseman-article-parser#readme",
+    "dependencies":  {
+                         "absolutify":  "^0.1.0",
+                         "fast-xml-parser": "^4.4.1",
+                         "clean-html":  "^2.0.1",
+                         "compromise":  "^14.14.4",
+                         "dictionary-en-gb":  "^3.0.0",
+                         "html-to-text":  "^9.0.5",
+                         "jquery":  "^3.6.0",
+                         "jsdom":  "^26.1.0",
+                         "lighthouse":  "^12.8.2",
+                         "lodash":  "^4.17.21",
+                         "nlcst-to-string":  "^4.0.0",
+                         "puppeteer":  "^24.18.0",
+                         "puppeteer-extra":  "^3.3.6",
+                         "puppeteer-extra-plugin-stealth":  "^2.11.2",
+                         "puppeteer-extra-plugin-user-data-dir":  "file:overrides/puppeteer-extra-plugin-user-data-dir",
+                         "retext":  "^9.0.0",
+                         "retext-keywords":  "^8.0.2",
+                         "retext-pos":  "^5.0.0",
+                         "retext-spell":  "^6.1.0",
+                         "sentiment":  "^5.0.1"
+                     },
+    "devDependencies":  {
+                            "@eslint/eslintrc":  "^3.3.1",
+                            "@eslint/js":  "^9.34.0",
+                            "eslint":  "^9.34.0",
+                            "eslint-plugin-import":  "^2.32.0",
+                            "eslint-plugin-json":  "^4.0.1",
+                            "eslint-plugin-n":  "^17.21.3",
+                            "eslint-plugin-promise":  "^7.2.1"
+                        },
+    "overrides":  {
+                      "puppeteer-extra-plugin-user-data-dir":  "file:overrides/puppeteer-extra-plugin-user-data-dir"
+                  }
 }

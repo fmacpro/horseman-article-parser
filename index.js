@@ -10,15 +10,11 @@ import { htmlToText } from 'html-to-text'
 import nlp from 'compromise'
 import absolutify from 'absolutify'
 import { JSDOM, VirtualConsole } from 'jsdom'
+import { extractStructuredData } from './controllers/structuredData.js'
+import { detectContent } from './controllers/contentDetector.js'
 import jquery from 'jquery'
 import { createRequire } from 'module'
-import {
-  setDefaultOptions,
-  setCleanRules,
-  prepDocument,
-  grabArticle,
-  capitalizeFirstLetter
-} from './helpers.js'
+import { setDefaultOptions, capitalizeFirstLetter } from './helpers.js'
 import keywordParser from './controllers/keywordParser.js'
 import lighthouseAnalysis from './controllers/lighthouse.js'
 import spellCheck from './controllers/spellCheck.js'
@@ -89,6 +85,14 @@ const articleParser = async function (browser, options, socket) {
     // Ignore content security policies
     await page.setBypassCSP(options.puppeteer.setBypassCSP)
 
+    // Optional: set user agent and extra headers from options
+    if (options.puppeteer && options.puppeteer.userAgent) {
+      await page.setUserAgent(options.puppeteer.userAgent)
+    }
+    if (options.puppeteer && options.puppeteer.extraHTTPHeaders) {
+      await page.setExtraHTTPHeaders(options.puppeteer.extraHTTPHeaders)
+    }
+
     await page.setRequestInterception(true)
 
     const blockedResourceTypes = new Set(options.blockedResourceTypes)
@@ -104,8 +108,7 @@ const articleParser = async function (browser, options, socket) {
       }
       if (
         blockedResourceTypes.has(request.resourceType()) ||
-        [...skippedResources].some(resource => requestUrl.includes(resource)) ||
-        (request.isNavigationRequest() && request.redirectChain().length)
+        [...skippedResources].some(resource => requestUrl.includes(resource))
       ) {
         request.abort()
       } else {
@@ -239,20 +242,25 @@ const articleParser = async function (browser, options, socket) {
   // Body Content Identification
   socket.emit('parse:status', 'Evaluating Content')
 
-  if (typeof options.readability === 'undefined') {
-    options.readability = {}
-  }
+  // Readability options no longer used
 
   const vc1 = new VirtualConsole()
   vc1.sendTo(console, { omitJSDOMErrors: true })
   const dom = new JSDOM(html, { virtualConsole: vc1 })
 
-  await setCleanRules(options.readability.cleanRulers || [])
-  await prepDocument(dom.window.document)
+  // Legacy readability prep removed; using structured/heuristic detection instead
 
-  // Derived Title & Content
-  article.title.text = await getTitle(dom.window.document, options.title)
-  let content = grabArticle(dom.window.document, false, options.regex).innerHTML
+  // Derived Title & Content (structured-data aware detector always enabled)
+  const sd = extractStructuredData(dom.window.document)
+  const detected = detectContent(dom.window.document, options, sd)
+  const { detectTitle } = await import('./controllers/titleDetector.js')
+  article.title.text = detectTitle(dom.window.document, sd) || article.title.text
+  let content = detected.html
+
+  if (!content) {
+    // As a last resort, use full body HTML
+    content = dom.window.document.body ? dom.window.document.body.innerHTML : html
+  }
 
   // Title & Content based on defined config rules
   if ( options.rules ) {
@@ -560,46 +568,4 @@ const htmlCleaner = function (html, options) {
     })
   })
 }
-/**
- * gets the best available title for the article
- *
- * @param {String} document - the html document
- *
- * @return {String} the title of the article
- *
- */
-
-const getTitle = function (document) {
-  let title = findMetaTitle(document) || document.title
-
-  // replace all 3 types of line breaks with a space
-  title = title.replace(/(\r\n|\n|\r)/gm, ' ')
-
-  // replace all double white spaces with single spaces
-  title = title.replace(/\s+/g, ' ')
-
-  return title
-}
-
-/**
- * gets the best available meta title of the article
- *
- * @param {String} document - the html document
- *
- * @return {String} the best available meta title of the article
- *
- */
-
-const findMetaTitle = function (document) {
-  const metaTags = document.getElementsByTagName('meta')
-  let tag
-
-  for (let i = 0; i < metaTags.length; i++) {
-    tag = metaTags[i]
-
-    if (tag.getAttribute('property') === 'og:title' || tag.getAttribute('name') === 'twitter:title') {
-      return tag.getAttribute('content')
-    }
-  }
-  return null
-}
+// Legacy title helpers removed; using controllers/titleDetector instead

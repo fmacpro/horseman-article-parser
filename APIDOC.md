@@ -1,88 +1,78 @@
-## Functions
+﻿## Functions
 
 <dl>
-<dt><a href="#parseArticle">parseArticle(options, socket)</a> ⇒ <code>Object</code></dt>
+<dt><a href="#parseArticle">parseArticle(options, socket)</a> â‡’ <code>Object</code></dt>
 <dd><p>main article parser module export function</p>
 </dd>
-<dt><a href="#articleParser">articleParser(options, socket)</a> ⇒ <code>Object</code></dt>
+<dt><a href="#articleParser">articleParser(options, socket)</a> â‡’ <code>Object</code></dt>
 <dd><p>article scraping function</p>
 </dd>
-<dt><a href="#spellCheck">spellCheck(text, options)</a> ⇒ <code>Object</code></dt>
+<dt><a href="#spellCheck">spellCheck(text, options)</a> â‡’ <code>Object</code></dt>
 <dd><p>checks the spelling of the article</p>
 </dd>
-<dt><a href="#getRawText">getRawText(html)</a> ⇒ <code>String</code></dt>
+<dt><a href="#getRawText">getRawText(html)</a> â‡’ <code>String</code></dt>
 <dd><p>takes the article body and returns the raw text of the article</p>
 </dd>
-<dt><a href="#getFormattedText">getFormattedText(html, title, baseurl, options)</a> ⇒ <code>String</code></dt>
+<dt><a href="#getFormattedText">getFormattedText(html, title, baseurl, options)</a> â‡’ <code>String</code></dt>
 <dd><p>takes the article body and the derived title and returns the formatted text of the article with links made absolute.</p>
 </dd>
-<dt><a href="#getHtmlText">getHtmlText(text)</a> ⇒ <code>String</code></dt>
+<dt><a href="#getHtmlText">getHtmlText(text)</a> â‡’ <code>String</code></dt>
 <dd><p>takes the formatted article body text and returns the &quot;clean&quot; html text of the article</p>
 </dd>
-<dt><a href="#htmlCleaner">htmlCleaner(html, options)</a> ⇒ <code>String</code></dt>
+<dt><a href="#htmlCleaner">htmlCleaner(html, options)</a> â‡’ <code>String</code></dt>
 <dd><p>takes a string of html and runs it through <a href="https://github.com/dave-kennedy/clean-html">clean-html</a></p>
 </dd>
-<dt><a href="#keywordParser">keywordParser(html, options)</a> ⇒ <code>Object</code></dt>
+<dt><a href="#keywordParser">keywordParser(html, options)</a> â‡’ <code>Object</code></dt>
 <dd><p>takes a string of html and runs it through <a href="https://github.com/retextjs/retext-keywords">retext-keywords</a> and returns keyword and keyphrase suggestions</p>
 </dd>
-<dt><a href="#lighthouseAnalysis">lighthouseAnalysis(options)</a> ⇒ <code>Object</code></dt>
+<dt><a href="#lighthouseAnalysis">lighthouseAnalysis(options)</a> â‡’ <code>Object</code></dt>
 <dd><p>runs a google lighthouse audit on the target article</p>
 </dd>
-<dt><a href="#getTitle">getTitle(document)</a> ⇒ <code>String</code></dt>
-<dd><p>gets the best available title for the article</p>
-</dd>
-<dt><a href="#findMetaTitle">findMetaTitle(document)</a> ⇒ <code>String</code></dt>
-<dd><p>gets the best available meta title of the article</p>
-</dd>
-<dt><a href="#setDefaultOptions">setDefaultOptions(options)</a> ⇒ <code>Object</code></dt>
+<dt><a href="#setDefaultOptions">setDefaultOptions(options)</a> â‡’ <code>Object</code></dt>
 <dd><p>sets the default options</p>
 </dd>
-<dt><a href="#prepDocument">prepDocument(document)</a> ⇒ <code>Void</code></dt>
-<dd><p>Prepare the HTML document for readability to process it.
-This includes things like stripping javascript, CSS, and handling terrible markup.</p>
-</dd>
-<dt><a href="#cleanStyles">cleanStyles(element)</a> ⇒ <code>Void</code></dt>
+<dt><a href="#cleanStyles">cleanStyles(element)</a> â‡’ <code>Void</code></dt>
 <dd><p>Remove the style attribute on every e and under.</p>
 </dd>
-<dt><a href="#killBreaks">killBreaks(element)</a> ⇒ <code>Void</code></dt>
+<dt><a href="#killBreaks">killBreaks(element)</a> â‡’ <code>Void</code></dt>
 <dd><p>Remove extraneous break tags from a node.</p>
 </dd>
-<dt><a href="#getInnerText">getInnerText(element)</a> ⇒ <code>String</code></dt>
+<dt><a href="#getInnerText">getInnerText(element)</a> â‡’ <code>String</code></dt>
 <dd><p>Get the inner text of a node - cross browser compatibly.
 This also strips out any excess whitespace to be found.</p>
 </dd>
-<dt><a href="#getCharCount">getCharCount(element, string)</a> ⇒ <code>Number</code></dt>
+<dt><a href="#getCharCount">getCharCount(element, string)</a> â‡’ <code>Number</code></dt>
 <dd><p>Get the number of times a string s appears in the node e.</p>
 </dd>
-<dt><a href="#getLinkDensity">getLinkDensity(element)</a> ⇒ <code>Number</code></dt>
+<dt><a href="#getLinkDensity">getLinkDensity(element)</a> â‡’ <code>Number</code></dt>
 <dd><p>Get the density of links as a percentage of the content
 This is the amount of text that is inside a link divided by the total text in the node.</p>
 </dd>
-<dt><a href="#getClassWeight">getClassWeight(element)</a> ⇒ <code>Number</code></dt>
+<dt><a href="#getClassWeight">getClassWeight(element)</a> â‡’ <code>Number</code></dt>
 <dd><p>Get an elements class/id weight. Uses regular expressions to tell if this
 element looks good or bad.</p>
 </dd>
-<dt><a href="#clean">clean(element, string)</a> ⇒ <code>Void</code></dt>
+<dt><a href="#clean">clean(element, string)</a> â‡’ <code>Void</code></dt>
 <dd><p>Clean a node of all elements of type &quot;tag&quot;.
 (Unless it&#39;s a youtube/vimeo video. People love movies.)</p>
 </dd>
-<dt><a href="#cleanConditionally">cleanConditionally()</a> ⇒ <code>Void</code></dt>
+<dt><a href="#cleanConditionally">cleanConditionally()</a> â‡’ <code>Void</code></dt>
 <dd><p>Clean an element of all tags of type &quot;tag&quot; if they look fishy.
 &quot;Fishy&quot; is an algorithm based on content length, classnames, link density, number of images &amp; embeds, etc.</p>
 </dd>
-<dt><a href="#fixLinks">fixLinks(element)</a> ⇒ <code>Void</code></dt>
+<dt><a href="#fixLinks">fixLinks(element)</a> â‡’ <code>Void</code></dt>
 <dd><p>Converts relative urls to absolute for images and links</p>
 </dd>
-<dt><a href="#cleanHeaders">cleanHeaders(element)</a> ⇒ <code>Void</code></dt>
+<dt><a href="#cleanHeaders">cleanHeaders(element)</a> â‡’ <code>Void</code></dt>
 <dd><p>Clean out spurious headers from an Element. Checks things like classnames and link density.</p>
 </dd>
-<dt><a href="#cleanSingleHeader">cleanSingleHeader(element)</a> ⇒ <code>Void</code></dt>
+<dt><a href="#cleanSingleHeader">cleanSingleHeader(element)</a> â‡’ <code>Void</code></dt>
 <dd><p>Remove the header that doesn&#39;t have next sibling.</p>
 </dd>
-<dt><a href="#prepArticle">prepArticle(element)</a> ⇒ <code>Void</code></dt>
+<dt><a href="#prepArticle">prepArticle(element)</a> â‡’ <code>Void</code></dt>
 <dd><p>Cleans the article content</p>
 </dd>
-<dt><a href="#initializeNode">initializeNode(element)</a> ⇒ <code>Void</code></dt>
+<dt><a href="#initializeNode">initializeNode(element)</a> â‡’ <code>Void</code></dt>
 <dd><p>Initialize a node with the readability object. Also checks the
 className/id for special names to add to its score.</p>
 </dd>
@@ -90,7 +80,7 @@ className/id for special names to add to its score.</p>
 
 <a name="parseArticle"></a>
 
-## parseArticle(options, socket) ⇒ <code>Object</code>
+## parseArticle(options, socket) â‡’ <code>Object</code>
 main article parser module export function
 
 **Kind**: global function  
@@ -103,7 +93,7 @@ main article parser module export function
 
 <a name="articleParser"></a>
 
-## articleParser(options, socket) ⇒ <code>Object</code>
+## articleParser(options, socket) â‡’ <code>Object</code>
 article scraping function
 
 **Kind**: global function  
@@ -116,7 +106,7 @@ article scraping function
 
 <a name="spellCheck"></a>
 
-## spellCheck(text, options) ⇒ <code>Object</code>
+## spellCheck(text, options) â‡’ <code>Object</code>
 checks the spelling of the article
 
 **Kind**: global function  
@@ -130,7 +120,7 @@ checks the spelling of the article
 
 <a name="getRawText"></a>
 
-## getRawText(html) ⇒ <code>String</code>
+## getRawText(html) â‡’ <code>String</code>
 takes the article body and returns the raw text of the article
 
 **Kind**: global function  
@@ -142,7 +132,7 @@ takes the article body and returns the raw text of the article
 
 <a name="getFormattedText"></a>
 
-## getFormattedText(html, title, baseurl, options) ⇒ <code>String</code>
+## getFormattedText(html, title, baseurl, options) â‡’ <code>String</code>
 takes the article body and the derived title and returns the formatted text of the article with links made absolute.
 
 **Kind**: global function  
@@ -157,7 +147,7 @@ takes the article body and the derived title and returns the formatted text of t
 
 <a name="getHtmlText"></a>
 
-## getHtmlText(text) ⇒ <code>String</code>
+## getHtmlText(text) â‡’ <code>String</code>
 takes the formatted article body text and returns the "clean" html text of the article
 
 **Kind**: global function  
@@ -169,7 +159,7 @@ takes the formatted article body text and returns the "clean" html text of the a
 
 <a name="htmlCleaner"></a>
 
-## htmlCleaner(html, options) ⇒ <code>String</code>
+## htmlCleaner(html, options) â‡’ <code>String</code>
 takes a string of html and runs it through [clean-html](https://github.com/dave-kennedy/clean-html)
 
 **Kind**: global function  
@@ -182,7 +172,7 @@ takes a string of html and runs it through [clean-html](https://github.com/dave-
 
 <a name="keywordParser"></a>
 
-## keywordParser(html, options) ⇒ <code>Object</code>
+## keywordParser(html, options) â‡’ <code>Object</code>
 takes a string of html and runs it through [retext-keywords](https://github.com/retextjs/retext-keywords) and returns keyword and keyphrase suggestions
 
 **Kind**: global function  
@@ -195,7 +185,7 @@ takes a string of html and runs it through [retext-keywords](https://github.com/
 
 <a name="lighthouseAnalysis"></a>
 
-## lighthouseAnalysis(options) ⇒ <code>Object</code>
+## lighthouseAnalysis(options) â‡’ <code>Object</code>
 runs a google lighthouse audit on the target article
 
 **Kind**: global function  
@@ -208,31 +198,7 @@ runs a google lighthouse audit on the target article
 
 <a name="getTitle"></a>
 
-## getTitle(document) ⇒ <code>String</code>
-gets the best available title for the article
-
-**Kind**: global function  
-**Returns**: <code>String</code> - the title of the article  
-
-| Param | Type | Description |
-| --- | --- | --- |
-| document | <code>String</code> | the html document |
-
-<a name="findMetaTitle"></a>
-
-## findMetaTitle(document) ⇒ <code>String</code>
-gets the best available meta title of the article
-
-**Kind**: global function  
-**Returns**: <code>String</code> - the best available meta title of the article  
-
-| Param | Type | Description |
-| --- | --- | --- |
-| document | <code>String</code> | the html document |
-
-<a name="setDefaultOptions"></a>
-
-## setDefaultOptions(options) ⇒ <code>Object</code>
+## setDefaultOptions(options) â‡’ <code>Object</code>
 sets the default options
 
 **Kind**: global function  
@@ -244,19 +210,7 @@ sets the default options
 
 <a name="prepDocument"></a>
 
-## prepDocument(document) ⇒ <code>Void</code>
-Prepare the HTML document for readability to process it.
-This includes things like stripping javascript, CSS, and handling terrible markup.
-
-**Kind**: global function  
-
-| Param | Type |
-| --- | --- |
-| document | <code>String</code> | 
-
-<a name="cleanStyles"></a>
-
-## cleanStyles(element) ⇒ <code>Void</code>
+## cleanStyles(element) â‡’ <code>Void</code>
 Remove the style attribute on every e and under.
 
 **Kind**: global function  
@@ -267,7 +221,7 @@ Remove the style attribute on every e and under.
 
 <a name="killBreaks"></a>
 
-## killBreaks(element) ⇒ <code>Void</code>
+## killBreaks(element) â‡’ <code>Void</code>
 Remove extraneous break tags from a node.
 
 **Kind**: global function  
@@ -278,7 +232,7 @@ Remove extraneous break tags from a node.
 
 <a name="getInnerText"></a>
 
-## getInnerText(element) ⇒ <code>String</code>
+## getInnerText(element) â‡’ <code>String</code>
 Get the inner text of a node - cross browser compatibly.
 This also strips out any excess whitespace to be found.
 
@@ -290,7 +244,7 @@ This also strips out any excess whitespace to be found.
 
 <a name="getCharCount"></a>
 
-## getCharCount(element, string) ⇒ <code>Number</code>
+## getCharCount(element, string) â‡’ <code>Number</code>
 Get the number of times a string s appears in the node e.
 
 **Kind**: global function  
@@ -303,7 +257,7 @@ Get the number of times a string s appears in the node e.
 
 <a name="getLinkDensity"></a>
 
-## getLinkDensity(element) ⇒ <code>Number</code>
+## getLinkDensity(element) â‡’ <code>Number</code>
 Get the density of links as a percentage of the content
 This is the amount of text that is inside a link divided by the total text in the node.
 
@@ -316,7 +270,7 @@ This is the amount of text that is inside a link divided by the total text in th
 
 <a name="getClassWeight"></a>
 
-## getClassWeight(element) ⇒ <code>Number</code>
+## getClassWeight(element) â‡’ <code>Number</code>
 Get an elements class/id weight. Uses regular expressions to tell if this
 element looks good or bad.
 
@@ -329,7 +283,7 @@ element looks good or bad.
 
 <a name="clean"></a>
 
-## clean(element, string) ⇒ <code>Void</code>
+## clean(element, string) â‡’ <code>Void</code>
 Clean a node of all elements of type "tag".
 (Unless it's a youtube/vimeo video. People love movies.)
 
@@ -342,7 +296,7 @@ Clean a node of all elements of type "tag".
 
 <a name="cleanConditionally"></a>
 
-## cleanConditionally() ⇒ <code>Void</code>
+## cleanConditionally() â‡’ <code>Void</code>
 Clean an element of all tags of type "tag" if they look fishy.
 "Fishy" is an algorithm based on content length, classnames, link density, number of images & embeds, etc.
 
@@ -356,7 +310,7 @@ non-paragraph elements is more than paragraphs or other ominous signs, remove th
 **Kind**: inner constant of [<code>cleanConditionally</code>](#cleanConditionally)  
 <a name="fixLinks"></a>
 
-## fixLinks(element) ⇒ <code>Void</code>
+## fixLinks(element) â‡’ <code>Void</code>
 Converts relative urls to absolute for images and links
 
 **Kind**: global function  
@@ -367,7 +321,7 @@ Converts relative urls to absolute for images and links
 
 <a name="cleanHeaders"></a>
 
-## cleanHeaders(element) ⇒ <code>Void</code>
+## cleanHeaders(element) â‡’ <code>Void</code>
 Clean out spurious headers from an Element. Checks things like classnames and link density.
 
 **Kind**: global function  
@@ -378,7 +332,7 @@ Clean out spurious headers from an Element. Checks things like classnames and li
 
 <a name="cleanSingleHeader"></a>
 
-## cleanSingleHeader(element) ⇒ <code>Void</code>
+## cleanSingleHeader(element) â‡’ <code>Void</code>
 Remove the header that doesn't have next sibling.
 
 **Kind**: global function  
@@ -389,7 +343,7 @@ Remove the header that doesn't have next sibling.
 
 <a name="prepArticle"></a>
 
-## prepArticle(element) ⇒ <code>Void</code>
+## prepArticle(element) â‡’ <code>Void</code>
 Cleans the article content
 
 **Kind**: global function  
@@ -400,7 +354,7 @@ Cleans the article content
 
 <a name="initializeNode"></a>
 
-## initializeNode(element) ⇒ <code>Void</code>
+## initializeNode(element) â‡’ <code>Void</code>
 Initialize a node with the readability object. Also checks the
 className/id for special names to add to its score.
 
@@ -432,4 +386,6 @@ className/id for special names to add to its score.
 - [html-to-text](https://ghub.io/html-to-text)
 - [nlcst-to-string](https://ghub.io/nlcst-to-string)
 - [vfile-reporter-json](https://ghub.io/vfile-reporter-json)
+
+
 

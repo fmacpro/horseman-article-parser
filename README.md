@@ -83,6 +83,9 @@ var options = {
       headless: true,
       defaultViewport: null
     },
+    // Optional user agent and headers (some sites require a realistic UA)
+    // userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36',
+    // extraHTTPHeaders: { 'Accept-Language': 'en-US,en;q=0.9' },
     // puppeteer goto options (https://github.com/GoogleChrome/puppeteer/blob/master/docs/api.md#pagegotourl-options)
     goto: {
       waitUntil: 'domcontentloaded'
@@ -106,6 +109,18 @@ var options = {
   },
   // retext-keywords options (https://ghub.io/retext-keywords)
   retextkeywords: { maximum: 10 },
+  // content detection defaults (detector is always enabled)
+  contentDetection: {
+    // minimum characters required for a candidate
+    minLength: 400,
+    // maximum link density allowed for a candidate
+    maxLinkDensity: 0.5,
+    // reranker is disabled by default; enable after training weights
+    // Note: test.js auto-loads weights.json (if present) and enables the reranker
+    reranker: { enabled: false }
+    // optional: dump top-N candidates per page for labeling
+    // debugDump: { path: 'candidates_with_url.csv', topN: 5, addUrl: true }
+  },
   // retext-spell defaults and output tweaks
   retextspell: {
     tweaks: {
@@ -203,8 +218,6 @@ var options = {
   // these sources are skipped) e.g. [ 'google', 'facebook' ]
   skippedResources: [],
 
-  // readability options (https://ghub.io/node-readability)
-  readability: {},
 
   // retext spell options (https://ghub.io/retext-spell)
   retextspell: {
@@ -285,6 +298,64 @@ Test the package with:
 npm run test
 ```
 
+### Content Detection
+
+The detector is always enabled and uses a structured-data-first strategy, falling back to heuristic scoring:
+- Structured data: Extracts JSON-LD Article/NewsArticle (`headline`, `articleBody`).
+- Heuristics: Gathers DOM candidates (e.g., `article`, `main`, `[role=main]`, content-like containers) and scores them by text length, punctuation, link density, paragraph count, semantic tags, and boilerplate penalties.
+- Title detection: Chooses from structured `headline`, `og:title`/`twitter:title`, first `<h1>`, or `document.title`, with normalization.
+
+You can optionally tune thresholds under `options.contentDetection`:
+```
+contentDetection: {
+  minLength: 400,
+  maxLinkDensity: 0.5
+}
+```
+
+### Training the Reranker (optional)
+
+You can train a simple logistic‑regression reranker to improve candidate selection.
+
+1) Generate candidate features
+- Single URL (appends candidates):
+  - `node test.js`
+- Batch (recommended):
+  - `node scripts/batch-crawl.js urls.txt candidates_with_url.csv 0 200`
+  - Adjust `start` and `limit` to process in slices (e.g., `200 200`, `400 200`, ...).
+- The project dumps candidates with URL by default (see `test.js`):
+  - Header: `url,xpath,len,punct,ld,pc,sem,boiler,label`
+  - Up to `topN` rows per page (default 5)
+
+2) Label the dataset
+- Open `candidates_with_url.csv` in a spreadsheet/editor.
+- For each URL group, set `label = 1` for the correct article body candidate (leave others as 0).
+- Column meanings:
+  - `url`: source page
+  - `xpath`: DOM XPath of the candidate container to help locate it in DevTools
+  - `len`: raw character length (the trainer log‑scales internally)
+  - `punct`: count of punctuation (.,!?,;:)
+  - `ld`: link density (0..1)
+  - `pc`: paragraph/line‑break count
+  - `sem`: 1 if within `article`/`main`/`role=main`/`itemtype*=Article`, else 0
+  - `boiler`: number of boilerplate containers detected (nav/aside/comments/social/newsletter/consent)
+  - `label`: 1 for the true article candidate; 0 otherwise
+
+3) Train weights and export JSON
+- Direct (avoids npm banner output):
+  - `node scripts/train-reranker.js candidates_with_url.csv weights.json`
+- Or via npm (use `--silent` and arg separator):
+  - `npm run --silent train:ranker -- candidates_with_url.csv > weights.json`
+
+4) Use the weights
+- `test.js` auto‑loads `weights.json` (if present) and enables the reranker:
+  - `options.contentDetection.reranker = { enabled: true, weights }`
+
+Notes
+- If no reranker is configured, the detector uses heuristic scoring only.
+- You can merge CSVs from multiple runs: `npm run merge:csv` (writes `merged.csv`).
+ - Tip: placing a `weights.json` in the project root will make `test.js` auto‑enable the reranker on the next run.
+
 Update API docs with:
 
 ```
@@ -327,4 +398,7 @@ This project is licensed under the GNU GENERAL PUBLIC LICENSE Version 3 - see th
 
 ## Notes
 
-Due to [node-readability](https://github.com/luin/readability) being stale I have imported the relevent functions into this project and refactored it so it doesn't use [request](https://github.com/request/request) and therfor has no vulnrabilities.
+
+
+
+
