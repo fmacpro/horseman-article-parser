@@ -20,6 +20,31 @@
         "ads-blocker.app",
         "/rei.php"
       ]
+    },
+    {
+      "type": "suffix",
+      "match": "bbc.co.uk",
+      "headers": {
+        "Referer": "https://www.google.com/"
+      },
+      "puppeteer": {
+        "cookies": [
+          {
+            "name": "ckns_explicit",
+            "value": "1",
+            "domain": ".bbc.co.uk",
+            "path": "/",
+            "secure": true
+          },
+          {
+            "name": "ckns_policy",
+            "value": "111",
+            "domain": ".bbc.co.uk",
+            "path": "/",
+            "secure": true
+          }
+        ]
+      }
     }
   ]
 }

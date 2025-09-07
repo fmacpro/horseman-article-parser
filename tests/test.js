@@ -18,10 +18,10 @@ const testPlugin = function (Doc, world) {
 const inputUrl = process.argv[2] || null
 
 const options = {
-  timeoutMs: 10000,
+  timeoutMs: 20000,
   url: inputUrl || 'https://www.bbc.co.uk/news/articles/cnvryg271ymo?at_medium=RSS&at_campaign=rss',
   enabled: ['links', 'sentiment', 'entities', 'spelling', 'keywords', 'siteicon'],
-  // In tests, do not block images to preserve fidelity
+  // In tests, lightly block heavy resources (keep images)
   blockedResourceTypes: ['media', 'font', 'stylesheet'],
   // Tune content detection thresholds and dump candidate features for training
   contentDetection: {
@@ -41,25 +41,7 @@ const options = {
       includeOffsets: true
     }
   },
-  rules: [
-    {
-      host: 'www.bbc.co.uk',
-      content: () => {
-        var j = window.$
-        j('article section, article figure, article header').remove()
-        return j('article').html()
-      }
-    },
-    {
-      host: 'www.youtube.com',
-      title: () => {
-        return window.ytInitialData.contents.twoColumnWatchNextResults.results.results.contents[0].videoPrimaryInfoRenderer.title.runs[0].text
-      },
-      content: () => {
-        return window.ytInitialData.contents.twoColumnWatchNextResults.results.results.contents[1].videoSecondaryInfoRenderer.description.runs[0].text
-      }
-    }
-  ],
+  // No domain-specific rules to keep logic generic
   nlp: {
     plugins: [testPlugin]
   },
@@ -150,7 +132,29 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
     } catch {}
 
     const json = JSON.stringify(response, null, 4)
-    const outPath = path.join(__dirname, 'testresults.json')
+
+    // Write results into tests/results with per-run filename including URL and timestamp
+    const resultsDir = path.join(__dirname, 'results')
+    await fs.promises.mkdir(resultsDir, { recursive: true })
+
+    const ts = new Date()
+    const pad = (n) => String(n).padStart(2, '0')
+    const dd = pad(ts.getDate())
+    const mm = pad(ts.getMonth() + 1)
+    const yy = String(ts.getFullYear()).slice(-2)
+    const hh = pad(ts.getHours())
+    const mi = pad(ts.getMinutes())
+    const ss = pad(ts.getSeconds())
+    const timestamp = `${dd}-${mm}-${yy}-${hh}-${mi}-${ss}`
+    const urlForName = (response.url || options.url || 'unknown')
+    const sanitize = (s) => String(s)
+      .replace(/^https?:\/\//i, '')
+      .replace(/[^A-Za-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 120)
+    const fileName = `testresults_${timestamp}__${sanitize(urlForName)}.json`
+    const outPath = path.join(resultsDir, fileName)
+
     await fs.promises.writeFile(outPath, json, 'utf8')
     console.log('Results written to', outPath)
   } catch (error) {

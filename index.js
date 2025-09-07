@@ -110,7 +110,30 @@ const articleParser = async function (browser, options, socket) {
   article.processed.text = {}
   article.lighthouse = {}
 
-  socket.emit('parse:status', 'Starting Horseman')
+  const log = (phase, msg, fields = {}) => {
+    try {
+      const fmtVal = (k, v) => {
+        if (v == null) return ''
+        if (/(_ms)$/.test(k) && Number.isFinite(Number(v))) {
+          const s = Number(v) / 1000
+          return `${s.toFixed(1)}s`
+        }
+        const str = String(v)
+        if (/^https?:\/\//i.test(str) && str.length > 120) {
+          return str.slice(0, 100) + '…' + str.slice(-16)
+        }
+        return str
+      }
+      const header = `[${phase}] ${msg}`
+      const ctx = Object.entries(fields)
+        .map(([k, v]) => `${k.replace(/_/g, ' ')}: ${fmtVal(k, v)}`)
+        .join(' | ')
+      socket.emit('parse:status', ctx ? `${header} — ${ctx}` : header)
+    } catch {}
+  }
+  const t0 = Date.now()
+  const elapsed = () => Date.now() - t0
+  log('parse', 'start', { url: options.url, timeout_ms: options.timeoutMs || '' })
   const page = await browser.newPage()
 
   try {
@@ -121,6 +144,11 @@ const articleParser = async function (browser, options, socket) {
       page.on('load', () => { __lastNavAt = Date.now() })
       page.on('domcontentloaded', () => { __lastNavAt = Date.now() })
     } catch {}
+
+    // Allow static HTML override (e.g., fetched AMP) when dynamic content is obstructed
+    let staticHtmlOverride = null
+    let staticUrlOverride = null
+    let ampFetchPromise = null
 
     const timeLeft = () => {
       try { if (!options.__deadline) return Infinity } catch { return Infinity }
@@ -139,9 +167,10 @@ const articleParser = async function (browser, options, socket) {
         try { await page.waitForTimeout(slice) } catch {}
       }
     }
-    // Keep individual waits snappy to respect a ~10s cap
-    try { await page.setDefaultTimeout(2500) } catch {}
-    try { await page.setDefaultNavigationTimeout(4000) } catch {}
+    // Keep waits proportional to remaining time (helps heavier sites)
+    const tl = () => Math.max(0, timeLeft())
+    try { await page.setDefaultTimeout(Math.min(5000, Math.max(2500, tl()))) } catch {}
+    try { await page.setDefaultNavigationTimeout(Math.min(8000, Math.max(3500, tl()))) } catch {}
 
     // Optional: disable JavaScript for troublesome sites (via tweaks)
     try {
@@ -159,18 +188,33 @@ const articleParser = async function (browser, options, socket) {
       await page.setUserAgent(options.puppeteer.userAgent)
     }
     if (options.puppeteer && options.puppeteer.extraHTTPHeaders) {
-      await page.setExtraHTTPHeaders(options.puppeteer.extraHTTPHeaders)
+      const hdrs = { ...options.puppeteer.extraHTTPHeaders }
+      if (!('Referer' in hdrs)) hdrs.Referer = 'https://www.google.com/'
+      await page.setExtraHTTPHeaders(hdrs)
+    } else {
+      try { await page.setExtraHTTPHeaders({ Referer: 'https://www.google.com/' }) } catch {}
     }
 
     let interceptionActive = false
+    let reqTotal = 0
+    let reqBlocked = 0
+    let reqSkipped = 0
+    let reqContinued = 0
     if (!options.noInterception) {
       await page.setRequestInterception(true)
       interceptionActive = true
+      try {
+        log('intercept', 'enabled', {
+          blocked: (options.blockedResourceTypes || []).join(',') || '(none)',
+          skipped: (options.skippedResources || []).slice(0, 5).join(',') || '(none)'
+        })
+      } catch {}
 
       const blockedResourceTypes = new Set(options.blockedResourceTypes)
       const skippedResources = new Set(options.skippedResources)
 
       page.on('request', request => {
+        reqTotal++
         let requestUrl
         try {
           const url = new URL(request.url())
@@ -178,12 +222,14 @@ const articleParser = async function (browser, options, socket) {
         } catch {
           requestUrl = request.url()
         }
-        if (interceptionActive && (
-          blockedResourceTypes.has(request.resourceType()) ||
-          [...skippedResources].some(resource => requestUrl.includes(resource))
-        )) {
+        const isBlockedType = blockedResourceTypes.has(request.resourceType())
+        const isSkippedMatch = [...skippedResources].some(resource => requestUrl.includes(resource))
+        if (interceptionActive && (isBlockedType || isSkippedMatch)) {
+          if (isBlockedType) reqBlocked++
+          else if (isSkippedMatch) reqSkipped++
           request.abort()
         } else if (interceptionActive) {
+          reqContinued++
           request.continue()
         } else {
           // If interception disabled, ignore handler (no continue/abort)
@@ -197,6 +243,14 @@ const articleParser = async function (browser, options, socket) {
       require.resolve('jquery/dist/jquery.min.js'),
       'utf8'
     )
+    try { await page.addScriptTag({ content: jquerySource }) } catch {}
+
+    // Pre-seed cookies if provided (helps bypass consent walls)
+    try {
+      if (options.puppeteer && Array.isArray(options.puppeteer.cookies) && options.puppeteer.cookies.length) {
+        await page.setCookie(...options.puppeteer.cookies)
+      }
+    } catch {}
 
     // Adaptive navigation with fallbacks to reduce need for per-domain tweaks
     async function navigateWithFallback(url) {
@@ -211,24 +265,28 @@ const articleParser = async function (browser, options, socket) {
 
       let response
       try {
-        response = await tryGoto(options.puppeteer.goto)
+        const baseTimeout = Math.min(7000, Math.max(3000, tl()))
+        const go = Object.assign({ waitUntil: 'domcontentloaded', timeout: baseTimeout }, options.puppeteer.goto || {})
+        if (!Number.isFinite(go.timeout)) go.timeout = baseTimeout
+        log('nav', 'attempt', { wait_until: go.waitUntil, timeout_ms: go.timeout })
+        response = await tryGoto(go)
       } catch (err1) {
         // Fallback 1: relax waitUntil
         try {
-          response = await tryGoto({ waitUntil: 'domcontentloaded', timeout: 3500 })
+          response = await tryGoto({ waitUntil: 'domcontentloaded', timeout: Math.min(5000, Math.max(2500, tl())) })
         } catch (err2) {
           // Fallback 2: disable interception if enabled and retry
           try { await page.setRequestInterception(false); interceptionActive = false } catch {}
           try {
-            response = await tryGoto({ waitUntil: 'domcontentloaded', timeout: 2500 })
+            response = await tryGoto({ waitUntil: 'domcontentloaded', timeout: Math.min(4000, Math.max(2000, tl())) })
           } catch (err3) {
             // Fallback 3: try with a benign Referer (some sites require it)
             try { await page.setExtraHTTPHeaders({ ...(headersBackup || {}), Referer: 'https://www.google.com/' }) } catch {}
             try {
-              response = await tryGoto({ waitUntil: 'domcontentloaded', timeout: 2500 })
+              response = await tryGoto({ waitUntil: 'domcontentloaded', timeout: Math.min(4000, Math.max(2000, tl())) })
             } catch (err4) {
               const message = 'Failed to fetch ' + url + ': ' + err4.message
-              socket.emit('parse:status', message)
+              log('nav', 'failed', { error: err4.message })
               throw new Error(message)
             } finally {
               // restore headers
@@ -244,13 +302,58 @@ const articleParser = async function (browser, options, socket) {
     let response = await navigateWithFallback(options.url)
     try { await waitForFrameStability(400, 1500) } catch {}
 
+    // Start background AMP/static fallback fetch in parallel
+    try {
+      const makeAmpCandidates = (raw) => {
+        const u = new URL(raw)
+        const c = []
+        const path = u.pathname.endsWith('/') ? u.pathname : (u.pathname + '/')
+        c.push(u.origin + path + 'amp')
+        c.push(u.origin + path + 'amp.html')
+        c.push(u.origin + u.pathname + (u.search ? u.search + '&' : '?') + 'amp=1')
+        c.push(u.origin + u.pathname + (u.search ? u.search + '&' : '?') + 'output=amp')
+        return c
+      }
+      const tryFetch = async (u) => {
+        const res = await fetch(u, {
+          headers: {
+            'User-Agent': options.puppeteer?.userAgent || 'Mozilla/5.0',
+            'Accept-Language': options.puppeteer?.extraHTTPHeaders?.['Accept-Language'] || 'en-US,en;q=0.9',
+            'Referer': 'https://www.google.com/'
+          }
+        })
+        if (!res.ok) return null
+        const txt = await res.text()
+        if (!txt || txt.length < 1000) return null
+        return txt
+      }
+      const candidates = makeAmpCandidates(options.url)
+      ampFetchPromise = (async () => {
+        for (const cu of candidates) {
+          try {
+            const txt = await tryFetch(cu)
+            if (txt) { staticHtmlOverride = txt; staticUrlOverride = cu; log('amp', 'fetched', { url: cu }); break }
+          } catch {}
+        }
+        if (staticHtmlOverride) log('amp', 'available')
+      })()
+    } catch { /* ignore background fetch errors */ }
+
+    // Give AMP a brief head start; if ready, prefer static path and skip dynamic waits
+    try {
+      if (ampFetchPromise) {
+        const earlyWait = Math.min(1000, Math.max(300, Math.floor(tl() * 0.2)))
+        await Promise.race([ampFetchPromise, new Promise(r => setTimeout(r, earlyWait))])
+      }
+    } catch {}
+
   // Inject cookies if set
   if (typeof options.puppeteer.cookies !== 'undefined') {
     await page.setCookie(...options.puppeteer.cookies)
   }
 
   // Click buttons if defined (for dismissing privacy popups etc)
-  if (typeof options.clickelements !== 'undefined') {
+  if (!staticHtmlOverride && typeof options.clickelements !== 'undefined') {
     let clickelement = ''
 
     for (clickelement of options.clickelements) {
@@ -345,13 +448,14 @@ const articleParser = async function (browser, options, socket) {
     } catch {}
   }
 
-  if (jsEnabled && options.consent && options.consent.autoDismiss) {
+  if (!staticHtmlOverride && jsEnabled && options.consent && options.consent.autoDismiss) {
     await autoDismissConsent(page, options.consent)
   }
   try { await waitForFrameStability(350, 1200) } catch {}
 
   // Wait briefly for common article/content selectors to appear (helps dynamic blogs)
   try {
+    if (staticHtmlOverride) throw new Error('skip-dynamic-wait')
     const contentSelectors = options.contentWaitSelectors || [
       'article', 'main', '[role="main"]',
       '.entry-content', '.post-body', '#postBody', '.post-content', '.article-content'
@@ -362,8 +466,98 @@ const articleParser = async function (browser, options, socket) {
     }
   } catch {}
 
+  // If page still lacks readable content, try a generic AMP/static fallback fetch
+  try {
+    const maxMs = Math.min(500, Math.max(300, tl()))
+    const hasReadable = await page.evaluate(() => {
+      const paras = Array.from(document.querySelectorAll('article p, main p, [role="main"] p, p'))
+      let longCount = 0
+      for (const p of paras) {
+        const t = (p.textContent || '').replace(/\s+/g, ' ').trim()
+        if (t.length >= 120) longCount++
+        if (longCount >= 2) return true
+      }
+      return false
+    })
+    if (!hasReadable && tl() > 1500 && !staticHtmlOverride) {
+      try {
+        const makeAmpCandidates = (raw) => {
+          const u = new URL(raw)
+          const c = []
+          const path = u.pathname.endsWith('/') ? u.pathname : (u.pathname + '/')
+          c.push(u.origin + path + 'amp')
+          c.push(u.origin + path + 'amp.html')
+          c.push(u.origin + u.pathname + (u.search ? u.search + '&' : '?') + 'amp=1')
+          c.push(u.origin + u.pathname + (u.search ? u.search + '&' : '?') + 'output=amp')
+          return c
+        }
+        const tryFetch = async (u) => {
+          const res = await fetch(u, {
+            headers: {
+              'User-Agent': options.puppeteer?.userAgent || 'Mozilla/5.0',
+              'Accept-Language': options.puppeteer?.extraHTTPHeaders?.['Accept-Language'] || 'en-US,en;q=0.9',
+              'Referer': 'https://www.google.com/'
+            }
+          })
+          if (!res.ok) return null
+          const txt = await res.text()
+          if (!txt || txt.length < 1000) return null
+          return txt
+        }
+        const candidates = makeAmpCandidates(options.url)
+        for (const cu of candidates) {
+          try {
+            const txt = await tryFetch(cu)
+            if (txt) { staticHtmlOverride = txt; staticUrlOverride = cu; break }
+          } catch {}
+        }
+        if (staticHtmlOverride) log('amp', 'using static fallback')
+      } catch {}
+    }
+  } catch {}
+
+  // Generic readable-content heuristic wait: paragraphs/headings/body text signals
+  try {
+    const maxMs = Math.min(2500, Math.max(800, tl()))
+    await page.waitForFunction(() => {
+      const scope = document.querySelector('article, main, [role="main"]') || document.body
+      if (!scope) return false
+      const paras = Array.from(scope.querySelectorAll('p'))
+      const heads = scope.querySelector('h1, h2, h3')
+      let longCount = 0
+      let blocksOver80 = 0
+      let totalText = 0
+      for (const p of paras) {
+        const t = (p.textContent || '').replace(/\s+/g, ' ').trim()
+        totalText += t.length
+        if (t.length >= 120) longCount++
+        if (t.length >= 80) blocksOver80++
+        if (longCount >= 2) return true
+      }
+      if (longCount >= 1 && !!heads) return true
+      if (blocksOver80 >= 3) return true
+      if (totalText >= 800) return true
+      return false
+    }, { timeout: maxMs })
+    log('content', 'readable_signal')
+  } catch {}
+
+  // If AMP fetched, prefer static override for speed and robustness
+  try {
+    if (ampFetchPromise) {
+      const waitMs = Math.min(1500, Math.max(200, Math.floor(tl() * 0.3)))
+      try { await Promise.race([ampFetchPromise, new Promise(r => setTimeout(r, waitMs))]) } catch {}
+    }
+    if (staticHtmlOverride) {
+      article.url = staticUrlOverride || article.url
+      article.html = staticHtmlOverride
+      log('amp', 'switch_static')
+    }
+  } catch { /* ignore */ }
+
   // Try to trigger lazy-loaded content by scrolling (skip if JS disabled)
   try {
+    if (staticHtmlOverride) throw new Error('skip-scroll')
     if (!jsEnabled) throw new Error('skip-scroll')
     await page.evaluate(async () => {
       await new Promise((resolve) => {
@@ -413,7 +607,7 @@ const articleParser = async function (browser, options, socket) {
     }
   } catch {}
 
-  socket.emit('parse:status', 'Fetching ' + options.url)
+  log('fetch', 'begin', { url: options.url, elapsed_ms: elapsed(), budget_ms: tl() })
 
   // Evaluate status (guard if response is null due to aborted navigations)
   try {
@@ -424,11 +618,12 @@ const articleParser = async function (browser, options, socket) {
     article.status = null
   }
 
-  socket.emit('parse:status', 'Status ' + article.status)
+  log('fetch', 'status', { code: article.status, elapsed_ms: elapsed(), budget_ms: tl() })
+  try { log('fetch', 'request summary', { total: reqTotal, blocked: reqBlocked, skipped: reqSkipped, continued: reqContinued }) } catch {}
 
   if (article.status === 403 || article.status === 404) {
     const message = 'Failed to fetch ' + options.url + ' ' + article.status
-    socket.emit('parse:status', message)
+    log('fetch', 'failed', { code: article.status, url: options.url })
     throw new Error(message)
   }
 
@@ -458,7 +653,7 @@ const articleParser = async function (browser, options, socket) {
 
   // Take mobile screenshot
   if (options.enabled.includes('screenshot') && timeLeft() > 300) {
-    socket.emit('parse:status', 'Taking Mobile Screenshot')
+    log('analyze', 'Capturing screenshot')
     try {
       article.mobile = await page.screenshot({ encoding: 'base64', type: 'jpeg', quality: 60 })
     } catch { /* ignore screenshot failures (e.g., page closed on timeout) */ }
@@ -469,8 +664,8 @@ const articleParser = async function (browser, options, socket) {
   if (timeLeft() <= 0) throw new Error('Timeout budget exceeded')
 
   // Evaluate site icon url
-  if (options.enabled.includes('siteicon') && timeLeft() > 300) {
-    socket.emit('parse:status', 'Evaluating site icon')
+  if (!staticHtmlOverride && options.enabled.includes('siteicon') && timeLeft() > 300) {
+    log('analyze', 'Evaluating site icon')
     try {
       article.siteicon = await page.evaluate(() => {
         const candidates = [
@@ -507,54 +702,128 @@ const articleParser = async function (browser, options, socket) {
   }
 
   // Evaluate meta
-  socket.emit('parse:status', 'Evaluating Meta Data')
-
-  const meta = await evalWithRetry(async () => page.evaluate(() => {
-    // Native DOM (robust across sites)
-    const out = {}
-    const nodes = document.querySelectorAll('meta')
-    nodes.forEach(el => {
-      const name = el.getAttribute('name')
-      const prop = el.getAttribute('property')
-      const content = el.getAttribute('content')
-      if (name) out[name] = content
-      else if (prop) out[prop] = content
-    })
-    return out
-  }))
-
-  // Assign meta
-  Object.assign(article.meta, meta)
+log('analyze', 'Evaluating meta tags')
+  if (!staticHtmlOverride) {
+    const meta = await evalWithRetry(async () => page.evaluate(() => {
+      // Native DOM (robust across sites)
+      const out = {}
+      const nodes = document.querySelectorAll('meta')
+      nodes.forEach(el => {
+        const name = el.getAttribute('name')
+        const prop = el.getAttribute('property')
+        const content = el.getAttribute('content')
+        if (name) out[name] = content
+        else if (prop) out[prop] = content
+      })
+      return out
+    }))
+    Object.assign(article.meta, meta)
+  } else {
+    try {
+      const vc0 = new VirtualConsole(); vc0.sendTo(console, { omitJSDOMErrors: true })
+      const { window } = new JSDOM(staticHtmlOverride, { virtualConsole: vc0 })
+      const out = {}
+      const nodes = window.document.querySelectorAll('meta')
+      nodes.forEach(el => {
+        const name = el.getAttribute('name')
+        const prop = el.getAttribute('property')
+        const content = el.getAttribute('content')
+        if (name) out[name] = content
+        else if (prop) out[prop] = content
+      })
+      Object.assign(article.meta, out)
+    } catch {}
+  }
 
   // Assign meta description
   const metaDescription = article.meta.description
   article.meta.description = {}
   article.meta.description.text = metaDescription
 
-  // Save the original HTML of the document (use page.content for robustness)
+  // If we landed on a consent/cookies/ privacy info page, retry once: re-open target URL and auto-dismiss consent
   try {
-    article.html = await evalWithRetry(async () => page.content())
-  } catch {
-    article.html = await evalWithRetry(async () => page.evaluate(() => document.documentElement.innerHTML))
+    const looksLikeConsent = (() => {
+      const t = String(article.meta.title?.text || '').toLowerCase()
+      return /(cookie|cookies|consent|privacy|gdpr)/i.test(t)
+    })()
+    if (!staticHtmlOverride && looksLikeConsent && timeLeft() > 1200) {
+      log('consent', 'retry')
+      try { await navigateWithFallback(options.url) } catch {}
+      if (jsEnabled && options.consent && options.consent.autoDismiss) {
+        try { await autoDismissConsent(page, options.consent) } catch {}
+        try { await waitForFrameStability(400, 1200) } catch {}
+      }
+      // If still consent-like, try once with JavaScript disabled to avoid dynamic consent flows
+      let titleNow = ''
+      try { titleNow = await page.title() } catch { titleNow = '' }
+      if (/(cookie|cookies|consent|privacy|gdpr)/i.test(String(titleNow))) {
+        try { await page.setJavaScriptEnabled(false) } catch {}
+        try { await navigateWithFallback(options.url) } catch {}
+        try { await waitForFrameStability(400, 1200) } catch {}
+      }
+      // Refresh meta after retry
+      const meta2 = await evalWithRetry(async () => page.evaluate(() => {
+        const out = {}
+        const nodes = document.querySelectorAll('meta')
+        nodes.forEach(el => {
+          const name = el.getAttribute('name')
+          const prop = el.getAttribute('property')
+          const content = el.getAttribute('content')
+          if (name) out[name] = content
+          else if (prop) out[prop] = content
+        })
+        return out
+      }))
+      Object.assign(article.meta, meta2)
+    }
+  } catch { /* ignore */ }
+
+  // Save the original HTML of the document (use page.content for robustness)
+  if (staticHtmlOverride) {
+    if (staticUrlOverride) article.url = staticUrlOverride
+    article.html = staticHtmlOverride
+  } else {
+    try {
+      article.html = await evalWithRetry(async () => page.content())
+    } catch {
+      article.html = await evalWithRetry(async () => page.evaluate(() => document.documentElement.innerHTML))
+    }
   }
 
   // HTML Cleaning
-  let html = await evalWithRetry(async () => page.evaluate((options) => {
-    // Native DOM removal (robust default)
+  let html
+  if (staticHtmlOverride) {
     try {
-      for (let i = 0; i < options.length; i++) {
-        const sel = options[i]
-        document.querySelectorAll(sel).forEach(el => { try { el.remove() } catch {} })
-      }
-    } catch {}
-    return document.documentElement.innerHTML
-  }, options.striptags))
+      const vcC = new VirtualConsole(); vcC.sendTo(console, { omitJSDOMErrors: true })
+      const { window } = new JSDOM(article.html, { virtualConsole: vcC })
+      try {
+        for (let i = 0; i < options.striptags.length; i++) {
+          const sel = options.striptags[i]
+          window.document.querySelectorAll(sel).forEach(el => { try { el.remove() } catch {} })
+        }
+      } catch {}
+      html = window.document.documentElement.innerHTML
+    } catch {
+      html = article.html
+    }
+  } else {
+    html = await evalWithRetry(async () => page.evaluate((options) => {
+      // Native DOM removal (robust default)
+      try {
+        for (let i = 0; i < options.length; i++) {
+          const sel = options[i]
+          document.querySelectorAll(sel).forEach(el => { try { el.remove() } catch {} })
+        }
+      } catch {}
+      return document.documentElement.innerHTML
+    }, options.striptags))
+  }
 
   // More HTML Cleaning
   html = await htmlCleaner(html, options.cleanhtml)
 
   // Body Content Identification
-  socket.emit('parse:status', 'Evaluating Content')
+log('analyze', 'Evaluating detected content')
 
   // Readability options no longer used
 
@@ -586,14 +855,12 @@ const articleParser = async function (browser, options, socket) {
 
   // Emit body container details as early as possible, after content detection/fallback
   try {
-    const selectorMsg = 'Body container selector: ' + (article.bodySelector || '(not detected)')
-    const xpathMsg = 'Body container xpath: ' + (article.bodyXPath || '(not detected)')
-    socket.emit('parse:status', selectorMsg)
-    socket.emit('parse:status', xpathMsg)
+    log('content', 'body container', { selector: (article.bodySelector || '(not detected)') })
+    log('content', 'body container xpath', { xpath: (article.bodyXPath || '(not detected)') })
   } catch { /* ignore */ }
 
-  // Title & Content based on defined config rules
-  if ( options.rules ) {
+  // Title & Content based on defined config rules (skip when using static fallback)
+  if (!staticHtmlOverride && options.rules ) {
 
     let rules = options.rules;
 
@@ -608,9 +875,10 @@ const articleParser = async function (browser, options, socket) {
         }
 
         if ( rules[i].content ) {
-
-          content = await page.evaluate( rules[i].content )
-
+          try {
+            const override = await page.evaluate(rules[i].content)
+            if (override && typeof override === 'string') content = override
+          } catch { /* leave content as-is */ }
         }
 
       }
@@ -624,7 +892,7 @@ const articleParser = async function (browser, options, socket) {
 
   // Get in article links
   if (options.enabled.includes('links')) {
-    socket.emit('parse:status', 'Evaluating Links')
+    log('analyze', 'Evaluating in-article links')
 
     const vc2 = new VirtualConsole()
     vc2.sendTo(console, { omitJSDOMErrors: true })
@@ -635,14 +903,18 @@ const articleParser = async function (browser, options, socket) {
     const links = []
     let i = 0
 
-    for (i = 0; i < arr.length; i++) {
+    const maxLinks = 1000
+    const limit = Math.min(arr.length, maxLinks)
+    for (i = 0; i < limit; i++) {
       const href = ($(arr[i]).attr('href') || '').trim()
       const text = ($(arr[i]).text() || '').replace(/\s+/g, ' ').trim()
       const link = { href, text }
       links.push(link)
+      if (i % 200 === 0 && timeLeft() < 800) { log('links', 'short circuit'); break }
     }
 
     Object.assign(article.links, links)
+    try { log('analyze', 'In-article links extracted', { count: links.length }) } catch {}
   }
 
   // Formatted Text (including new lines and spacing for spell check)
@@ -653,17 +925,30 @@ const articleParser = async function (browser, options, socket) {
 
   // Raw Text (text prepared for keyword analysis & named entity recongnition)
   article.processed.text.raw = await getRawText(article.processed.html)
+  const capForNlp = 20000
+  let nlpInput = article.processed.text.raw
+  if (nlpInput.length > capForNlp) {
+    nlpInput = nlpInput.slice(0, capForNlp)
+    log('nlp', 'cap input', { chars: capForNlp })
+  }
+
+  try {
+    const rawLen = (article.processed.text.raw || '').length
+    const wordCount = (article.processed.text.raw || '').trim().split(/\s+/).filter(Boolean).length
+    log('analyze', 'Content stats', { chars: rawLen, words: wordCount })
+  } catch {}
 
   // Excerpt
   article.excerpt = capitalizeFirstLetter(article.processed.text.raw.replace(/^(.{200}[^\s]*).*/, '$1'))
 
   // Sentiment
   if (options.enabled.includes('sentiment')) {
-    socket.emit('parse:status', 'Sentiment Analysis')
+    log('analyze', 'Evaluating sentiment')
 
     const sentiment = new Sentiment()
 
-    article.sentiment = sentiment.analyze(article.processed.text.raw)
+    article.sentiment = sentiment.analyze(nlpInput)
+    try { log('analyze', 'Sentiment evaluated', { score: article.sentiment.score, comparative: article.sentiment.comparative }) } catch {}
     if (article.sentiment.score > 0.05) {
       article.sentiment.result = 'Positive'
     } else if (article.sentiment.score < 0.05) {
@@ -675,26 +960,43 @@ const articleParser = async function (browser, options, socket) {
 
   // Named Entity Recognition
   if (options.enabled.includes('entities')) {
-    socket.emit('parse:status', 'Named Entity Recognition')
+    log('analyze', 'Extracting named entities')
 
     // People
-    article.people = nlp(article.processed.text.raw).people().json()
+    if (timeLeft() < 1200) { log('analyze', 'Skipping NER due to low budget') }
+    else article.people = nlp(nlpInput).people().json()
 
     // Places
-    article.places = nlp(article.processed.text.raw).places().json()
+    if (timeLeft() < 1000) { /* skip places */ }
+    else article.places = nlp(nlpInput).places().json()
 
     // Orgs & Places
-    article.orgs = nlp(article.processed.text.raw).organizations().json()
+    if (timeLeft() < 900) { /* skip orgs */ }
+    else article.orgs = nlp(nlpInput).organizations().json()
 
     // Topics
-    article.topics = nlp(article.processed.text.raw).topics().json()
+    if (timeLeft() < 800) { /* skip topics */ }
+    else article.topics = nlp(nlpInput).topics().json()
+    try {
+      const pc = Array.isArray(article.people) ? article.people.length : 0
+      const plc = Array.isArray(article.places) ? article.places.length : 0
+      const oc = Array.isArray(article.orgs) ? article.orgs.length : 0
+      const tc = Array.isArray(article.topics) ? article.topics.length : 0
+      log('analyze', 'Entities extracted', { people: pc, places: plc, orgs: oc, topics: tc })
+    } catch {}
   }
 
   // Spelling
   if (options.enabled.includes('spelling')) {
-    socket.emit('parse:status', 'Check Spelling')
-
-    article.spelling = await spellCheck(article.processed.text.formatted, options.retextspell)
+    log('analyze', 'Checking spelling')
+    if (timeLeft() < 2500) { log('analyze', 'Skipping spelling due to low budget') }
+    else {
+      const capForSpell = 12000
+      const spellInput = article.processed.text.formatted.length > capForSpell ? article.processed.text.formatted.slice(0, capForSpell) : article.processed.text.formatted
+      if (spellInput.length !== article.processed.text.formatted.length) { log('analyze', 'Capping spelling input', { chars: capForSpell }) }
+      article.spelling = await spellCheck(spellInput, options.retextspell)
+      try { log('analyze', 'Spelling suggestions generated', { count: Array.isArray(article.spelling) ? article.spelling.length : 0 }) } catch {}
+    }
 
     // Filter spelling results using known entities (people, orgs, places)
     const normalize = (w) => {
@@ -746,22 +1048,30 @@ const articleParser = async function (browser, options, socket) {
 
   // Evaluate keywords & keyphrases
   if (options.enabled.includes('keywords')) {
-    socket.emit('parse:status', 'Evaluating Keywords')
+    log('analyze', 'Evaluating keywords and keyphrases')
 
     // Evaluate meta title keywords & keyphrases
-    Object.assign(article.meta.title, await keywordParser(article.meta.title.text, options.retextkeywords))
+    if (timeLeft() > 500) Object.assign(article.meta.title, await keywordParser(article.meta.title.text, options.retextkeywords))
 
     // Evaluate derived title keywords & keyphrases
-    Object.assign(article.title, await keywordParser(article.title.text, options.retextkeywords))
+    if (timeLeft() > 500) Object.assign(article.title, await keywordParser(article.title.text, options.retextkeywords))
 
     // Evaluate meta description keywords & keyphrases
-    Object.assign(article.meta.description, await keywordParser(article.meta.description.text, options.retextkeywords))
+    if (timeLeft() > 500) Object.assign(article.meta.description, await keywordParser(article.meta.description.text, options.retextkeywords))
 
     // Evaluate processed content keywords & keyphrases
-    Object.assign(article.processed, await keywordParser(article.processed.text.raw, options.retextkeywords))
+    if (timeLeft() > 600) {
+      const kw = await keywordParser(nlpInput, options.retextkeywords)
+      Object.assign(article.processed, kw)
+      try {
+        const kc = Array.isArray(kw.keywords) ? kw.keywords.length : 0
+        const pc = Array.isArray(kw.keyphrases) ? kw.keyphrases.length : 0
+        log('analyze', 'Keywords extracted', { keywords: kc, keyphrases: pc })
+      } catch {}
+    }
   }
 
-  socket.emit('parse:status', 'Horseman Anaysis Complete')
+  log('parse', 'complete', { source: (staticHtmlOverride ? 'amp' : 'dynamic'), elapsed_ms: elapsed(), remaining_ms: tl(), budget_ms: options.timeoutMs || '' })
 
     return article
   } finally {

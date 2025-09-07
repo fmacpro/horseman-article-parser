@@ -30,6 +30,11 @@ export function setDefaultOptions (options = {}) {
         'button[aria-label="Accept all"]',
         'button[aria-label*="Accept"]',
         'button[title="Accept"]',
+        '#sp-cc-accept',
+        '.osano-cm-accept-all',
+        '.cc-accept-all',
+        'button[aria-label*="consent" i]',
+        'button[title*="consent" i]',
         '#didomi-notice-agree-button',
         '.fc-accept-all',
         '.cc-allow',
@@ -38,7 +43,7 @@ export function setDefaultOptions (options = {}) {
         'button[aria-label="Agree"]'
       ],
       textPatterns: [
-        'accept', 'agree', 'ok', 'got it', 'continue', 'allow all'
+        'accept', 'accept all', 'accept and close', 'i accept', 'agree', 'i agree', 'yes i agree', "i'm ok with that", 'i am ok with that', 'ok', 'got it', 'continue', 'continue to site', 'allow all', 'consent', 'manage preferences'
       ],
       waitAfterClickMs: 500,
       maxClicks: 3

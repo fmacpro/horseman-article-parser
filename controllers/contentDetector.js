@@ -148,7 +148,17 @@ function computeFeatures(el) {
   const heads = headingChildrenCount(el)
   const a11y = accessibilitySignals(el)
   const iar = imageAltRatio(el)
-  return { len, punct, ld, pc, sem, boiler, dp, db, dr, avgP, depth, heads, roleMain: a11y.roleMain, roleNeg: a11y.roleNeg, ariaHidden: a11y.ariaHidden, imgAltRatio: iar.ratio, imgCount: iar.imgs }
+  // Simple keyword signals for consent/cookie/privacy overlays
+  let consentPenalty = 0
+  try {
+    const lower = text.toLowerCase()
+    const hits = [
+      'cookie', 'cookies', 'consent', 'gdpr', 'privacy', 'data usage', 'manage preferences', 'advertising partners'
+    ].reduce((acc, kw) => acc + (lower.includes(kw) ? 1 : 0), 0)
+    // penalize if multiple consent-related keywords are present
+    consentPenalty = hits >= 2 ? Math.min(6, hits * 1.5) : 0
+  } catch {}
+  return { len, punct, ld, pc, sem, boiler, dp, db, dr, avgP, depth, heads, roleMain: a11y.roleMain, roleNeg: a11y.roleNeg, ariaHidden: a11y.ariaHidden, imgAltRatio: iar.ratio, imgCount: iar.imgs, consentPenalty }
 }
 
 function heuristicScore(f) {
@@ -171,7 +181,7 @@ function heuristicScore(f) {
 
   return lengthScore + punctScore + paraScore + semBonus
     + directPScore + ratioScore + avgPScore + headingScore + depthScore + a11yScore + altScore
-    - linkPenalty - boilerPenalty - wrapperPenalty
+    - linkPenalty - boilerPenalty - wrapperPenalty - (f.consentPenalty || 0)
 }
 
 function gatherCandidates(document) {
