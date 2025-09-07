@@ -336,7 +336,7 @@ You can train a simple logistic‑regression reranker to improve candidate selec
   - `node scripts/batch-crawl.js scripts/data/urls.txt scripts/data/candidates_with_url.csv 0 200`
   - Adjust `start` and `limit` to process in slices (e.g., `200 200`, `400 200`, ...).
 - The project dumps candidate features with URL by default (see `test.js`):
-  - Header: `url,xpath,text_length,punctuation_count,link_density,paragraph_count,has_semantic_container,boilerplate_penalty,direct_paragraph_count,direct_block_count,paragraph_to_block_ratio,average_paragraph_length,dom_depth,heading_children_count,aria_role_main,aria_role_negative,aria_hidden,image_alt_ratio,image_count,training_label,default_selected`
+  - Header: `url,xpath,css_selector,text_length,punctuation_count,link_density,paragraph_count,has_semantic_container,boilerplate_penalty,direct_paragraph_count,direct_block_count,paragraph_to_block_ratio,average_paragraph_length,dom_depth,heading_children_count,aria_role_main,aria_role_negative,aria_hidden,image_alt_ratio,image_count,training_label,default_selected`
   - Up to `topN` unique-XPath rows per page (default 5)
 
 2) Label the dataset
@@ -345,6 +345,7 @@ You can train a simple logistic‑regression reranker to improve candidate selec
 - Column meanings (subset):
   - `url`: source page
   - `xpath`: Chrome console snippet to select the container (e.g., `$x('...')[0]`)
+  - `css_selector`: Chrome console snippet to select via CSS (e.g., `document.querySelector('...')`)
   - `text_length`: raw character length
   - `punctuation_count`: count of punctuation (.,!?,;:)
   - `link_density`: ratio of link text length to total text (0..1)

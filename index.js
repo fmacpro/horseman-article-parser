@@ -34,6 +34,12 @@ const require = createRequire(import.meta.url)
 export async function parseArticle (options, socket = { emit: (type, status) => console.log(status) }) {
 
   options = setDefaultOptions(options)
+  // Enforce no-screenshot globally regardless of caller configuration
+  try {
+    if (Array.isArray(options.enabled)) {
+      options.enabled = options.enabled.filter(k => k !== 'screenshot')
+    }
+  } catch {}
 
   // Allow nlp plugins to be passed in (https://observablehq.com/@spencermountain/compromise-plugins)
   if (options.nlp.plugins.length >= 1) {
@@ -44,16 +50,42 @@ export async function parseArticle (options, socket = { emit: (type, status) => 
 
   const browser = await puppeteer.launch(options.puppeteer.launch)
 
-  try {
-    const article = await articleParser(browser, options, socket)
+  // Global timeout support for the whole parse operation
+  const totalTimeoutMs = Number.isFinite(Number(options.timeoutMs)) ? Number(options.timeoutMs) : null
+  const startAt = Date.now()
+  const deadline = totalTimeoutMs ? startAt + totalTimeoutMs : null
+  if (deadline) options.__deadline = deadline
+  let timeoutHandle = null
+  let timedOut = false
+  const timeoutPromise = new Promise((_, reject) => {
+    if (!totalTimeoutMs) return
+    timeoutHandle = setTimeout(async () => {
+      timedOut = true
+      try { await browser.close() } catch {}
+      reject(new Error(`Timeout after ${totalTimeoutMs}ms`))
+    }, totalTimeoutMs)
+  })
 
-    if (options.enabled.includes('lighthouse')) {
-      article.lighthouse = await lighthouseAnalysis(browser, options, socket)
+  const work = (async () => {
+    try {
+      const article = await articleParser(browser, options, socket)
+
+      if (options.enabled.includes('lighthouse')) {
+        article.lighthouse = await lighthouseAnalysis(browser, options, socket)
+      }
+
+      return article
+    } finally {
+      // always close browser if not already; safe to call twice
+      try { await browser.close() } catch {}
     }
+  })()
 
-    return article
+  try {
+    const result = totalTimeoutMs ? await Promise.race([work, timeoutPromise]) : await work
+    return result
   } finally {
-    await browser.close()
+    if (timeoutHandle) clearTimeout(timeoutHandle)
   }
 }
 
@@ -82,6 +114,43 @@ const articleParser = async function (browser, options, socket) {
   const page = await browser.newPage()
 
   try {
+    // Track frame navigations to wait for brief stability before evaluating
+    let __lastNavAt = Date.now()
+    try {
+      page.on('framenavigated', () => { __lastNavAt = Date.now() })
+      page.on('load', () => { __lastNavAt = Date.now() })
+      page.on('domcontentloaded', () => { __lastNavAt = Date.now() })
+    } catch {}
+
+    const timeLeft = () => {
+      try { if (!options.__deadline) return Infinity } catch { return Infinity }
+      return Math.max(0, options.__deadline - Date.now())
+    }
+
+    const waitForFrameStability = async (quietMs = 400, maxMs = 1500) => {
+      const start = Date.now()
+      const deadline = Math.min(maxMs, timeLeft())
+      // Prefer a readyState complete check when possible
+      try {
+        await page.waitForFunction(() => document.readyState === 'complete', { timeout: Math.min(1200, Math.max(0, timeLeft())) })
+      } catch {}
+      while ((Date.now() - __lastNavAt) < quietMs && (Date.now() - start) < deadline) {
+        const slice = Math.min(120, Math.max(40, quietMs / 4))
+        try { await page.waitForTimeout(slice) } catch {}
+      }
+    }
+    // Keep individual waits snappy to respect a ~10s cap
+    try { await page.setDefaultTimeout(2500) } catch {}
+    try { await page.setDefaultNavigationTimeout(4000) } catch {}
+
+    // Optional: disable JavaScript for troublesome sites (via tweaks)
+    try {
+      if (options.puppeteer && typeof options.puppeteer.javascriptEnabled === 'boolean') {
+        await page.setJavaScriptEnabled(Boolean(options.puppeteer.javascriptEnabled))
+      }
+    } catch {}
+    const jsEnabled = !(options.puppeteer && options.puppeteer.javascriptEnabled === false)
+
     // Ignore content security policies
     await page.setBypassCSP(options.puppeteer.setBypassCSP)
 
@@ -93,8 +162,10 @@ const articleParser = async function (browser, options, socket) {
       await page.setExtraHTTPHeaders(options.puppeteer.extraHTTPHeaders)
     }
 
+    let interceptionActive = false
     if (!options.noInterception) {
       await page.setRequestInterception(true)
+      interceptionActive = true
 
       const blockedResourceTypes = new Set(options.blockedResourceTypes)
       const skippedResources = new Set(options.skippedResources)
@@ -107,13 +178,16 @@ const articleParser = async function (browser, options, socket) {
         } catch {
           requestUrl = request.url()
         }
-        if (
+        if (interceptionActive && (
           blockedResourceTypes.has(request.resourceType()) ||
           [...skippedResources].some(resource => requestUrl.includes(resource))
-        ) {
+        )) {
           request.abort()
-        } else {
+        } else if (interceptionActive) {
           request.continue()
+        } else {
+          // If interception disabled, ignore handler (no continue/abort)
+          return
         }
       })
     }
@@ -124,14 +198,51 @@ const articleParser = async function (browser, options, socket) {
       'utf8'
     )
 
-    let response
-    try {
-      response = await page.goto(options.url, options.puppeteer.goto)
-    } catch (e) {
-      const message = 'Failed to fetch ' + options.url + ': ' + e.message
-      socket.emit('parse:status', message)
-      throw new Error(message)
+    // Adaptive navigation with fallbacks to reduce need for per-domain tweaks
+    async function navigateWithFallback(url) {
+      const headersBackup = options.puppeteer && options.puppeteer.extraHTTPHeaders ? { ...options.puppeteer.extraHTTPHeaders } : {}
+      const tryGoto = async (gotoOpts) => {
+        try {
+          return await page.goto(url, gotoOpts)
+        } catch (err) {
+          throw err
+        }
+      }
+
+      let response
+      try {
+        response = await tryGoto(options.puppeteer.goto)
+      } catch (err1) {
+        // Fallback 1: relax waitUntil
+        try {
+          response = await tryGoto({ waitUntil: 'domcontentloaded', timeout: 3500 })
+        } catch (err2) {
+          // Fallback 2: disable interception if enabled and retry
+          try { await page.setRequestInterception(false); interceptionActive = false } catch {}
+          try {
+            response = await tryGoto({ waitUntil: 'domcontentloaded', timeout: 2500 })
+          } catch (err3) {
+            // Fallback 3: try with a benign Referer (some sites require it)
+            try { await page.setExtraHTTPHeaders({ ...(headersBackup || {}), Referer: 'https://www.google.com/' }) } catch {}
+            try {
+              response = await tryGoto({ waitUntil: 'domcontentloaded', timeout: 2500 })
+            } catch (err4) {
+              const message = 'Failed to fetch ' + url + ': ' + err4.message
+              socket.emit('parse:status', message)
+              throw new Error(message)
+            } finally {
+              // restore headers
+              try { await page.setExtraHTTPHeaders(headersBackup || {}) } catch {}
+            }
+          }
+        }
+      }
+
+      return response
     }
+
+    let response = await navigateWithFallback(options.url)
+    try { await waitForFrameStability(400, 1500) } catch {}
 
   // Inject cookies if set
   if (typeof options.puppeteer.cookies !== 'undefined') {
@@ -149,12 +260,169 @@ const articleParser = async function (browser, options, socket) {
     }
   }
 
-    await page.evaluate(jquerySource)
+  // Attempt to auto-dismiss common consent popups/overlays across all frames
+  async function autoDismissConsent(page, consentOptions = {}) {
+    try {
+      const selectors = Array.isArray(consentOptions.selectors) ? consentOptions.selectors : []
+      const textPatterns = Array.isArray(consentOptions.textPatterns) ? consentOptions.textPatterns : []
+      const maxClicks = Number.isFinite(consentOptions.maxClicks) ? consentOptions.maxClicks : 3
+      const waitMs = Number.isFinite(consentOptions.waitAfterClickMs) ? consentOptions.waitAfterClickMs : 500
+
+      const frames = page.frames()
+      let clicks = 0
+
+      // Helper to click by selectors in a frame-like context
+      const clickSelectorsIn = async (ctx) => {
+        for (const sel of selectors) {
+          if (clicks >= maxClicks) break
+          try {
+            const el = await ctx.$(sel)
+            if (el) {
+              try { await el.evaluate(e => { try { e.scrollIntoView({ block: 'center' }) } catch {} }) } catch {}
+              await el.click({ delay: 20 })
+              clicks++
+              await page.waitForTimeout(waitMs)
+            }
+          } catch {}
+        }
+      }
+
+      // Helper to click by text patterns in a frame
+      const clickByTextIn = async (frame) => {
+        const patterns = textPatterns.map(s => String(s).toLowerCase())
+        const remaining = maxClicks - clicks
+        if (remaining <= 0 || patterns.length === 0) return
+        try {
+          const did = await frame.evaluate((patterns, remaining) => {
+            const isVisible = (el) => {
+              const rect = el.getBoundingClientRect()
+              const style = window.getComputedStyle(el)
+              return rect.width > 1 && rect.height > 1 && style.visibility !== 'hidden' && style.display !== 'none'
+            }
+            const isConsentContext = (el) => {
+              let n = el
+              const re = /(consent|cookie|privacy|gdpr)/i
+              while (n && n.nodeType === 1) {
+                const id = n.id || ''
+                const cls = (n.className && typeof n.className === 'string') ? n.className : ''
+                if (re.test(id) || re.test(cls)) return true
+                n = n.parentElement
+              }
+              return false
+            }
+            const candidates = Array.from(document.querySelectorAll('button, [role="button"], a, div[role="button"]'))
+            let count = 0
+            for (const el of candidates) {
+              if (count >= remaining) break
+              const txt = (el.innerText || el.textContent || '').trim().toLowerCase()
+              if (!txt) continue
+              if (patterns.some(p => txt.includes(p)) && isConsentContext(el)) {
+                try { if (isVisible(el)) { el.click(); count++ } } catch {}
+              }
+            }
+            return count
+          }, patterns, remaining)
+          clicks += Number(did) || 0
+          if (did) await page.waitForTimeout(waitMs)
+        } catch {}
+      }
+
+      // Pass 1: selectors in main frame, then in child frames
+      await clickSelectorsIn(page)
+      for (const f of frames) { if (clicks < maxClicks) await clickSelectorsIn(f) }
+
+      // Pass 2: text matches in frames
+      for (const f of frames) { if (clicks < maxClicks) await clickByTextIn(f) }
+
+      // If clicks may have triggered navigation, wait briefly for it to settle
+      if (clicks) {
+        try { await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 2000 }) } catch {}
+      }
+
+      // As a last resort, try Escape once to close modal overlays
+      try { await page.keyboard.press('Escape') } catch {}
+      if (waitMs) await page.waitForTimeout(100)
+    } catch {}
+  }
+
+  if (jsEnabled && options.consent && options.consent.autoDismiss) {
+    await autoDismissConsent(page, options.consent)
+  }
+  try { await waitForFrameStability(350, 1200) } catch {}
+
+  // Wait briefly for common article/content selectors to appear (helps dynamic blogs)
+  try {
+    const contentSelectors = options.contentWaitSelectors || [
+      'article', 'main', '[role="main"]',
+      '.entry-content', '.post-body', '#postBody', '.post-content', '.article-content'
+    ]
+    const selTimeout = Number.isFinite(Number(options.contentWaitTimeoutMs)) ? Number(options.contentWaitTimeoutMs) : 2500
+    for (const sel of contentSelectors) {
+      try { await page.waitForSelector(sel, { timeout: selTimeout }) ; break } catch {}
+    }
+  } catch {}
+
+  // Try to trigger lazy-loaded content by scrolling (skip if JS disabled)
+  try {
+    if (!jsEnabled) throw new Error('skip-scroll')
+    await page.evaluate(async () => {
+      await new Promise((resolve) => {
+        const step = Math.max(200, Math.floor(window.innerHeight * 0.9))
+        let scrolled = 0
+        const maxScroll = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight)
+        const timer = setInterval(() => {
+          const before = window.scrollY
+          window.scrollBy(0, step)
+          scrolled += Math.abs(window.scrollY - before)
+          if (window.scrollY + window.innerHeight >= maxScroll || scrolled > maxScroll * 1.5) {
+            clearInterval(timer)
+            resolve()
+          }
+        }, 150)
+      })
+    })
+    // small settle delay
+    await page.waitForTimeout(400)
+    // Re-check preferred selectors after scroll
+    const contentSelectors2 = options.contentWaitSelectors || [
+      '.entry-content', '.post-body', '#postBody', '.post-content', '.article-content'
+    ]
+    for (const sel of contentSelectors2) {
+      try { await page.waitForSelector(sel, { timeout: 1500 }) ; break } catch {}
+    }
+    // Optional second pass on final retry
+    if (options.extraScrollPass) {
+      await page.evaluate(async () => {
+        await new Promise((resolve) => {
+          const step = Math.max(300, Math.floor(window.innerHeight))
+          const start = Date.now()
+          const maxMs = 3000
+          const timer = setInterval(() => {
+            window.scrollBy(0, step)
+            if ((window.scrollY + window.innerHeight) >= Math.max(document.body.scrollHeight, document.documentElement.scrollHeight) || (Date.now() - start) > maxMs) {
+              clearInterval(timer)
+              resolve()
+            }
+          }, 120)
+        })
+      })
+      await page.waitForTimeout(300)
+      for (const sel of contentSelectors2) {
+        try { await page.waitForSelector(sel, { timeout: 2000 }) ; break } catch {}
+      }
+    }
+  } catch {}
 
   socket.emit('parse:status', 'Fetching ' + options.url)
 
-  // Evaluate status
-  article.status = response.request().response().status()
+  // Evaluate status (guard if response is null due to aborted navigations)
+  try {
+    const respObj = (response && typeof response.request === 'function' && response.request())
+    const res = respObj && typeof respObj.response === 'function' && respObj.response()
+    article.status = res && typeof res.status === 'function' ? res.status() : null
+  } catch {
+    article.status = null
+  }
 
   socket.emit('parse:status', 'Status ' + article.status)
 
@@ -164,8 +432,14 @@ const articleParser = async function (browser, options, socket) {
     throw new Error(message)
   }
 
-  // Evaluate URL
-  article.url = response.request().response().url()
+  // Evaluate URL (fallback to page.url if response is unavailable)
+  try {
+    const respObj = (response && typeof response.request === 'function' && response.request())
+    const res = respObj && typeof respObj.response === 'function' && respObj.response()
+    article.url = res && typeof res.url === 'function' ? res.url() : page.url()
+  } catch {
+    article.url = page.url()
+  }
 
   const pathArray = article.url.split('/')
   const protocol = pathArray[0]
@@ -174,44 +448,80 @@ const articleParser = async function (browser, options, socket) {
   article.host = host
   article.baseurl = protocol + '//' + host
 
-  // Evaluate title
-  article.meta.title.text = await page.title()
-
-  // Take mobile screenshot
-  if (options.enabled.includes('screenshot')) {
-    socket.emit('parse:status', 'Taking Mobile Screenshot')
-    article.mobile = await page.screenshot({ encoding: 'base64', type: 'jpeg', quality: 60 })
+  // Evaluate title (retry once on context loss)
+  try {
+    article.meta.title.text = await page.title()
+  } catch (err) {
+    try { await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 1500 }) } catch {}
+    try { article.meta.title.text = await page.title() } catch { article.meta.title.text = '' }
   }
 
+  // Take mobile screenshot
+  if (options.enabled.includes('screenshot') && timeLeft() > 300) {
+    socket.emit('parse:status', 'Taking Mobile Screenshot')
+    try {
+      article.mobile = await page.screenshot({ encoding: 'base64', type: 'jpeg', quality: 60 })
+    } catch { /* ignore screenshot failures (e.g., page closed on timeout) */ }
+  }
+
+  // If the page/browser was closed (e.g., due to global timeout), abort gracefully
+  try { if (page.isClosed && page.isClosed()) throw new Error('Page closed') } catch {}
+  if (timeLeft() <= 0) throw new Error('Timeout budget exceeded')
+
   // Evaluate site icon url
-  if (options.enabled.includes('siteicon')) {
+  if (options.enabled.includes('siteicon') && timeLeft() > 300) {
     socket.emit('parse:status', 'Evaluating site icon')
-    article.siteicon = await page.evaluate(() => {
-      const j = window.$
-      return j('link[rel~="icon"]').prop('href')
-    })
+    try {
+      article.siteicon = await page.evaluate(() => {
+        const candidates = [
+          'link[rel~="icon"]',
+          'link[rel="shortcut icon"]',
+          'link[rel="icon"]',
+          'link[rel="apple-touch-icon"]'
+        ]
+        for (const sel of candidates) {
+          const el = document.querySelector(sel)
+          if (el && el.href) return el.href
+        }
+        return null
+      })
+    } catch { article.siteicon = null }
+  }
+  if (timeLeft() <= 0) throw new Error('Timeout budget exceeded')
+
+  // Helper: retry page.evaluate after navigation/context loss
+  const isCtxError = (err) => {
+    const msg = (err && err.message) || ''
+    return /Execution context was destroyed|Cannot find context|Protocol error|detached Frame|Target closed|Session closed/i.test(msg)
+  }
+  const evalWithRetry = async (fn) => {
+    try {
+      return await fn()
+    } catch (err) {
+      if (timeLeft() <= 0) throw err
+      if (!isCtxError(err)) throw err
+      try { await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: Math.min(2000, Math.max(0, timeLeft())) }) } catch {}
+      try { await waitForFrameStability(400, 1500) } catch {}
+      return await fn()
+    }
   }
 
   // Evaluate meta
   socket.emit('parse:status', 'Evaluating Meta Data')
 
-  const meta = await page.evaluate(() => {
-    const j = window.$
-
-    const arr = j('meta')
-    const meta = {}
-
-    for (let i = 0; i < arr.length; i++) {
-      if (j(arr[i]).attr('name')) {
-        meta[j(arr[i]).attr('name')] = j(arr[i]).attr('content')
-      } else if (j(arr[i]).attr('property')) {
-        meta[j(arr[i]).attr('property')] = j(arr[i]).attr('content')
-      } else {
-        // do nothing for now
-      }
-    }
-    return meta
-  })
+  const meta = await evalWithRetry(async () => page.evaluate(() => {
+    // Native DOM (robust across sites)
+    const out = {}
+    const nodes = document.querySelectorAll('meta')
+    nodes.forEach(el => {
+      const name = el.getAttribute('name')
+      const prop = el.getAttribute('property')
+      const content = el.getAttribute('content')
+      if (name) out[name] = content
+      else if (prop) out[prop] = content
+    })
+    return out
+  }))
 
   // Assign meta
   Object.assign(article.meta, meta)
@@ -221,22 +531,24 @@ const articleParser = async function (browser, options, socket) {
   article.meta.description = {}
   article.meta.description.text = metaDescription
 
-  // Save the original HTML of the document
-  article.html = await page.evaluate(() => {
-    const j = window.$
-    return j('html').html()
-  })
+  // Save the original HTML of the document (use page.content for robustness)
+  try {
+    article.html = await evalWithRetry(async () => page.content())
+  } catch {
+    article.html = await evalWithRetry(async () => page.evaluate(() => document.documentElement.innerHTML))
+  }
 
   // HTML Cleaning
-  let html = await page.evaluate((options) => {
-    const j = window.$
-
-    for (let i = 0; i < options.length; i++) {
-      j(options[i]).remove()
-    }
-
-    return j('html').html()
-  }, options.striptags)
+  let html = await evalWithRetry(async () => page.evaluate((options) => {
+    // Native DOM removal (robust default)
+    try {
+      for (let i = 0; i < options.length; i++) {
+        const sel = options[i]
+        document.querySelectorAll(sel).forEach(el => { try { el.remove() } catch {} })
+      }
+    } catch {}
+    return document.documentElement.innerHTML
+  }, options.striptags))
 
   // More HTML Cleaning
   html = await htmlCleaner(html, options.cleanhtml)
@@ -453,7 +765,7 @@ const articleParser = async function (browser, options, socket) {
 
     return article
   } finally {
-    await page.close()
+    try { await page.close() } catch {}
   }
 }
 
@@ -500,6 +812,15 @@ const getRawText = function (html) {
     const inner = m.slice(1, -1)
     return containsUrlLike(inner) ? ' ' : m
   })
+  // Globally strip URLs from raw text (protocols, www, and bare domains)
+  const stripUrls = (s) => {
+    if (!s || typeof s !== 'string') return s
+    let out = s.replace(/(?:https?:\/\/|ftp:\/\/)[^\s]+/gi, ' ')
+    out = out.replace(/\bwww\.[^\s]+/gi, ' ')
+    out = out.replace(/\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:[a-z]{2,})(?:\/[\w\-._~:/?#\[\]@!$&'()*+,;=%]*)?/gi, ' ')
+    return out
+  }
+  rawText = stripUrls(rawText)
   rawText = rawText.replace(/\s+/g, ' ').trim()
 
   resolve(rawText)

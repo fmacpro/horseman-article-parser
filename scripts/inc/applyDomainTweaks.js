@@ -57,6 +57,23 @@ export function applyDomainTweaks(url, options, config, context = {}) {
     )
   }
 
+  // Shallow-merge top-level puppeteer options (e.g., javascriptEnabled)
+  if (rule.puppeteer && typeof rule.puppeteer === 'object') {
+    options.puppeteer = Object.assign({}, options.puppeteer || {}, rule.puppeteer)
+  }
+
+  // Apply skippedResources (substring match against request URL)
+  if (Array.isArray(rule.skippedResources) && rule.skippedResources.length) {
+    const existing = Array.isArray(options.skippedResources) ? options.skippedResources : []
+    options.skippedResources = [...existing, ...rule.skippedResources]
+  }
+
+  // Apply blockedResourceTypes (e.g., 'image', 'media', 'font', 'stylesheet')
+  if (Array.isArray(rule.blockedResourceTypes) && rule.blockedResourceTypes.length) {
+    const existing = Array.isArray(options.blockedResourceTypes) ? options.blockedResourceTypes : []
+    options.blockedResourceTypes = [...existing, ...rule.blockedResourceTypes]
+  }
+
   // Apply click selectors (e.g., consent banners)
   if (Array.isArray(rule.clickSelectors) && rule.clickSelectors.length) {
     const existing = Array.isArray(options.clickelements) ? options.clickelements : []
@@ -66,6 +83,11 @@ export function applyDomainTweaks(url, options, config, context = {}) {
   // Retry overrides
   if (Number.isFinite(Number(rule.retries))) {
     out.retries = Number(rule.retries)
+  }
+
+  // Consent behavior overrides
+  if (rule.consent && typeof rule.consent === 'object') {
+    options.consent = Object.assign({}, options.consent || {}, rule.consent)
   }
 
   return out

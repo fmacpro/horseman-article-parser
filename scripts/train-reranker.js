@@ -43,12 +43,25 @@ function parseCSV(text) {
   let headers = null
   let idx = null
   const nameAliases = {
+    url: ['url'],
+    xpath: ['xpath'],
     len: ['text_length', 'len'],
     punct: ['punctuation_count', 'punct'],
     ld: ['link_density', 'ld'],
     pc: ['paragraph_count', 'pc'],
     sem: ['has_semantic_container', 'sem'],
     boiler: ['boilerplate_penalty', 'boiler'],
+    dp: ['direct_paragraph_count','dp'],
+    db: ['direct_block_count','db'],
+    dr: ['paragraph_to_block_ratio','dr'],
+    avgP: ['average_paragraph_length','avgP'],
+    depth: ['dom_depth','depth'],
+    heads: ['heading_children_count','heads'],
+    roleMain: ['aria_role_main','roleMain'],
+    roleNeg: ['aria_role_negative','roleNeg'],
+    ariaHidden: ['aria_hidden','ariaHidden'],
+    imgAltRatio: ['image_alt_ratio','imgAltRatio'],
+    imgCount: ['image_count','imgCount'],
     label: ['training_label', 'label']
   }
 
@@ -57,7 +70,7 @@ function parseCSV(text) {
     // Detect header (contains any known column name strings)
     if (!headers) {
       const lower = fields.map(s => s.toLowerCase())
-      const looksHeader = lower.some(s => ['xpath','text_length','len','training_label','label'].includes(s))
+      const looksHeader = lower.some(s => ['xpath','text_length','len','training_label','label','link_density'].includes(s))
       if (looksHeader) {
         headers = lower
         idx = indexMap(headers, nameAliases)
@@ -66,22 +79,51 @@ function parseCSV(text) {
     }
 
     if (headers && idx) {
-      // Use named columns
-      const get = (i) => {
-        if (i < 0 || i >= fields.length) return NaN
-        const n = Number(fields[i])
-        return Number.isFinite(n) ? n : NaN
-      }
-      const v = [
-        get(idx.len),
-        get(idx.punct),
-        get(idx.ld),
-        get(idx.pc),
-        get(idx.sem),
-        get(idx.boiler),
-        get(idx.label)
+      // Build vector matching detectContent.toVector scaling (16 dims)
+      const num = (i) => (i >= 0 && i < fields.length) ? Number(fields[i]) : NaN
+      const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi)
+      const len = num(idx.len)
+      const punct = num(idx.punct)
+      const ld = num(idx.ld)
+      const pc = num(idx.pc)
+      const sem = num(idx.sem)
+      const boiler = num(idx.boiler)
+      const dp = num(idx.dp)
+      const db = num(idx.db)
+      const dr = num(idx.dr)
+      const avgP = num(idx.avgP)
+      const depth = num(idx.depth)
+      const heads = num(idx.heads)
+      const roleMain = num(idx.roleMain)
+      const roleNeg = num(idx.roleNeg)
+      const ariaHidden = num(idx.ariaHidden)
+      const imgAltRatio = num(idx.imgAltRatio)
+      const imgCount = num(idx.imgCount)
+      const label = num(idx.label)
+
+      const hasAll = [len, punct, ld, pc, sem, boiler, dp, db, dr, avgP, depth, heads, roleMain, roleNeg, ariaHidden, imgAltRatio, imgCount, label]
+        .every(n => Number.isFinite(n))
+      if (!hasAll) continue
+
+      const vec = [
+        Math.log(1 + len),
+        clamp(punct / 10, 0, 5),
+        ld,
+        clamp(pc / 5, 0, 5),
+        sem ? 1 : 0,
+        boiler,
+        clamp(dp / 10, 0, 1),
+        clamp(dr, 0, 1),
+        clamp(Math.log(1 + avgP) / 5, 0, 1),
+        clamp(depth / 10, 0, 1),
+        clamp(heads / 6, 0, 1),
+        roleMain ? 1 : 0,
+        roleNeg ? 1 : 0,
+        ariaHidden ? 1 : 0,
+        clamp(imgAltRatio, 0, 1),
+        clamp(imgCount / 50, 0, 1)
       ]
-      if (v.every(n => Number.isFinite(n))) rows.push(v)
+      rows.push({ x: vec, y: label })
       continue
     }
 
@@ -89,23 +131,26 @@ function parseCSV(text) {
     const nums = fields
       .map(x => Number(x))
       .filter(n => Number.isFinite(n))
-    if (nums.length >= 7) rows.push(nums.slice(0, 7))
+    if (nums.length >= 17) {
+      rows.push({ x: nums.slice(0, 16), y: nums[16] })
+    }
   }
   return rows
 }
 
 function sigmoid(z) { return 1 / (1 + Math.exp(-z)) }
 
-function train(data, { lr = 0.01, epochs = 200, l2 = 0.0 } = {}) {
-  const d = 6 // features
+function train(data, { lr = 0.05, epochs = 250, l2 = 0.001 } = {}) {
+  if (!data.length) return { weights: [], bias: 0 }
+  const d = data[0].x.length
   let w = new Array(d).fill(0)
   let b = 0
   for (let e = 0; e < epochs; e++) {
     let dw = new Array(d).fill(0)
     let db = 0
     for (const row of data) {
-      const x = row.slice(0, d)
-      const y = row[d]
+      const x = row.x
+      const y = row.y
       let z = b
       for (let i = 0; i < d; i++) z += w[i] * x[i]
       const p = sigmoid(z)
@@ -113,10 +158,11 @@ function train(data, { lr = 0.01, epochs = 200, l2 = 0.0 } = {}) {
       for (let i = 0; i < d; i++) dw[i] += diff * x[i]
       db += diff
     }
+    const n = data.length
     for (let i = 0; i < d; i++) {
-      w[i] -= lr * (dw[i] / data.length + l2 * w[i])
+      w[i] -= lr * ((dw[i] / n) + l2 * w[i])
     }
-    b -= lr * (db / data.length)
+    b -= lr * (db / n)
   }
   return { weights: w, bias: b }
 }

@@ -6,12 +6,29 @@ const DEFAULT_SELECTORS = [
   'main',
   '[role="main"]',
   '[itemtype*="Article"]',
-  '.content, .article, .post, .story, .entry'
+  // Common generic content containers across many CMS/blogs
+  '.content, .article, .post, .story, .entry',
+  // Additional broadly-used containers (generic, not domain-specific)
+  '.post-body',
+  '.entry-content',
+  '.post-content',
+  '.article-content',
+  '.content__body',
+  '#postBody'
 ]
 
 const NEGATIVE_CONTAINER = [
   'nav', 'aside', 'footer', 'form', 'header', 'noscript', 'template',
   '.comments', '.comment', '.related', '.recirculation', '.share', '.social', '.promo', '.sponsor', '.newsletter', '.consent'
+]
+
+// Generic preferred content selectors seen across many CMS/blog platforms
+const PREFERRED_CONTENT_SELECTORS = [
+  '.entry-content',
+  '.post-body',
+  '#postBody',
+  '.post-content',
+  '.article-content'
 ]
 
 function getText(el) {
@@ -219,6 +236,56 @@ function drillDownToContent(el, options = {}) {
   return best.node || el
 }
 
+// Find the best text-dense descendant under a container, using existing feature computation
+function findBestDescendantUnder(root, options = {}) {
+  if (!root || !root.querySelectorAll) return null
+  const minLen = (options.contentDetection && options.contentDetection.minLength) || 400
+  const maxLD = (options.contentDetection && options.contentDetection.maxLinkDensity) || 0.5
+  const CAND_TAGS = new Set(['DIV','ARTICLE','SECTION','MAIN'])
+  const NEG_TAGS = new Set(['HEADER','NAV','FOOTER','ASIDE'])
+  let best = null
+  const nodes = root.querySelectorAll('div, article, section, main')
+  for (const n of nodes) {
+    if (!n || !n.tagName || !CAND_TAGS.has(n.tagName)) continue
+    // Skip obvious non-content regions
+    let anc = n
+    let bad = false
+    while (anc && anc.nodeType === 1) {
+      if (NEG_TAGS.has(anc.tagName)) { bad = true; break }
+      anc = anc.parentElement
+    }
+    if (bad) continue
+    const clean = stripBadContainers(n)
+    const f = computeFeatures(clean)
+    const pc = paragraphCount(clean)
+    const longLowLD = (f.len >= 1500 && f.ld <= 0.4)
+    if ((pc >= 3 || f.len >= Math.max(minLen * 1.5, 800)) && f.ld <= Math.max(maxLD, 0.65) || longLowLD) {
+      if (!best || f.len > best.f.len) best = { el: n, clean, f }
+    }
+  }
+  return best
+}
+
+function findBestPreferredDescendant(root, options = {}) {
+  if (!root || !root.querySelectorAll) return null
+  const minLen = (options.contentDetection && options.contentDetection.minLength) || 400
+  const maxLD = (options.contentDetection && options.contentDetection.maxLinkDensity) || 0.5
+  let best = null
+  for (const sel of PREFERRED_CONTENT_SELECTORS) {
+    const nodes = root.querySelectorAll(sel)
+    for (const n of nodes) {
+      if (!n) continue
+      const clean = stripBadContainers(n)
+      const f = computeFeatures(clean)
+      if (!best || f.len > (best.f?.len || 0)) best = { el: n, clean, f }
+    }
+  }
+  if (!best) return null
+  const valid = (best.f.len >= minLen) && (best.f.ld <= Math.max(maxLD, 0.65))
+  const heavy = best.f.len >= Math.max(minLen * 1.2, 600)
+  return (valid || heavy) ? best : null
+}
+
 // Heuristic: If content paragraphs are split across multiple sibling containers within
 // a higher-level container (e.g., ARTICLE), prefer that parent container to avoid fragmenting
 // the article body selection.
@@ -410,6 +477,27 @@ export function detectContent(document, options = {}, seeds = {}) {
 
   const best = ordered[0]
 
+  // Prefer generic blog/article containers when they are close to the largest candidate
+  let preferredOverride = null
+  try {
+    const maxLen = prelim.reduce((m, s) => Math.max(m, (s.f && s.f.len) || 0), 0)
+    const minLen = (options.contentDetection && options.contentDetection.minLength) || 400
+    const maxLD = (options.contentDetection && options.contentDetection.maxLinkDensity) || 0.5
+    const threshold = Math.max(0.5 * maxLen, minLen) // within 50% of largest and over minLen
+    const preferred = prelim
+      .filter(s => {
+        try { return s && s.el && PREFERRED_CONTENT_SELECTORS.some(sel => s.el.matches(sel)) } catch { return false }
+      })
+      .sort((a, b) => (b.f?.len || 0) - (a.f?.len || 0))
+    if (preferred.length) {
+      const cand = preferred[0]
+      // prefer if close to largest OR clearly meets basic thresholds
+      const closeEnough = (cand.f?.len || 0) >= threshold
+      const valid = (cand.f?.len || 0) >= minLen && (cand.f?.ld || 1) <= Math.max(maxLD, 0.65)
+      if (closeEnough || valid) preferredOverride = cand
+    }
+  } catch { /* ignore */ }
+
   // Optional: dump candidate features for training a reranker
   try {
     const dump = options.contentDetection && options.contentDetection.debugDump
@@ -417,11 +505,11 @@ export function detectContent(document, options = {}, seeds = {}) {
       const path = dump.path
       const addUrl = !!dump.addUrl
       const wantHeader = addUrl
-        ? 'url,xpath,text_length,punctuation_count,link_density,paragraph_count,has_semantic_container,boilerplate_penalty,direct_paragraph_count,direct_block_count,paragraph_to_block_ratio,average_paragraph_length,dom_depth,heading_children_count,aria_role_main,aria_role_negative,aria_hidden,image_alt_ratio,image_count,training_label,default_selected'
-        : 'xpath,text_length,punctuation_count,link_density,paragraph_count,has_semantic_container,boilerplate_penalty,direct_paragraph_count,direct_block_count,paragraph_to_block_ratio,average_paragraph_length,dom_depth,heading_children_count,aria_role_main,aria_role_negative,aria_hidden,image_alt_ratio,image_count,training_label,default_selected'
+        ? 'url,xpath,css_selector,text_length,punctuation_count,link_density,paragraph_count,has_semantic_container,boilerplate_penalty,direct_paragraph_count,direct_block_count,paragraph_to_block_ratio,average_paragraph_length,dom_depth,heading_children_count,aria_role_main,aria_role_negative,aria_hidden,image_alt_ratio,image_count,training_label,default_selected'
+        : 'xpath,css_selector,text_length,punctuation_count,link_density,paragraph_count,has_semantic_container,boilerplate_penalty,direct_paragraph_count,direct_block_count,paragraph_to_block_ratio,average_paragraph_length,dom_depth,heading_children_count,aria_role_main,aria_role_negative,aria_hidden,image_alt_ratio,image_count,training_label,default_selected'
       if (fs.existsSync(path)) {
         const first = fs.readFileSync(path, 'utf8').split(/\r?\n/)[0] || ''
-        if (!first.includes('text_length') || !first.includes('default_selected')) {
+        if (!first.includes('text_length') || !first.includes('default_selected') || !first.includes('css_selector')) {
           try { fs.renameSync(path, path + '.bak') } catch { /* ignore */ }
         }
       }
@@ -443,6 +531,8 @@ export function detectContent(document, options = {}, seeds = {}) {
       const minLen = (options.contentDetection && options.contentDetection.minLength) || 400
       const maxLD = (options.contentDetection && options.contentDetection.maxLinkDensity) || 0.5
       let defaultSelected = heurOrdered[0]
+      // Prefer a strong preferred-content match for default selection when present
+      if (preferredOverride) defaultSelected = preferredOverride
       if (defaultSelected) {
         const ok = defaultSelected.f.len >= minLen && defaultSelected.f.ld <= maxLD
         if (!ok && heurOrdered[1]) defaultSelected = heurOrdered[1]
@@ -482,8 +572,11 @@ export function detectContent(document, options = {}, seeds = {}) {
         // Wrap the XPath in a Chrome-console friendly JS snippet for ease of use
         // Using $x('xpath')[0] which is supported in Chromium DevTools
         const jsXpath = `$x(${JSON.stringify(xp)})[0]`
+        const sel = getCssSelector(unique[i].el)
+        const jsCss = `document.querySelector(${JSON.stringify(sel)})`
         const base = [
           csvEscape(jsXpath),
+          csvEscape(jsCss),
           f.len,
           f.punct,
           Number(f.ld.toFixed(6)),
@@ -514,7 +607,10 @@ export function detectContent(document, options = {}, seeds = {}) {
     // ignore dump errors
   }
   let selected = best
-  if (!html && best && best.clean) {
+  if (preferredOverride && preferredOverride.clean) {
+    html = preferredOverride.clean.innerHTML
+    selected = preferredOverride
+  } else if (!html && best && best.clean) {
     const minLen = (options.contentDetection && options.contentDetection.minLength) || 400
     const maxLD = (options.contentDetection && options.contentDetection.maxLinkDensity) || 0.5
     if (best.f.len >= minLen && best.f.ld <= maxLD) {
@@ -533,6 +629,60 @@ export function detectContent(document, options = {}, seeds = {}) {
       const cleanFrag = stripBadContainers(frag)
       html = cleanFrag.innerHTML
       selected = { el: frag }
+    }
+  } catch { /* ignore */ }
+
+  // If still no content selected, fall back to the largest candidate rather than full body
+  if (!html && prelim && prelim.length) {
+    let biggest = prelim[0]
+    for (const c of prelim) { if (c.f && c.f.len > (biggest.f?.len || 0)) biggest = c }
+    if (biggest && biggest.clean) {
+      html = biggest.clean.innerHTML
+      selected = biggest
+    }
+  }
+
+  // As a final generic fallback, try common content selectors directly
+  if (!html && document && document.querySelector) {
+    const fallbacks = [
+      'article',
+      'main',
+      '[role="main"]',
+      '.entry-content',
+      '.post-body',
+      '#postBody',
+      '.article-content',
+      '.post-content'
+    ]
+    for (const sel of fallbacks) {
+      const el = document.querySelector(sel)
+      if (el && el.innerHTML && el.innerHTML.trim().length > 0) {
+        const clean = stripBadContainers(el)
+        html = clean.innerHTML
+        selected = { el }
+        break
+      }
+    }
+  }
+
+  // Descendant promotion: if selection is BODY, but BODY contains a strong
+  // preferred content descendant, promote to that descendant.
+  try {
+    if (selected && selected.el && selected.el.tagName === 'BODY' && document && document.querySelector) {
+      // Best preferred descendant across all matches
+      const bestPref = findBestPreferredDescendant(document.body, options)
+      if (bestPref) {
+        html = bestPref.clean.innerHTML
+        selected = { el: bestPref.el }
+      }
+      // If still BODY, use best text-dense descendant under body
+      if (selected && selected.el && selected.el.tagName === 'BODY' && !html) {
+        const bestDesc = findBestDescendantUnder(document.body, options)
+        if (bestDesc) {
+          html = bestDesc.clean.innerHTML
+          selected = { el: bestDesc.el }
+        }
+      }
     }
   } catch { /* ignore */ }
 

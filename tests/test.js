@@ -18,14 +18,17 @@ const testPlugin = function (Doc, world) {
 const inputUrl = process.argv[2] || null
 
 const options = {
+  timeoutMs: 10000,
   url: inputUrl || 'https://www.bbc.co.uk/news/articles/cnvryg271ymo?at_medium=RSS&at_campaign=rss',
-  enabled: ['screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords', 'siteicon'],
+  enabled: ['links', 'sentiment', 'entities', 'spelling', 'keywords', 'siteicon'],
+  // In tests, do not block images to preserve fidelity
+  blockedResourceTypes: ['media', 'font', 'stylesheet'],
   // Tune content detection thresholds and dump candidate features for training
   contentDetection: {
     minLength: 400,
     maxLinkDensity: 0.5,
     debugDump: {
-      path: 'candidates_with_url.csv',
+      path: 'scripts/data/candidates_with_url.csv',
       topN: 5,
       addUrl: true
     }
@@ -131,6 +134,20 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
       lighthouse: article.lighthouse,
       html: article.html
     }
+
+    // Remove URLs from raw text for test output
+    try {
+      const stripUrls = (s) => {
+        if (!s || typeof s !== 'string') return s
+        // Remove protocol URLs and www.-prefixed
+        let out = s.replace(/(?:https?:\/\/|ftp:\/\/)[^\s]+/gi, ' ')
+        out = out.replace(/\bwww\.[^\s]+/gi, ' ')
+        // Remove bare domains like example.com/path
+        out = out.replace(/\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:[a-z]{2,})(?:\/[\w\-._~:/?#\[\]@!$&'()*+,;=%]*)?/gi, ' ')
+        return out.replace(/\s{2,}/g, ' ').trim()
+      }
+      response.text.raw = stripUrls(response.text.raw)
+    } catch {}
 
     const json = JSON.stringify(response, null, 4)
     const outPath = path.join(__dirname, 'testresults.json')

@@ -8,39 +8,18 @@
   ],
   "rules": [
     {
-      "match": "www.theregister.com",
       "type": "exact",
-      "noInterception": true,
-      "goto": { "waitUntil": "domcontentloaded", "timeout": 60000 },
-      "headers": { "Referer": "https://go.theregister.com/" }
-    },
-    {
-      "match": "bleepingcomputer.com",
-      "type": "suffix",
-      "noInterception": true,
-      "goto": { "waitUntil": "domcontentloaded", "timeout": 90000 }
-    },
-    {
-      "match": ".googleblog.com",
-      "type": "suffix",
-      "noInterception": true,
-      "goto": { "waitUntil": "domcontentloaded", "timeout": 90000 },
-      "headers": { "Referer": "https://developers.googleblog.com/" }
-    }
-    ,
-    {
-      "match": ".blogspot.com",
-      "type": "suffix",
-      "noInterception": true,
-      "goto": { "waitUntil": "domcontentloaded", "timeout": 90000 }
-    },
-    {
-      "match": "www.wired.com",
-      "type": "exact",
-      "noInterception": true,
-      "goto": { "waitUntil": "domcontentloaded", "timeout": 90000 },
-      "headers": { "Referer": "https://www.google.com/" },
-      "clickSelectors": ["#onetrust-accept-btn-handler"]
+      "match": "techncruncher.blogspot.com",
+      "headers": {
+        "Referer": "https://www.google.com/"
+      },
+      "puppeteer": {
+        "javascriptEnabled": false
+      },
+      "skippedResources": [
+        "ads-blocker.app",
+        "/rei.php"
+      ]
     }
   ]
 }

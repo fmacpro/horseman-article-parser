@@ -24,8 +24,10 @@ async function run(urlsFile, outCsv = 'candidates_with_url.csv', start = 0, limi
     try { return new URL(u).toString() } catch { return u }
   }
 
-  const retriesDefault = Number(process.env.BATCH_RETRIES || 2)
-  const gotoTimeoutDefault = Number(process.env.GOTO_TIMEOUT || 60000)
+  // Baked-in aggressive defaults (override via env vars)
+  const retriesDefault = Number(process.env.BATCH_RETRIES || 4)
+  const gotoTimeoutDefault = Number(process.env.GOTO_TIMEOUT || 20000)
+  const totalTimeoutDefault = Number(process.env.TOTAL_TIMEOUT_MS || 30000)
 
   async function processOne(url) {
     // Apply URL rewrites from config before normalization
@@ -58,11 +60,13 @@ async function run(urlsFile, outCsv = 'candidates_with_url.csv', start = 0, limi
             '--window-position=0,0'
           ]
         },
-        goto: { waitUntil: 'networkidle2', timeout: gotoTimeoutDefault },
+        goto: { waitUntil: 'domcontentloaded', timeout: gotoTimeoutDefault },
         userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36',
         extraHTTPHeaders: { 'Accept-Language': 'en-US,en;q=0.9' }
       }
     }
+    // Total operation timeout per URL
+    options.timeoutMs = Number.isFinite(Number(options.timeoutMs)) ? options.timeoutMs : totalTimeoutDefault
 
     // Apply standardized per-domain tweaks from config
     const overrides = applyDomainTweaks(normUrl, options, tweaksConfig, { retries: retriesDefault, gotoTimeout: gotoTimeoutDefault })
@@ -73,6 +77,23 @@ async function run(urlsFile, outCsv = 'candidates_with_url.csv', start = 0, limi
       try {
         if (!quiet) console.log(`Fetching: ${normUrl}`)
         const socket = quiet ? { emit: () => {} } : undefined
+        // On the final retry, relax constraints to improve success odds
+        if (attempt === retryMax) {
+          try {
+            options.noInterception = true
+            if (options.puppeteer && options.puppeteer.goto) {
+              // Switch to networkidle2 and longer timeout for final try
+              options.puppeteer.goto = { waitUntil: 'networkidle2', timeout: Math.max(60000, (options.puppeteer.goto.timeout || 0)) }
+            }
+            options.timeoutMs = Math.max(90000, Number(options.timeoutMs || 0))
+            // Provide content wait selectors to help dynamic blogs render
+            options.contentWaitSelectors = [
+              'article','main','[role="main"]','.entry-content','.post-body','#postBody','.post-content','.article-content'
+            ]
+            options.contentWaitTimeoutMs = 15000
+            options.extraScrollPass = true
+          } catch { /* ignore */ }
+        }
         await parseArticle(options, socket)
         if (quiet) console.log(`Parsed: ${normUrl}`)
         return
