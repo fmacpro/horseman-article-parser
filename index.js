@@ -93,28 +93,30 @@ const articleParser = async function (browser, options, socket) {
       await page.setExtraHTTPHeaders(options.puppeteer.extraHTTPHeaders)
     }
 
-    await page.setRequestInterception(true)
+    if (!options.noInterception) {
+      await page.setRequestInterception(true)
 
-    const blockedResourceTypes = new Set(options.blockedResourceTypes)
-    const skippedResources = new Set(options.skippedResources)
+      const blockedResourceTypes = new Set(options.blockedResourceTypes)
+      const skippedResources = new Set(options.skippedResources)
 
-    page.on('request', request => {
-      let requestUrl
-      try {
-        const url = new URL(request.url())
-        requestUrl = url.origin + url.pathname
-      } catch {
-        requestUrl = request.url()
-      }
-      if (
-        blockedResourceTypes.has(request.resourceType()) ||
-        [...skippedResources].some(resource => requestUrl.includes(resource))
-      ) {
-        request.abort()
-      } else {
-        request.continue()
-      }
-    })
+      page.on('request', request => {
+        let requestUrl
+        try {
+          const url = new URL(request.url())
+          requestUrl = url.origin + url.pathname
+        } catch {
+          requestUrl = request.url()
+        }
+        if (
+          blockedResourceTypes.has(request.resourceType()) ||
+          [...skippedResources].some(resource => requestUrl.includes(resource))
+        ) {
+          request.abort()
+        } else {
+          request.continue()
+        }
+      })
+    }
 
     // Inject jQuery from local package to avoid external network fetch
     const jquerySource = await fs.promises.readFile(
