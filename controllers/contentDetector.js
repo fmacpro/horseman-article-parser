@@ -219,6 +219,40 @@ function drillDownToContent(el, options = {}) {
   return best.node || el
 }
 
+// Heuristic: If content paragraphs are split across multiple sibling containers within
+// a higher-level container (e.g., ARTICLE), prefer that parent container to avoid fragmenting
+// the article body selection.
+function findFragmentedAncestor(node, options = {}, document) {
+  if (!node || !document) return null
+  const minLen = (options.contentDetection && options.contentDetection.minLength) || 400
+  const maxLD = (options.contentDetection && options.contentDetection.maxLinkDensity) || 0.5
+  const fragCfg = (options.contentDetection && options.contentDetection.fragment) || {}
+  const cfgMinParts = Number.isFinite(fragCfg.minParts) ? fragCfg.minParts : 2
+  const cfgMinChildChars = Number.isFinite(fragCfg.minChildChars) ? fragCfg.minChildChars : 150
+  const cfgMinCombinedChars = Number.isFinite(fragCfg.minCombinedChars) ? fragCfg.minCombinedChars : Math.max(minLen, 400)
+  const cfgMaxLD = (fragCfg.maxLinkDensity != null && Number.isFinite(fragCfg.maxLinkDensity))
+    ? fragCfg.maxLinkDensity
+    : Math.max(maxLD, 0.65)
+  const CONTAINERS = new Set(['ARTICLE','SECTION','MAIN'])
+  let cur = node
+  while (cur && cur.parentElement) {
+    if (CONTAINERS.has(cur.tagName)) {
+      const children = Array.from(cur.children || [])
+      const parts = children.filter(c => {
+        try { return paragraphCount(c) >= 1 && getText(c).length >= cfgMinChildChars } catch { return false }
+      })
+      const totalText = getText(cur).length
+      const partsText = parts.reduce((acc, c) => acc + getText(c).length, 0)
+      const ld = linkDensity(cur)
+      if (parts.length >= cfgMinParts && partsText >= Math.min(totalText, cfgMinCombinedChars) && ld <= cfgMaxLD) {
+        return cur
+      }
+    }
+    cur = cur.parentElement
+  }
+  return null
+}
+
 function getXPath(node) {
   try {
     if (!node || !node.ownerDocument) return ''
@@ -369,6 +403,11 @@ export function detectContent(document, options = {}, seeds = {}) {
       .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
   }
 
+  // Compute heuristic-only ordering to identify default selection (no ML weights)
+  const heurOrdered = prelim
+    .map(s => ({ ...s, score: s.score }))
+    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+
   const best = ordered[0]
 
   // Optional: dump candidate features for training a reranker
@@ -378,23 +417,55 @@ export function detectContent(document, options = {}, seeds = {}) {
       const path = dump.path
       const addUrl = !!dump.addUrl
       const wantHeader = addUrl
-        ? 'url,xpath,len,punct,ld,pc,sem,boiler,dp,db,dr,avgP,depth,heads,roleMain,roleNeg,ariaHidden,imgAltRatio,imgCount,label'
-        : 'xpath,len,punct,ld,pc,sem,boiler,dp,db,dr,avgP,depth,heads,roleMain,roleNeg,ariaHidden,imgAltRatio,imgCount,label'
+        ? 'url,xpath,text_length,punctuation_count,link_density,paragraph_count,has_semantic_container,boilerplate_penalty,direct_paragraph_count,direct_block_count,paragraph_to_block_ratio,average_paragraph_length,dom_depth,heading_children_count,aria_role_main,aria_role_negative,aria_hidden,image_alt_ratio,image_count,training_label,default_selected'
+        : 'xpath,text_length,punctuation_count,link_density,paragraph_count,has_semantic_container,boilerplate_penalty,direct_paragraph_count,direct_block_count,paragraph_to_block_ratio,average_paragraph_length,dom_depth,heading_children_count,aria_role_main,aria_role_negative,aria_hidden,image_alt_ratio,image_count,training_label,default_selected'
       if (fs.existsSync(path)) {
         const first = fs.readFileSync(path, 'utf8').split(/\r?\n/)[0] || ''
-        if (!first.includes('dp')) {
+        if (!first.includes('text_length') || !first.includes('default_selected')) {
           try { fs.renameSync(path, path + '.bak') } catch { /* ignore */ }
         }
       }
       if (!fs.existsSync(path)) {
         fs.writeFileSync(path, wantHeader + '\n', 'utf8')
       }
-      const topN = Math.max(1, Math.min(dump.topN || 5, ordered.length))
+      // De-duplicate candidates by XPath so we don't dump the same node multiple times
+      const unique = []
+      const seen = new Set()
+      for (const s of ordered) {
+        let xp
+        try { xp = getXPath(s.el) } catch { xp = null }
+        if (!xp || seen.has(xp)) continue
+        seen.add(xp)
+        unique.push({ ...s, _xp: xp })
+      }
+
+      const topN = Math.max(1, Math.min(dump.topN || 5, unique.length))
+
+      // Determine default (heuristic) selected XPath (with simple threshold fallback)
+      const minLen = (options.contentDetection && options.contentDetection.minLength) || 400
+      const maxLD = (options.contentDetection && options.contentDetection.maxLinkDensity) || 0.5
+      let defaultSelected = heurOrdered[0]
+      if (defaultSelected) {
+        const ok = defaultSelected.f.len >= minLen && defaultSelected.f.ld <= maxLD
+        if (!ok && heurOrdered[1]) defaultSelected = heurOrdered[1]
+      }
+      let defaultXPath = null
+      // Promote to a higher-level container when content is fragmented across siblings
+      try {
+        const frag = defaultSelected && findFragmentedAncestor(defaultSelected.el, options, document)
+        if (frag) defaultXPath = getXPath(frag)
+      } catch { /* ignore */ }
+      if (!defaultXPath) {
+        try { defaultXPath = defaultSelected ? getXPath(defaultSelected.el) : null } catch { defaultXPath = null }
+      }
       for (let i = 0; i < topN; i++) {
-        const f = ordered[i].f
-        const xp = getXPath(ordered[i].el)
+        const f = unique[i].f
+        const xp = unique[i]._xp
+        // Wrap the XPath in a Chrome-console friendly JS snippet for ease of use
+        // Using $x('xpath')[0] which is supported in Chromium DevTools
+        const jsXpath = `$x(${JSON.stringify(xp)})[0]`
         const base = [
-          csvEscape(xp),
+          csvEscape(jsXpath),
           f.len,
           f.punct,
           Number(f.ld.toFixed(6)),
@@ -412,7 +483,8 @@ export function detectContent(document, options = {}, seeds = {}) {
           f.ariaHidden ? 1 : 0,
           Number(f.imgAltRatio.toFixed(3)),
           f.imgCount,
-          0
+          0,
+          (defaultXPath && xp === defaultXPath) ? 1 : 0
         ]
         const row = addUrl
           ? [csvEscape(options.url), ...base].join(',') + '\n'
@@ -434,6 +506,17 @@ export function detectContent(document, options = {}, seeds = {}) {
       selected = ordered[1]
     }
   }
+
+  // Generic promotion: if the selected node lives within a container whose
+  // paragraphs are split across multiple siblings, promote to that container.
+  try {
+    const frag = selected && selected.el && findFragmentedAncestor(selected.el, options, document)
+    if (frag) {
+      const cleanFrag = stripBadContainers(frag)
+      html = cleanFrag.innerHTML
+      selected = { el: frag }
+    }
+  } catch { /* ignore */ }
 
   // Always attempt to provide a selector and XPath for the chosen container
   const selector = selected && selected.el ? getCssSelector(selected.el) : (document && document.body ? 'body' : null)

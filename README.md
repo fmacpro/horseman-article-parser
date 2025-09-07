@@ -115,6 +115,18 @@ var options = {
     minLength: 400,
     // maximum link density allowed for a candidate
     maxLinkDensity: 0.5,
+    // optional: promote selection to a parent container when
+    // article paragraphs are split across sibling blocks
+    fragment: {
+      // require at least this many sibling parts containing paragraphs
+      minParts: 2,
+      // minimum text length per part
+      minChildChars: 150,
+      // minimum combined text across parts (set higher to be stricter)
+      minCombinedChars: 400,
+      // override parent link-density threshold (default uses max(maxLinkDensity, 0.65))
+      // maxLinkDensity: 0.65
+    },
     // reranker is disabled by default; enable after training weights
     // Note: test.js auto-loads weights.json (if present) and enables the reranker
     reranker: { enabled: false }
@@ -323,23 +335,28 @@ You can train a simple logistic‑regression reranker to improve candidate selec
 - Batch (recommended):
   - `node scripts/batch-crawl.js scripts/data/urls.txt scripts/data/candidates_with_url.csv 0 200`
   - Adjust `start` and `limit` to process in slices (e.g., `200 200`, `400 200`, ...).
-- The project dumps candidates with URL by default (see `test.js`):
-  - Header: `url,xpath,len,punct,ld,pc,sem,boiler,label`
-  - Up to `topN` rows per page (default 5)
+- The project dumps candidate features with URL by default (see `test.js`):
+  - Header: `url,xpath,text_length,punctuation_count,link_density,paragraph_count,has_semantic_container,boilerplate_penalty,direct_paragraph_count,direct_block_count,paragraph_to_block_ratio,average_paragraph_length,dom_depth,heading_children_count,aria_role_main,aria_role_negative,aria_hidden,image_alt_ratio,image_count,training_label,default_selected`
+  - Up to `topN` unique-XPath rows per page (default 5)
 
 2) Label the dataset
 - Open `scripts/data/candidates_with_url.csv` in a spreadsheet/editor.
 - For each URL group, set `label = 1` for the correct article body candidate (leave others as 0).
-- Column meanings:
+- Column meanings (subset):
   - `url`: source page
-  - `xpath`: DOM XPath of the candidate container to help locate it in DevTools
-  - `len`: raw character length (the trainer log‑scales internally)
-  - `punct`: count of punctuation (.,!?,;:)
-  - `ld`: link density (0..1)
-  - `pc`: paragraph/line‑break count
-  - `sem`: 1 if within `article`/`main`/`role=main`/`itemtype*=Article`, else 0
-  - `boiler`: number of boilerplate containers detected (nav/aside/comments/social/newsletter/consent)
-  - `label`: 1 for the true article candidate; 0 otherwise
+  - `xpath`: Chrome console snippet to select the container (e.g., `$x('...')[0]`)
+  - `text_length`: raw character length
+  - `punctuation_count`: count of punctuation (.,!?,;:)
+  - `link_density`: ratio of link text length to total text (0..1)
+  - `paragraph_count`: count of `<p>` and `<br>` nodes under the container
+  - `has_semantic_container`: 1 if within `article`/`main`/`role=main`/`itemtype*=Article`, else 0
+  - `boilerplate_penalty`: number of boilerplate containers detected (nav/aside/comments/social/newsletter/consent), capped
+  - `direct_paragraph_count`, `direct_block_count`, `paragraph_to_block_ratio`, `average_paragraph_length`, `dom_depth`, `heading_children_count`:
+    direct-children structure features used by heuristics
+  - `aria_role_main`, `aria_role_negative`, `aria_hidden`: accessibility signals
+  - `image_alt_ratio`, `image_count`: image accessibility metrics
+  - `training_label`: 1 for the true article candidate; 0 otherwise
+  - `default_selected`: 1 if this candidate would be chosen by the default heuristic (no custom weights)
 
 3) Train weights and export JSON
 - Direct (avoids npm banner output):
