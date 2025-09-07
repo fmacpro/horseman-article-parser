@@ -338,14 +338,8 @@ const articleParser = async function (browser, options, socket) {
   // Raw Text (text prepared for keyword analysis & named entity recongnition)
   article.processed.text.raw = await getRawText(article.processed.html)
 
-  // Excerpt (strip square-bracketed blocks like [https://...])
-  {
-    const cleanedRaw = article.processed.text.raw
-      .replace(/\[[^\]]*\]/g, '')
-      .replace(/\s+/g, ' ')
-      .trim()
-    article.excerpt = capitalizeFirstLetter(cleanedRaw.replace(/^(.{200}[^\s]*).*/, '$1'))
-  }
+  // Excerpt
+  article.excerpt = capitalizeFirstLetter(article.processed.text.raw.replace(/^(.{200}[^\s]*).*/, '$1'))
 
   // Sentiment
   if (options.enabled.includes('sentiment')) {
@@ -481,15 +475,30 @@ const getRawText = function (html) {
       unorderedListItemPrefix: ''
     }
 
-    // HTML > Text
-    let rawText = htmlToText(html, options)
+  // HTML > Text
+  let rawText = htmlToText(html, options)
 
-    // Normalise
-    rawText = nlp(rawText)
-    rawText.normalize()
-    rawText = rawText.out('text')
+  // Normalise
+  rawText = nlp(rawText)
+  rawText.normalize()
+  rawText = rawText.out('text')
 
-    resolve(rawText)
+  // Remove only square-bracketed segments that contain URL-like text
+  const containsUrlLike = (s) => {
+    if (!s) return false
+    const str = String(s)
+    if (/(?:https?:\/\/|ftp:\/\/)/i.test(str)) return true
+    if (/\bwww\.[^\s\]]+/i.test(str)) return true
+    if (/\b[\w-]+(?:\.[\w-]+)+(?:\/[\w\-._~:/?#\[\]@!$&'()*+,;=%]*)?/i.test(str)) return true
+    return false
+  }
+  rawText = rawText.replace(/\[[^\]]*\]/g, (m) => {
+    const inner = m.slice(1, -1)
+    return containsUrlLike(inner) ? ' ' : m
+  })
+  rawText = rawText.replace(/\s+/g, ' ').trim()
+
+  resolve(rawText)
   })
 }
 

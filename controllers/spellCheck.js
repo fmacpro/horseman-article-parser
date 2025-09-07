@@ -3,10 +3,8 @@ import spell from 'retext-spell'
 import dictionary from 'dictionary-en-gb'
 
 export default async function spellCheck (text, options) {
-  // Pre-clean text: remove bracketed segments and URLs before spellcheck
+  // Pre-clean text: remove URLs before spellcheck (raw text already strips bracketed segments)
   let input = text
-  // remove anything inside square brackets, e.g. [ ... ]
-  input = input.replace(/\[[^\]]*]/g, ' ')
   // remove URLs (http/https/ftp), www.*, and domain-like strings
   input = input.replace(/(?:https?:\/\/|ftp:\/\/)\S+/gi, ' ')
   input = input.replace(/\bwww\.[^\s]+/gi, ' ')
