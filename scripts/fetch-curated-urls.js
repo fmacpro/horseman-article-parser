@@ -3,35 +3,17 @@ import fs from 'fs'
 import path from 'path'
 import { XMLParser } from 'fast-xml-parser'
 
-const FEEDS = [
-  // News
-  'https://www.theguardian.com/world/rss',
-  'https://www.theguardian.com/business/rss',
-  'https://feeds.bbci.co.uk/news/world/rss.xml',
-  'https://feeds.bbci.co.uk/news/technology/rss.xml',
-  'http://rss.cnn.com/rss/cnn_topstories.rss',
-  'https://www.aljazeera.com/xml/rss/all.xml',
-  'https://www.reuters.com/finance/markets/rss',
-  // Tech media
-  'https://www.theverge.com/rss/index.xml',
-  'https://www.wired.com/feed/rss',
-  'http://feeds.arstechnica.com/arstechnica/index',
-  'http://feeds.feedburner.com/TechCrunch/',
-  'https://www.engadget.com/rss.xml',
-  'https://www.theregister.com/headlines.atom',
-  'https://feed.infoq.com/',
-  // Company/engineering blogs
-  'https://blog.cloudflare.com/rss/',
-  'https://martinfowler.com/feed.atom',
-  'https://developers.googleblog.com/atom.xml',
-  'https://nodejs.org/en/feed/blog.xml',
-  'https://v8.dev/blog.atom',
-  'https://developer.chrome.com/feeds/blog.xml',
-  'https://stackoverflow.blog/feed/',
-  'https://www.smashingmagazine.com/feed/',
-  // Docs sitemaps
-  'https://developer.mozilla.org/sitemaps/en-US/sitemap.xml'
-]
+// Reads newline-delimited feed URLs from a text file.
+// - ignores blank lines and lines starting with '#'
+function readFeedsFile(filePath) {
+  const p = path.isAbsolute(filePath) ? filePath : path.resolve(filePath)
+  if (!fs.existsSync(p)) throw new Error(`Feeds file not found: ${p}`)
+  const text = fs.readFileSync(p, 'utf8')
+  return text
+    .split(/\r?\n/)
+    .map(s => s.trim())
+    .filter(s => s && !s.startsWith('#'))
+}
 
 function uniq(arr) { return Array.from(new Set(arr)) }
 
@@ -84,30 +66,58 @@ function extractFromSitemap(xml) {
   return links
 }
 
-async function collect(count) {
-  const out = []
-  for (const f of FEEDS) {
+async function collect(count, feeds) {
+  // Fetch per-feed links first
+  const perFeed = []
+  for (const f of feeds) {
     try {
       const xml = await fetchText(f)
       const isSitemap = /<urlset[\s>]/i.test(xml)
-      const links = isSitemap ? extractFromSitemap(xml) : extractFromRSS(xml)
-      for (const l of links) out.push(normalizeUrl(l))
+      const links = (isSitemap ? extractFromSitemap(xml) : extractFromRSS(xml))
+        .map(normalizeUrl)
+        .filter(keepLikelyArticles)
+      perFeed.push(uniq(links))
     } catch {
       // ignore individual feed errors
+      perFeed.push([])
     }
   }
-  const filtered = uniq(out.filter(keepLikelyArticles)).slice(0, count)
-  return filtered
+
+  // Round-robin selection across feeds to maximize diversity
+  const selected = []
+  const seen = new Set()
+  let addedInPass = true
+  while (selected.length < count && addedInPass) {
+    addedInPass = false
+    for (let i = 0; i < perFeed.length && selected.length < count; i++) {
+      const arr = perFeed[i]
+      while (arr.length) {
+        const next = arr.shift()
+        if (!next || seen.has(next)) continue
+        selected.push(next)
+        seen.add(next)
+        addedInPass = true
+        break
+      }
+    }
+  }
+
+  return selected
 }
 
 async function main() {
   const target = Number(process.argv[2] || 1000)
-  const urls = await collect(target)
+  const feedsPath = process.argv[3] || process.env.FEEDS_FILE || path.resolve('scripts/data/feeds.txt')
+  const feeds = readFeedsFile(feedsPath)
+  const urls = await collect(target, feeds)
   if (urls.length < target) {
-    console.warn(`Collected ${urls.length} URLs (< ${target}). Consider adding more feeds in scripts/fetch-curated-urls.js`)
+    console.warn(`Collected ${urls.length} URLs (< ${target}). Consider adding or updating feeds in ${feedsPath}`)
   }
-  fs.writeFileSync(path.resolve('urls.txt'), urls.join('\n') + '\n', 'utf8')
-  console.log(`Wrote ${urls.length} curated URLs to urls.txt`)
+  const outDir = path.resolve('scripts/data')
+  try { fs.mkdirSync(outDir, { recursive: true }) } catch {}
+  const outFile = path.join(outDir, 'urls.txt')
+  fs.writeFileSync(outFile, urls.join('\n') + '\n', 'utf8')
+  console.log(`Wrote ${urls.length} curated URLs to ${outFile}`)
 }
 
 main().catch(err => { console.error(err); throw err })

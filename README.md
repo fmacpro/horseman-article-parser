@@ -321,14 +321,14 @@ You can train a simple logistic‑regression reranker to improve candidate selec
 - Single URL (appends candidates):
   - `node test.js`
 - Batch (recommended):
-  - `node scripts/batch-crawl.js urls.txt candidates_with_url.csv 0 200`
+  - `node scripts/batch-crawl.js scripts/data/urls.txt scripts/data/candidates_with_url.csv 0 200`
   - Adjust `start` and `limit` to process in slices (e.g., `200 200`, `400 200`, ...).
 - The project dumps candidates with URL by default (see `test.js`):
   - Header: `url,xpath,len,punct,ld,pc,sem,boiler,label`
   - Up to `topN` rows per page (default 5)
 
 2) Label the dataset
-- Open `candidates_with_url.csv` in a spreadsheet/editor.
+- Open `scripts/data/candidates_with_url.csv` in a spreadsheet/editor.
 - For each URL group, set `label = 1` for the correct article body candidate (leave others as 0).
 - Column meanings:
   - `url`: source page
@@ -343,9 +343,9 @@ You can train a simple logistic‑regression reranker to improve candidate selec
 
 3) Train weights and export JSON
 - Direct (avoids npm banner output):
-  - `node scripts/train-reranker.js candidates_with_url.csv weights.json`
+  - `node scripts/train-reranker.js scripts/data/candidates_with_url.csv weights.json`
 - Or via npm (use `--silent` and arg separator):
-  - `npm run --silent train:ranker -- candidates_with_url.csv > weights.json`
+  - `npm run --silent train:ranker -- scripts/data/candidates_with_url.csv > weights.json`
 
 4) Use the weights
 - `test.js` auto‑loads `weights.json` (if present) and enables the reranker:
@@ -353,7 +353,7 @@ You can train a simple logistic‑regression reranker to improve candidate selec
 
 Notes
 - If no reranker is configured, the detector uses heuristic scoring only.
-- You can merge CSVs from multiple runs: `npm run merge:csv` (writes `merged.csv`).
+- You can merge CSVs from multiple runs: `npm run merge:csv` (writes `scripts/data/merged.csv`).
  - Tip: placing a `weights.json` in the project root will make `test.js` auto‑enable the reranker on the next run.
 
 Update API docs with:

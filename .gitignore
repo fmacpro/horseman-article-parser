@@ -62,3 +62,7 @@ typings/
 
 # test results
 /tests/testresults.json
+
+# Script data outputs
+scripts/data/*
+!scripts/data/feeds.txt

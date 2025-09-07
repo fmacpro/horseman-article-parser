@@ -58,8 +58,8 @@ async function run(urlsFile, outCsv = 'candidates_with_url.csv', start = 0, limi
   }
 }
 
-const urlsFile = process.argv[2] || path.resolve('urls.txt')
-const outCsv = process.argv[3] || 'candidates_with_url.csv'
+const urlsFile = process.argv[2] || path.resolve('scripts/data/urls.txt')
+const outCsv = process.argv[3] || path.resolve('scripts/data/candidates_with_url.csv')
 const start = process.argv[4] || 0
 const limit = process.argv[5] || null
 run(urlsFile, outCsv, start, limit).catch(err => { console.error(err); throw err })

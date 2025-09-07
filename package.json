@@ -8,8 +8,8 @@
                     "lint":  "node ./node_modules/eslint/bin/eslint.js . --ext .json --ext .js --fix",
                     "test":  "node tests/test.js",
                     "train:ranker": "node scripts/train-reranker.js",
-                    "batch:crawl": "node scripts/batch-crawl.js urls.txt candidates_with_url.csv",
-                    "merge:csv": "node scripts/merge-csv.js merged.csv candidates_with_url.csv",
+                    "batch:crawl": "node scripts/batch-crawl.js scripts/data/urls.txt scripts/data/candidates_with_url.csv",
+                    "merge:csv": "node scripts/merge-csv.js scripts/data/merged.csv scripts/data/candidates_with_url.csv",
                     "curated:urls": "node scripts/fetch-curated-urls.js 1000"
                 },
     "repository":  {
