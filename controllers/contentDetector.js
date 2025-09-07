@@ -439,8 +439,6 @@ export function detectContent(document, options = {}, seeds = {}) {
         unique.push({ ...s, _xp: xp })
       }
 
-      const topN = Math.max(1, Math.min(dump.topN || 5, unique.length))
-
       // Determine default (heuristic) selected XPath (with simple threshold fallback)
       const minLen = (options.contentDetection && options.contentDetection.minLength) || 400
       const maxLD = (options.contentDetection && options.contentDetection.maxLinkDensity) || 0.5
@@ -450,14 +448,34 @@ export function detectContent(document, options = {}, seeds = {}) {
         if (!ok && heurOrdered[1]) defaultSelected = heurOrdered[1]
       }
       let defaultXPath = null
+      let defaultEl = null
       // Promote to a higher-level container when content is fragmented across siblings
       try {
         const frag = defaultSelected && findFragmentedAncestor(defaultSelected.el, options, document)
-        if (frag) defaultXPath = getXPath(frag)
+        if (frag) { defaultXPath = getXPath(frag); defaultEl = frag }
       } catch { /* ignore */ }
       if (!defaultXPath) {
         try { defaultXPath = defaultSelected ? getXPath(defaultSelected.el) : null } catch { defaultXPath = null }
+        defaultEl = defaultSelected ? defaultSelected.el : null
       }
+
+      // Ensure the default-selected container is present and ranked first in dump rows.
+      if (defaultXPath) {
+        // If it exists, move it to front; else, compute features and insert at front.
+        const idx = unique.findIndex(s => s._xp === defaultXPath)
+        if (idx > 0) {
+          const d = unique.splice(idx, 1)[0]
+          unique.unshift(d)
+        } else if (idx === -1 && defaultEl) {
+          try {
+            const clean = stripBadContainers(defaultEl)
+            const f = computeFeatures(clean)
+            unique.unshift({ el: defaultEl, clean, f, _xp: defaultXPath })
+          } catch { /* ignore */ }
+        }
+      }
+
+      const topN = Math.max(1, Math.min(dump.topN || 5, unique.length))
       for (let i = 0; i < topN; i++) {
         const f = unique[i].f
         const xp = unique[i]._xp

@@ -1,4 +1,5 @@
 import { parseArticle } from '../index.js'
+import { applyDomainTweaks, loadTweaksConfig, applyUrlRewrites } from '../scripts/inc/applyDomainTweaks.js'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import fs from 'fs'
@@ -12,9 +13,13 @@ const testPlugin = function (Doc, world) {
   })
 }
 
+// Allow passing a URL via CLI: `node tests/test.js <url>`
+// With npm: `npm run test -- <url>`
+const inputUrl = process.argv[2] || null
+
 const options = {
-  url: 'https://www.bbc.co.uk/news/articles/cnvryg271ymo?at_medium=RSS&at_campaign=rss',
-  enabled: ['lighthouse', 'screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords', 'siteicon'],
+  url: inputUrl || 'https://www.bbc.co.uk/news/articles/cnvryg271ymo?at_medium=RSS&at_campaign=rss',
+  enabled: ['screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords', 'siteicon'],
   // Tune content detection thresholds and dump candidate features for training
   contentDetection: {
     minLength: 400,
@@ -80,6 +85,20 @@ try {
   // no weights.json provided
 }
 
+// Apply crawl tweaks (rewrites, headers, goto, consent clicks, interception) from scripts/crawl-tweaks.json
+try {
+  const tweaks = loadTweaksConfig()
+  if (tweaks) {
+    // Apply URL rewrites first
+    const rewritten = applyUrlRewrites(options.url, tweaks)
+    if (rewritten) options.url = rewritten
+    // Apply per-domain option tweaks
+    applyDomainTweaks(options.url, options, tweaks, { retries: 0 })
+  }
+} catch {
+  // ignore tweak loading errors
+}
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 ;(async () => {
@@ -123,4 +142,3 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
     throw error
   }
 })()
-

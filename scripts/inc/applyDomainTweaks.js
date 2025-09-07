@@ -57,6 +57,12 @@ export function applyDomainTweaks(url, options, config, context = {}) {
     )
   }
 
+  // Apply click selectors (e.g., consent banners)
+  if (Array.isArray(rule.clickSelectors) && rule.clickSelectors.length) {
+    const existing = Array.isArray(options.clickelements) ? options.clickelements : []
+    options.clickelements = [...existing, ...rule.clickSelectors]
+  }
+
   // Retry overrides
   if (Number.isFinite(Number(rule.retries))) {
     out.retries = Number(rule.retries)
