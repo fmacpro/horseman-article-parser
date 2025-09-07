@@ -338,8 +338,14 @@ const articleParser = async function (browser, options, socket) {
   // Raw Text (text prepared for keyword analysis & named entity recongnition)
   article.processed.text.raw = await getRawText(article.processed.html)
 
-  // Excerpt
-  article.excerpt = capitalizeFirstLetter(article.processed.text.raw.replace(/^(.{200}[^\s]*).*/, '$1'))
+  // Excerpt (strip square-bracketed blocks like [https://...])
+  {
+    const cleanedRaw = article.processed.text.raw
+      .replace(/\[[^\]]*\]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+    article.excerpt = capitalizeFirstLetter(cleanedRaw.replace(/^(.{200}[^\s]*).*/, '$1'))
+  }
 
   // Sentiment
   if (options.enabled.includes('sentiment')) {
