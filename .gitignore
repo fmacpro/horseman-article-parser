@@ -61,4 +61,4 @@ typings/
 .env
 
 # test results
-testresults.json
+/tests/testresults.json

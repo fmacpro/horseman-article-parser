@@ -6,7 +6,7 @@
     "main":  "index.js",
     "scripts":  {
                     "lint":  "node ./node_modules/eslint/bin/eslint.js . --ext .json --ext .js --fix",
-                    "test":  "node test.js",
+                    "test":  "node tests/test.js",
                     "train:ranker": "node scripts/train-reranker.js",
                     "batch:crawl": "node scripts/batch-crawl.js urls.txt candidates_with_url.csv",
                     "merge:csv": "node scripts/merge-csv.js merged.csv candidates_with_url.csv",

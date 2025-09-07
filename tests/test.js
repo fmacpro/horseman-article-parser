@@ -1,4 +1,6 @@
-import { parseArticle } from './index.js'
+import { parseArticle } from '../index.js'
+import path from 'path'
+import { fileURLToPath } from 'url'
 import fs from 'fs'
 import assert from 'assert'
 
@@ -11,7 +13,7 @@ const testPlugin = function (Doc, world) {
 }
 
 const options = {
-  url: 'https://www.theguardian.com/us-news/2025/sep/05/trump-fighter-planes-puerto-rico-venezuela-drug-cartel',
+  url: 'https://www.bbc.co.uk/news/articles/cnvryg271ymo?at_medium=RSS&at_campaign=rss',
   enabled: ['lighthouse', 'screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords', 'siteicon'],
   // Tune content detection thresholds and dump candidate features for training
   contentDetection: {
@@ -78,6 +80,8 @@ try {
   // no weights.json provided
 }
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
 ;(async () => {
   try {
     const article = await parseArticle(options)
@@ -110,11 +114,13 @@ try {
     }
 
     const json = JSON.stringify(response, null, 4)
-    await fs.promises.writeFile('testresults.json', json, 'utf8')
-    console.log('Results written to testresults.json')
+    const outPath = path.join(__dirname, 'testresults.json')
+    await fs.promises.writeFile(outPath, json, 'utf8')
+    console.log('Results written to', outPath)
   } catch (error) {
     console.error(error.message)
     console.error(error.stack)
     throw error
   }
 })()
+
