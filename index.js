@@ -322,7 +322,9 @@ const articleParser = async function (browser, options, socket) {
     let i = 0
 
     for (i = 0; i < arr.length; i++) {
-      const link = { href: $(arr[i]).attr('href'), text: $(arr[i]).text() }
+      const href = ($(arr[i]).attr('href') || '').trim()
+      const text = ($(arr[i]).text() || '').replace(/\s+/g, ' ').trim()
+      const link = { href, text }
       links.push(link)
     }
 
