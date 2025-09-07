@@ -256,11 +256,27 @@ const articleParser = async function (browser, options, socket) {
   const { detectTitle } = await import('./controllers/titleDetector.js')
   article.title.text = detectTitle(dom.window.document, sd) || article.title.text
   let content = detected.html
+  article.bodySelector = detected.selector || null
+  article.bodyXPath = detected.xpath || null
 
   if (!content) {
     // As a last resort, use full body HTML
-    content = dom.window.document.body ? dom.window.document.body.innerHTML : html
+    if (dom.window.document.body) {
+      content = dom.window.document.body.innerHTML
+      if (!article.bodySelector) article.bodySelector = 'body'
+      if (!article.bodyXPath) article.bodyXPath = '/HTML/BODY'
+    } else {
+      content = html
+    }
   }
+
+  // Emit body container details as early as possible, after content detection/fallback
+  try {
+    const selectorMsg = 'Body container selector: ' + (article.bodySelector || '(not detected)')
+    const xpathMsg = 'Body container xpath: ' + (article.bodyXPath || '(not detected)')
+    socket.emit('parse:status', selectorMsg)
+    socket.emit('parse:status', xpathMsg)
+  } catch { /* ignore */ }
 
   // Title & Content based on defined config rules
   if ( options.rules ) {

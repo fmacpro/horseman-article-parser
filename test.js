@@ -11,7 +11,7 @@ const testPlugin = function (Doc, world) {
 }
 
 const options = {
-  url: 'https://www.bbc.co.uk/news/articles/c62lmed42p1o',
+  url: 'https://www.theguardian.com/us-news/2025/sep/05/trump-fighter-planes-puerto-rico-venezuela-drug-cartel',
   enabled: ['lighthouse', 'screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords', 'siteicon'],
   // Tune content detection thresholds and dump candidate features for training
   contentDetection: {
@@ -85,6 +85,8 @@ try {
 
     const response = {
       title: article.title.text,
+      bodySelector: article.bodySelector,
+      bodyXPath: article.bodyXPath,
       excerpt: article.excerpt,
       metadescription: article.meta.description.text,
       url: article.url,
