@@ -273,8 +273,9 @@ async function main() {
   clearInterval(tick)
 
   const ok = results.filter(r => r && r.ok)
-  const err = results.filter(r => r && !r.ok)
-  console.log(`[sample] complete - total: ${results.length} ok: ${ok.length} err: ${err.length}`)
+  const skips = results.filter(r => r && !r.ok && r.kind === 'skip')
+  const err = results.filter(r => r && !r.ok && r.kind !== 'skip')
+  console.log(`[sample] complete - total: ${results.length} ok: ${ok.length} skip: ${skips.length} err: ${err.length}`)
 
   const outDir = path.resolve('tests/results')
   try { fs.mkdirSync(outDir, { recursive: true }) } catch {}
@@ -287,16 +288,23 @@ async function main() {
     if (!r) continue
     let host = ''
     try { host = new URL(r.finalUrl || r.url).host } catch { host = '' }
-    byHost[host] = byHost[host] || { host, total: 0, ok: 0, err: 0, dtSum: 0 }
+    byHost[host] = byHost[host] || { host, total: 0, ok: 0, skip: 0, err: 0, dtSum: 0 }
     byHost[host].total++
-    if (r.ok) { byHost[host].ok++; byHost[host].dtSum += (r.dt || 0) } else { byHost[host].err++ }
+    if (r.ok) {
+      byHost[host].ok++
+      byHost[host].dtSum += (r.dt || 0)
+    } else if (r.kind === 'skip') {
+      byHost[host].skip++
+    } else {
+      byHost[host].err++
+    }
   }
   const ampCount = results.filter(r => r && r.ok && r.source === 'amp').length
   const dynamicCount = results.filter(r => r && r.ok && r.source === 'dynamic').length
 
   const summary = {
     when: ts.toISOString(), N, concurrency, timeoutMs,
-    totals: { total: results.length, ok: ok.length, err: err.length },
+    totals: { total: results.length, ok: ok.length, skip: skips.length, err: err.length },
     sources: { amp: ampCount, dynamic: dynamicCount },
     byHost: Object.values(byHost).map(h => ({ ...h, avgMs: h.ok ? Math.round(h.dtSum / h.ok) : null }))
   }
@@ -321,8 +329,8 @@ async function main() {
 
   // Write host breakdown CSV
   const hostCsv = path.join(outDir, `sample_hosts_${stamp}.csv`)
-  const hHeader = 'host,total,ok,err,avg_ms' + '\n'
-  const hRows = Object.values(byHost).map(h => [h.host, h.total, h.ok, h.err, (h.ok ? Math.round(h.dtSum / h.ok) : '')].join(','))
+  const hHeader = 'host,total,ok,skip,err,avg_ms' + '\n'
+  const hRows = Object.values(byHost).map(h => [h.host, h.total, h.ok, (h.skip||0), h.err, (h.ok ? Math.round(h.dtSum / h.ok) : '')].join(','))
   fs.writeFileSync(hostCsv, hHeader + hRows.join('\n') + '\n', 'utf8')
   console.log(`[sample] wrote host breakdown to ${hostCsv}`)
 }
