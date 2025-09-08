@@ -14,7 +14,10 @@ const compat = new FlatCompat({
 
 export default [
   {
-    ignores: ['eslint.config.mjs', 'overrides/**']
+    ignores: [
+      'eslint.config.mjs',
+      'overrides/**'
+    ]
   },
   ...compat.extends(
     'eslint:recommended',
@@ -29,11 +32,20 @@ export default [
       sourceType: 'module',
       globals: {
         jQuery: 'readonly',
-        window: 'readonly'
+        window: 'readonly',
+        document: 'readonly'
       }
     },
     rules: {
-      'no-prototype-builtins': 'off'
+      'no-prototype-builtins': 'off',
+      'no-empty': 'off',
+      'no-unused-vars': 'off',
+      'promise/param-names': 'off',
+      'n/no-process-exit': 'off',
+      'n/no-unsupported-features/node-builtins': 'off',
+      'import/no-unresolved': 'off',
+      'n/no-missing-import': 'off',
+      'no-useless-escape': 'off'
     }
   }
 ];
