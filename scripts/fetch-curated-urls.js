@@ -6,7 +6,7 @@ import logger, { createLogger } from '../controllers/logger.js'
 
 // Reads newline-delimited feed URLs from a text file.
 // - ignores blank lines and lines starting with '#'
-function readFeedsFile(filePath) {
+export function readFeedsFile(filePath) {
   const p = path.isAbsolute(filePath) ? filePath : path.resolve(filePath)
   if (!fs.existsSync(p)) throw new Error(`Feeds file not found: ${p}`)
   const text = fs.readFileSync(p, 'utf8')
@@ -16,9 +16,9 @@ function readFeedsFile(filePath) {
     .filter(s => s && !s.startsWith('#'))
 }
 
-function uniq(arr) { return Array.from(new Set(arr)) }
+export function uniq(arr) { return Array.from(new Set(arr)) }
 
-function defaultHeaders() {
+export function defaultHeaders() {
   return {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36',
     'Accept': 'application/rss+xml, application/atom+xml, text/xml, application/xml;q=0.9, */*;q=0.5',
@@ -27,11 +27,11 @@ function defaultHeaders() {
   }
 }
 
-function normalizeUrl(u) {
+export function normalizeUrl(u) {
   try { return new URL(u).toString() } catch { return null }
 }
 
-function keepLikelyArticles(url) {
+export function keepLikelyArticles(url) {
   if (!url) return false
   let obj
   try { obj = new URL(url) } catch { return false }
@@ -60,7 +60,7 @@ function keepLikelyArticles(url) {
   return true
 }
 
-async function fetchTextOnce(url, timeoutMs = 12000, headers = defaultHeaders()) {
+export async function fetchTextOnce(url, timeoutMs = 12000, headers = defaultHeaders()) {
   const ctrl = new AbortController()
   const t = setTimeout(() => ctrl.abort(), Math.max(1000, timeoutMs))
   try {
@@ -73,7 +73,7 @@ async function fetchTextOnce(url, timeoutMs = 12000, headers = defaultHeaders())
   } finally { clearTimeout(t) }
 }
 
-async function fetchText(url, timeoutMs = 12000, maxRetries = 2) {
+export async function fetchText(url, timeoutMs = 12000, maxRetries = 2) {
   let lastErr
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
@@ -95,7 +95,7 @@ async function fetchText(url, timeoutMs = 12000, maxRetries = 2) {
   throw lastErr
 }
 
-function extractFromRSS(xml) {
+export function extractFromRSS(xml) {
   const parser = new XMLParser({ ignoreAttributes: false })
   const j = parser.parse(xml)
   const links = []
@@ -153,7 +153,7 @@ function extractFromRSS(xml) {
   return links
 }
 
-function extractFromSitemap(xml) {
+export function extractFromSitemap(xml) {
   const parser = new XMLParser({ ignoreAttributes: false })
   const j = parser.parse(xml)
   const urls = j?.urlset?.url || []
@@ -165,14 +165,14 @@ function extractFromSitemap(xml) {
   return links
 }
 
-function makeBar(pct) {
+export function makeBar(pct) {
   const w = Math.max(5, Math.min(100, Number(process.env.FEED_BAR_WIDTH || 16)))
   const filled = Math.max(0, Math.min(w, Math.round((pct / 100) * w)))
   const empty = w - filled
   return `[${'#'.repeat(filled)}${'.'.repeat(empty)}]`
 }
 
-async function collect(count, feeds) {
+export async function collect(count, feeds) {
   // Concurrently fetch per-feed links
   const FEED_CONCURRENCY = Number(process.env.FEED_CONCURRENCY || 6)
   const FEED_TIMEOUT_MS = Number(process.env.FEED_TIMEOUT_MS || 12000)
@@ -275,4 +275,6 @@ async function main() {
   logger.info(`Wrote ${urls.length} curated URLs to ${outFile}`)
 }
 
-main().catch(err => { logger.error(err); throw err })
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main().catch(err => { logger.error(err); throw err })
+}

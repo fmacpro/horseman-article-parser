@@ -5,7 +5,7 @@
 import fs from 'fs'
 import logger from '../controllers/logger.js'
 
-function parseCsvLine(line) {
+export function parseCsvLine(line) {
   const out = []
   let cur = ''
   let inQuotes = false
@@ -25,7 +25,7 @@ function parseCsvLine(line) {
   return out
 }
 
-function indexMap(headers, names) {
+export function indexMap(headers, names) {
   const map = {}
   for (const [key, aliases] of Object.entries(names)) {
     let idx = -1
@@ -38,7 +38,7 @@ function indexMap(headers, names) {
   return map
 }
 
-function parseCSV(text) {
+export function parseCSV(text) {
   const lines = text.split(/\r?\n/).filter(Boolean)
   const rows = []
   let headers = null
@@ -139,9 +139,9 @@ function parseCSV(text) {
   return rows
 }
 
-function sigmoid(z) { return 1 / (1 + Math.exp(-z)) }
+export function sigmoid(z) { return 1 / (1 + Math.exp(-z)) }
 
-function train(data, { lr = 0.05, epochs = 250, l2 = 0.001 } = {}) {
+export function train(data, { lr = 0.05, epochs = 250, l2 = 0.001 } = {}) {
   if (!data.length) return { weights: [], bias: 0 }
   const d = data[0].x.length
   let w = new Array(d).fill(0)
@@ -185,4 +185,6 @@ async function main() {
   }
 }
 
-main().catch(err => { logger.error(err); throw err })
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main().catch(err => { logger.error(err); throw err })
+}
