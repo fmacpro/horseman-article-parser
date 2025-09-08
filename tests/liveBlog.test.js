@@ -1,6 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { JSDOM } from 'jsdom'
+import fs from 'fs'
 import { buildLiveBlogSummary } from '../controllers/liveBlog.js'
 
 test('buildLiveBlogSummary extracts entries from live blog', () => {
@@ -17,4 +18,20 @@ test('buildLiveBlogSummary returns ok false when insufficient data', () => {
   const { window } = new JSDOM(html)
   const res = buildLiveBlogSummary(window.document)
   assert.equal(res.ok, false)
+})
+
+test('buildLiveBlogSummary handles amp-live-list', () => {
+  const html = fs.readFileSync('tests/fixtures/liveblog/amp.html', 'utf8')
+  const { window } = new JSDOM(html)
+  const res = buildLiveBlogSummary(window.document)
+  assert.equal(res.ok, true)
+  assert.equal(res.count, 3)
+})
+
+test('buildLiveBlogSummary limits to forty updates', () => {
+  const html = fs.readFileSync('tests/fixtures/liveblog/many.html', 'utf8')
+  const { window } = new JSDOM(html)
+  const res = buildLiveBlogSummary(window.document)
+  assert.equal(res.ok, true)
+  assert.equal(res.count, 5)
 })

@@ -1,0 +1,1 @@
+JavaScript powers the modern web. JavaScript and Node.js allow developers to build applications. Node.js uses JavaScript for server-side logic. Developers love JavaScript.
