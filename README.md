@@ -2,9 +2,21 @@
 
 Horseman is a focused article scraping module for the open web. It loads pages (dynamic or AMP), detects the main story body, and returns clean, structured content ready for downstream use. Alongside text and title, it includes in-article links, metadata, sentiment, keywords/keyphrases, named entities, optional spelling suggestions, site icon, and Lighthouse signals. It also copes with live blogs, applies simple per-domain tweaks (headers/cookies/goto), and uses Puppeteer + stealth to reduce blocking.
 
+## Table of Contents
+
+- [Prerequisites](#prerequisites)
+- [Install](#install)
+- [Usage](#usage)
+- [Usage Example](#usage-example)
+- [Options](#options)
+- [Dependencies](#dependencies)
+- [Dev Dependencies](#dev-dependencies)
+- [License](#license)
+
 ### Prerequisites
 
-Node.js & NPM
+Node.js >= 18, NPM >= 9.
+For Linux environments, ensure [Chromium dependencies for Puppeteer](https://github.com/puppeteer/puppeteer#requirements) are installed.
 
 ### Install
 
@@ -64,6 +76,50 @@ parseArticle(options)
     console.log(error.message)
     console.log(error.stack);
   })
+```
+
+#### Async/Await Example
+
+```js
+import { parseArticle } from 'horseman-article-parser';
+
+const options = {
+  url: "https://www.theguardian.com/politics/2018/sep/24/theresa-may-calls-for-immigration-based-on-skills-and-wealth",
+  enabled: ['lighthouse', 'screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords']
+};
+
+(async () => {
+  try {
+    const article = await parseArticle(options);
+
+    const response = {
+      title: article.title.text,
+      excerpt: article.excerpt,
+      metadescription: article.meta.description.text,
+      url: article.url,
+      sentiment: { score: article.sentiment.score, comparative: article.sentiment.comparative },
+      keyphrases: article.processed.keyphrases,
+      keywords: article.processed.keywords,
+      people: article.people,
+      orgs: article.orgs,
+      places: article.places,
+      text: {
+        raw: article.processed.text.raw,
+        formatted: article.processed.text.formatted,
+        html: article.processed.text.html
+      },
+      spelling: article.spelling,
+      meta: article.meta,
+      links: article.links,
+      lighthouse: article.lighthouse
+    };
+
+    console.log(response);
+  } catch (error) {
+    console.log(error.message);
+    console.log(error.stack);
+  }
+})();
 ```
 
 `parseArticle(options, <socket>)` accepts an optional socket for pipeing the response object, status messages and errors to a front end UI.
