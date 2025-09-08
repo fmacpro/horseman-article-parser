@@ -60,9 +60,9 @@ Notes
 
 Generate API docs into APIDOC.md from JSDoc comments.
 
-`ash
+```bash
 npm run docs
-``n
+```
 
 
 - `UNIQUE_HOSTS=1`: ensures one URL per host (diverse sample).
