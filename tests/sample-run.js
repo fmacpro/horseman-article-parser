@@ -237,6 +237,7 @@ async function main() {
   // Progress ticker
   const t0 = now()
   console.log(`[sample] starting - total: ${urls.length} concurrency: ${concurrency} timeout: ${timeoutMs}ms`)
+  let prevLine = ''
   const tick = setInterval(() => {
     try {
       const done = results.filter(r => r != null).length
@@ -246,7 +247,11 @@ async function main() {
       const inflight = Math.max(0, Math.min(concurrency, urls.length - done))
       const pct = urls.length ? Math.round((done / urls.length) * 100) : 0
       const elapsed = Math.round((now() - t0) / 1000)
-      console.log(`[progress] ${pct}% | ${done}/${urls.length} done | ok:${ok} skip:${skips} err:${err} inflight:${inflight} | ${elapsed}s elapsed`)
+      const line = `[progress] ${pct}% | ${done}/${urls.length} done | ok:${ok} skip:${skips} err:${err} inflight:${inflight} | ${elapsed}s elapsed`
+      if (line !== prevLine) {
+        console.log(line)
+        prevLine = line
+      }
     } catch {}
   }, Number(process.env.SAMPLE_TICK_MS || 2000))
   async function worker() {
