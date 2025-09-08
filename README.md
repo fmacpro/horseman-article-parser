@@ -4,12 +4,47 @@ A web page article parser which returns an object containing the article's forma
 
 ### Prerequisites
 
-Node.js & NPM
+- Node.js 18+ (built-in `fetch`, modern Puppeteer)
+- npm
 
 ### Install
 
 ```
 npm install horseman-article-parser --save
+```
+
+## Overview & Capabilities
+
+- Clean article text: raw, formatted (for terminals), and minimal HTML
+- Title, excerpt, meta description, canonical/final URL, site icon
+- In-article links extraction
+- Sentiment analysis (score and comparative)
+- Keywords and keyphrases (retext powered)
+- Named entities: people, organizations, places (Compromise NLP)
+- Spelling suggestions with optional offsets/positions
+- Lighthouse audit metadata
+- Live blog awareness: can extract live summaries when appropriate
+- AMP-first rescue with dynamic rendering fallback
+- Per-domain crawl tweaks (headers, cookies, goto, interception) via `scripts/crawl-tweaks.json`
+
+Typical output shape (abridged):
+
+```
+{
+  title: { text: "…" },
+  url: "https://…",
+  excerpt: "…",
+  meta: { description: { text: "…" }, … },
+  processed: {
+    text: { raw: "…", formatted: "…", html: "…" },
+    keywords: ["…"],
+    keyphrases: ["…"]
+  },
+  people: ["…"], orgs: ["…"], places: ["…"],
+  links: [{ text: "…", href: "…" }],
+  sentiment: { score: 0, comparative: 0 },
+  lighthouse: { … }
+}
 ```
 
 ## Quick Start (CLI)
@@ -334,6 +369,16 @@ const options = {
 This allows us to match - for example - names which are not in the base compromise word lists.
 
 Check out the compromise plugin [docs](https://observablehq.com/@spencermountain/compromise-plugins) for more info.
+
+## Troubleshooting (CLI)
+
+- Skipped vs Error: The batch sampler treats known non-HTML or forbidden archives as `skip`, not `err`.
+  - Examples: PDFs, non-http(s) schemes, certain mailing list archives.
+- 4xx preflight: The sampler does a quick HEAD/GET probe with realistic headers before parsing.
+  - If you see `preflight 4xx`, the URL likely blocks scraping or is dead. It’s skipped early to save time.
+- Site-specific behavior: Use `scripts/crawl-tweaks.json` to set headers, cookies, or navigation for a domain.
+  - Example: set `goto.waitUntil: "networkidle2"`, add cookies, or disable interception for a host.
+- Timeouts: Increase via `TEST_TIMEOUT_MS` (single test) or raise the batch timeout (last arg to `tests/sample-run.js`).
 
 ## Development
 
