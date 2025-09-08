@@ -261,6 +261,13 @@ async function main() {
   const t0 = now()
   console.log(`[sample] starting - total: ${urls.length} concurrency: ${concurrency} timeout: ${timeoutMs}ms`)
   const progressOnly = !!process.env.SAMPLE_PROGRESS_ONLY
+  const barWidth = Number(process.env.SAMPLE_BAR_WIDTH || 20)
+  const makeBar = (pct) => {
+    const w = Math.max(5, Math.min(100, Math.floor(barWidth)))
+    const filled = Math.max(0, Math.min(w, Math.round((pct / 100) * w)))
+    const empty = w - filled
+    return `[${'#'.repeat(filled)}${'.'.repeat(empty)}]`
+  }
   let prevPct = -1
   const tick = setInterval(() => {
     try {
@@ -272,7 +279,8 @@ async function main() {
       const pct = urls.length ? Math.round((done / urls.length) * 100) : 0
       const elapsed = Math.round((now() - t0) / 1000)
       if (pct !== prevPct) {
-        console.log(`[progress] ${pct}% | ${done}/${urls.length} done | ok:${ok} skip:${skips} err:${err} inflight:${inflight} | ${elapsed}s elapsed`)
+        const bar = makeBar(pct)
+        console.log(`[progress] ${bar} ${pct}% | ${done}/${urls.length} done | ok:${ok} skip:${skips} err:${err} inflight:${inflight} | ${elapsed}s elapsed`)
         prevPct = pct
       }
     } catch {}
