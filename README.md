@@ -8,7 +8,7 @@ Node.js & NPM
 
 ### Install
 
-```
+```bash
 npm install horseman-article-parser --save
 ```
 
@@ -20,13 +20,13 @@ Run quick tests and batches from this repo without writing code.
 
 Writes a detailed JSON to `tests/results/`.
 
-```
+```bash
 TEST_TIMEOUT_MS=40000 node tests/test.js "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html"
 ```
 
 PowerShell:
 
-```
+```powershell
 $env:TEST_TIMEOUT_MS=40000; node tests/test.js "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html"
 ```
 
@@ -34,7 +34,7 @@ $env:TEST_TIMEOUT_MS=40000; node tests/test.js "https://www.cnn.com/business/liv
 
 1) Fetch a fresh set of URLs:
 
-```
+```bash
 node scripts/fetch-curated-urls.js 800
 ```
 
@@ -42,14 +42,14 @@ node scripts/fetch-curated-urls.js 800
 
 Bash/Zsh:
 
-```
+```bash
 UNIQUE_HOSTS=1 SAMPLE_PROGRESS_ONLY=1 SAMPLE_TICK_MS=1000 \
   node tests/sample-run.js 100 8 scripts/data/urls.txt 25000
 ```
 
 PowerShell:
 
-```
+```powershell
 $env:UNIQUE_HOSTS=1; $env:SAMPLE_PROGRESS_ONLY=1; $env:SAMPLE_TICK_MS=1000; \
   node tests/sample-run.js 100 8 scripts/data/urls.txt 25000
 ```
@@ -77,7 +77,7 @@ npm run docs
 
 ### Usage Example
 
-```
+```js
 import { parseArticle } from 'horseman-article-parser';
 
 const options = {
