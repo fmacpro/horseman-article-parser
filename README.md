@@ -12,67 +12,6 @@ Node.js & NPM
 npm install horseman-article-parser --save
 ```
 
-## Quick Start (CLI)
-
-Run quick tests and batches from this repo without writing code.
-
-### Single URL test
-
-Writes a detailed JSON to `tests/results/`.
-
-```bash
-TEST_TIMEOUT_MS=40000 node tests/test.js "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html"
-```
-
-PowerShell:
-
-```powershell
-$env:TEST_TIMEOUT_MS=40000; node tests/test.js "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html"
-```
-
-Parameters
-
-- `TEST_TIMEOUT_MS`: maximum time (ms) for the parse. If omitted, the test uses its default.
-- `<url>`: the article page to parse.
-
-### Batch sampler (curated URLs, progress bar)
-
-1) Fetch a fresh set of URLs:
-
-```bash
-node scripts/fetch-curated-urls.js 800
-```
-
-Parameters
-
-- `800`: target number of URLs to collect into `scripts/data/urls.txt`.
-
-2) Run a batch against unique hosts with a simple progress-only view. Progress and a final summary print to the console; JSON/CSV reports are saved under `tests/results/`.
-
-Bash/Zsh:
-
-```bash
-UNIQUE_HOSTS=1 SAMPLE_PROGRESS_ONLY=1 SAMPLE_TICK_MS=1000 \
-  node tests/sample-run.js 100 8 scripts/data/urls.txt 25000
-```
-
-PowerShell:
-
-```powershell
-$env:UNIQUE_HOSTS=1; $env:SAMPLE_PROGRESS_ONLY=1; $env:SAMPLE_TICK_MS=1000; \
-  node tests/sample-run.js 100 8 scripts/data/urls.txt 25000
-```
-
-## Docs
-
-Generate API docs into APIDOC.md from JSDoc comments.
-
-```bash
-npm run docs
-```
-
-
-
 ### Usage
 
 #### parseArticle(options, socket) ? <code>Object</code>
@@ -347,13 +286,6 @@ This allows us to match - for example - names which are not in the base compromi
 
 Check out the compromise plugin [docs](https://observablehq.com/@spencermountain/compromise-plugins) for more info.
 
-## Notes
-
-- UNIQUE_HOSTS=1: ensures one URL per host (diverse sample).
-- SAMPLE_PROGRESS_ONLY=1: hides per-URL logs; shows a compact progress bar and final summary.
-- SAMPLE_TICK_MS: progress update cadence in milliseconds (e.g., 1000).
-- Outputs: per-run summaries sample_summary_*.json|.csv and host breakdown sample_hosts_*.csv in 	ests/results/.
-
 ## Development
 
 Please feel free to fork the repo or open pull requests to the development branch. I've used [eslint](https://eslint.org/) for linting.
@@ -511,6 +443,64 @@ Update API docs with:
 ```
 npm run docs
 ```
+
+## Quick Start (CLI)
+
+Run quick tests and batches from this repo without writing code.
+
+### Single URL test
+
+Writes a detailed JSON to `tests/results/`.
+
+```bash
+TEST_TIMEOUT_MS=40000 node tests/test.js "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html"
+```
+
+PowerShell:
+
+```powershell
+$env:TEST_TIMEOUT_MS=40000; node tests/test.js "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html"
+```
+
+Parameters
+
+- `TEST_TIMEOUT_MS`: maximum time (ms) for the parse. If omitted, the test uses its default.
+- `<url>`: the article page to parse.
+
+### Batch sampler (curated URLs, progress bar)
+
+1) Fetch a fresh set of URLs:
+
+```bash
+node scripts/fetch-curated-urls.js 800
+```
+
+Parameters
+
+- `800`: target number of URLs to collect into `scripts/data/urls.txt`.
+
+2) Run a batch against unique hosts with a simple progress-only view. Progress and a final summary print to the console; JSON/CSV reports are saved under `tests/results/`.
+
+Bash/Zsh:
+
+```bash
+UNIQUE_HOSTS=1 SAMPLE_PROGRESS_ONLY=1 SAMPLE_TICK_MS=1000 \
+  node tests/sample-run.js 100 8 scripts/data/urls.txt 25000
+```
+
+PowerShell:
+
+```powershell
+$env:UNIQUE_HOSTS=1; $env:SAMPLE_PROGRESS_ONLY=1; $env:SAMPLE_TICK_MS=1000; \
+  node tests/sample-run.js 100 8 scripts/data/urls.txt 25000
+```
+
+Notes:
+
+- UNIQUE_HOSTS=1: ensures one URL per host (diverse sample).
+- SAMPLE_PROGRESS_ONLY=1: hides per-URL logs; shows a compact progress bar and final summary.
+- SAMPLE_TICK_MS: progress update cadence in milliseconds (e.g., 1000).
+- Outputs: per-run summaries sample_summary_*.json|.csv and host breakdown sample_hosts_*.csv in 	ests/results/.
 
 ## Dependencies
 
