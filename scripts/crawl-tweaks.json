@@ -45,6 +45,12 @@
           }
         ]
       }
+    },
+    {
+      "type": "suffix",
+      "match": "cnn.com",
+      "noInterception": true,
+      "goto": { "waitUntil": "networkidle2", "timeout": 15000 }
     }
   ]
 }

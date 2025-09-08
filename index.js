@@ -34,6 +34,14 @@ const require = createRequire(import.meta.url)
 export async function parseArticle (options, socket = { emit: (type, status) => console.log(status) }) {
 
   options = setDefaultOptions(options)
+  // Heuristic: bump timeout slightly for URLs that look like live pages
+  try {
+    const u = String(options.url || '')
+    if (/\b(live|live-news|liveblog|minute-by-minute)\b/i.test(u)) {
+      const base = Number(options.timeoutMs || 0)
+      if (Number.isFinite(base)) options.timeoutMs = base + 5000
+    }
+  } catch {}
   // Enforce no-screenshot globally regardless of caller configuration
   try {
     if (Array.isArray(options.enabled)) {
@@ -128,7 +136,7 @@ const articleParser = async function (browser, options, socket) {
       const ctx = Object.entries(fields)
         .map(([k, v]) => `${k.replace(/_/g, ' ')}: ${fmtVal(k, v)}`)
         .join(' | ')
-      socket.emit('parse:status', ctx ? `${header} — ${ctx}` : header)
+      socket.emit('parse:status', ctx ? `${header} - ${ctx}` : header)
     } catch {}
   }
   const t0 = Date.now()
@@ -227,10 +235,10 @@ const articleParser = async function (browser, options, socket) {
         if (interceptionActive && (isBlockedType || isSkippedMatch)) {
           if (isBlockedType) reqBlocked++
           else if (isSkippedMatch) reqSkipped++
-          request.abort()
+          try { request.abort().catch(() => {}) } catch {}
         } else if (interceptionActive) {
           reqContinued++
-          request.continue()
+          try { request.continue().catch(() => {}) } catch {}
         } else {
           // If interception disabled, ignore handler (no continue/abort)
           return
@@ -819,11 +827,15 @@ log('analyze', 'Evaluating meta tags')
     }, options.striptags))
   }
 
-  // More HTML Cleaning
-  html = await htmlCleaner(html, options.cleanhtml)
+  // More HTML Cleaning (fallback to raw if cleaner fails)
+  try {
+    html = await htmlCleaner(html, options.cleanhtml)
+  } catch (err) {
+    log('clean', 'Cleaner failed; using raw HTML', { error: (err && err.message) || String(err) })
+  }
 
   // Body Content Identification
-log('analyze', 'Evaluating detected content')
+  log('analyze', 'Evaluating detected content')
 
   // Readability options no longer used
 
@@ -833,14 +845,151 @@ log('analyze', 'Evaluating detected content')
 
   // Legacy readability prep removed; using structured/heuristic detection instead
 
+  // Generic live-blog detector: build a concise summary from timestamped updates
+  function buildLiveBlogSummary(document) {
+    try {
+      const MAX_UPDATES = 40
+      const items = []
+      const seen = new Set()
+      const getAncestor = (node) => {
+        let n = node
+        let depth = 0
+        while (n && depth < 5) {
+          if (['ARTICLE','SECTION','LI','DIV'].includes(n.tagName)) return n
+          n = n.parentElement
+          depth++
+        }
+        return node && node.parentElement ? node.parentElement : null
+      }
+      const text = (el) => (el && el.textContent ? el.textContent.replace(/\s+/g,' ').trim() : '')
+      const times = Array.from(document.querySelectorAll('time, [datetime]')).slice(0, 200)
+      for (const t of times) {
+        const container = getAncestor(t)
+        if (!container) continue
+        if (seen.has(container)) continue
+        seen.add(container)
+        const ttl = container.querySelector('h1,h2,h3,h4,.headline,.title')
+        const p = container.querySelector('p')
+        const tt = text(t)
+        const hd = text(ttl)
+        const pv = text(p)
+        const score = (tt ? 1 : 0) + (hd.length > 12 ? 1 : 0) + (pv.length > 60 ? 1 : 0)
+        if (score >= 2) items.push({ time: tt, title: hd, body: pv })
+        if (items.length >= MAX_UPDATES) break
+      }
+      // Fallback: scan common live containers/posts when < 5 time-stamped entries
+      if (items.length < 5) {
+        const liveRoots = Array.from(document.querySelectorAll(
+          '.live, .live-blog, .liveblog, .timeline, .live_updates, .updates, .update, .post, [role="article"]'
+        )).slice(0, 200)
+        for (const root of liveRoots) {
+          if (!root) continue
+          if (seen.has(root)) continue
+          seen.add(root)
+          const ttl = root.querySelector('h1,h2,h3,h4,.headline,.title')
+          const p = root.querySelector('p')
+          const hd = text(ttl)
+          const pv = text(p)
+          if (pv.length > 120 || (hd.length > 15 && pv.length > 60)) {
+            items.push({ time: '', title: hd, body: pv })
+          }
+          if (items.length >= MAX_UPDATES) break
+        }
+      }
+      // AMP live-list scan
+      if (items.length < 3) {
+        try {
+          const ampLists = Array.from(document.querySelectorAll('amp-live-list')).slice(0, 5)
+          for (const lst of ampLists) {
+            const candidates = Array.from(lst.querySelectorAll('[role="article"], article, li, .update, .post')).slice(0, 50)
+            for (const c of candidates) {
+              if (seen.has(c)) continue
+              seen.add(c)
+              const ttl = c.querySelector('h1,h2,h3,h4,.headline,.title')
+              const p = c.querySelector('p')
+              const timeEl = c.querySelector('time, [datetime]')
+              const tt = text(timeEl)
+              const hd = text(ttl)
+              const pv = text(p)
+              if (pv.length > 120 || (hd.length > 15 && pv.length > 60) || (tt && pv.length > 60)) {
+                items.push({ time: tt, title: hd, body: pv })
+              }
+              if (items.length >= MAX_UPDATES) break
+            }
+            if (items.length >= MAX_UPDATES) break
+          }
+        } catch {}
+      }
+      // Accept when we have a few solid entries or two with sufficient body
+      const totalBody = items.reduce((acc, it) => acc + (it.body ? it.body.length : 0), 0)
+      const enough = (items.length >= 3) || (items.length >= 2 && totalBody >= 500)
+      if (enough) {
+        const used = items.slice(0, 5)
+        const html = ['<div class="live-summary">']
+        let chars = 0
+        for (const it of used) {
+          try { if (it.body) chars += it.body.length } catch {}
+          html.push('<div class="entry">')
+          if (it.time) html.push(`<div class="time">${it.time}</div>`)
+          if (it.title) html.push(`<div class="title">${it.title}</div>`)
+          if (it.body) html.push(`<p>${it.body}</p>`)
+          html.push('</div>')
+        }
+        html.push('</div>')
+        return { ok: true, html: html.join(''), count: used.length, chars }
+      }
+    } catch {}
+    return { ok: false }
+  }
+
+  let liveOverride = null
+  try {
+    const live = buildLiveBlogSummary(dom.window.document)
+    if (live && live.ok) {
+      liveOverride = live.html
+      log('content', 'live blog detected; using summary', { entries: live.count || '', chars: live.chars || '' })
+      try {
+        article.meta = article.meta || {}
+        article.meta.liveSummary = { used: true, entries: Number(live.count || 0), chars: Number(live.chars || 0) }
+      } catch {}
+    }
+  } catch {}
+  // Meta-based fallback for live stories when detector fails
+  try {
+    if (!liveOverride) {
+      const mt = (article.meta && (article.meta['template_type'] || article.meta['type'] || '')) + ''
+      if (/live/i.test(mt)) {
+        const scope = dom.window.document.querySelector('main, article, [role="main"]') || dom.window.document.body
+        const paras = Array.from(scope ? scope.querySelectorAll('p') : []).map(p => (p.textContent || '').replace(/\s+/g,' ').trim()).filter(t => t.length > 60).slice(0, 5)
+        if (paras.length >= 2) {
+          const html = ['<div class="live-summary">']
+          for (const pv of paras) html.push('<div class="entry"><p>' + pv + '</p></div>')
+          html.push('</div>')
+          liveOverride = html.join('')
+          log('content', 'live blog detected; using summary', { entries: paras.length })
+          try {
+            article.meta = article.meta || {}
+            article.meta.liveSummary = { used: true, entries: paras.length }
+          } catch {}
+        }
+      }
+    }
+  } catch {}
+
   // Derived Title & Content (structured-data aware detector always enabled)
   const sd = extractStructuredData(dom.window.document)
   const detected = detectContent(dom.window.document, options, sd)
   const { detectTitle } = await import('./controllers/titleDetector.js')
   article.title.text = detectTitle(dom.window.document, sd) || article.title.text
-  let content = detected.html
-  article.bodySelector = detected.selector || null
-  article.bodyXPath = detected.xpath || null
+  const isLiveSummary = !!liveOverride
+  let content = liveOverride || detected.html
+  if (liveOverride) {
+    article.bodySelector = '.live-summary'
+    article.bodyXPath = "/HTML/BODY/DIV[@class=\"live-summary\"]"
+  } else {
+    article.bodySelector = detected.selector || null
+    article.bodyXPath = detected.xpath || null
+  }
 
   if (!content) {
     // As a last resort, use full body HTML
@@ -938,6 +1087,154 @@ log('analyze', 'Evaluating detected content')
     log('analyze', 'Content stats', { chars: rawLen, words: wordCount })
   } catch {}
 
+  // Final paragraph fallback: if still no content, synthesize from first 5 substantial paragraphs
+  try {
+    const haveRaw = ((article.processed.text.raw || '').length > 0)
+    if (!haveRaw) {
+      const scope = dom.window.document.querySelector('main, article, [role="main"]') || dom.window.document.body
+      let paras = Array.from(scope ? scope.querySelectorAll('p') : [])
+        .map(p => ((p && p.textContent) ? p.textContent.replace(/\s+/g,' ').trim() : ''))
+        .filter(t => t && t.length > 60)
+        .slice(0, 5)
+      if (paras.length < 2) {
+        // Try AMP live-list items or generic live entries
+        const alt = []
+        try {
+          const nodes = Array.from(dom.window.document.querySelectorAll('amp-live-list [role="article"], amp-live-list article, amp-live-list li, .update, .post')).slice(0, 50)
+          for (const n of nodes) {
+            const t = (n && n.textContent ? n.textContent.replace(/\s+/g,' ').trim() : '')
+            if (t.length > 80) alt.push(t)
+            if (alt.length >= 5) break
+          }
+        } catch {}
+        if (alt.length >= 2) paras = alt
+      }
+      if (paras.length < 2) {
+        // Try canonical URL fetch to get non-AMP content
+        try {
+          const link = dom.window.document.querySelector('link[rel="canonical"]')
+          const canon = (link && link.href) ? link.href : null
+          if (canon && typeof fetch === 'function') {
+            const res = await fetch(canon, { headers: { 'User-Agent': options.puppeteer?.userAgent || 'Mozilla/5.0', 'Accept-Language': options.puppeteer?.extraHTTPHeaders?.['Accept-Language'] || 'en-US,en;q=0.9' } })
+            if (res && res.ok) {
+              const txt = await res.text()
+              const vcC2 = new VirtualConsole(); vcC2.sendTo(console, { omitJSDOMErrors: true })
+              const domC = new JSDOM(txt, { virtualConsole: vcC2 })
+              const scopeC = domC.window.document.querySelector('main, article, [role="main"]') || domC.window.document.body
+              const p2 = Array.from(scopeC ? scopeC.querySelectorAll('p') : [])
+                .map(p => ((p && p.textContent) ? p.textContent.replace(/\s+/g,' ').trim() : ''))
+                .filter(t => t && t.length > 60)
+                .slice(0, 5)
+              if (p2.length >= 2) paras = p2
+            }
+          }
+        } catch {}
+      }
+      if (paras.length < 2) {
+        // As a last generic fallback, re-navigate in the browser context to canonical (dynamic render)
+        try {
+          const link = dom.window.document.querySelector('link[rel="canonical"]')
+          const canon = (link && link.href) ? link.href : null
+          if (canon && timeLeft() > 500) {
+            log('content', 'canonical retry', { url: canon })
+            try { await page.setRequestInterception(false) } catch {}
+            try { await page.goto(canon, { waitUntil: 'domcontentloaded', timeout: Math.min(1500, Math.max(300, timeLeft())) }) } catch {}
+            try { await waitForFrameStability(300, 1000) } catch {}
+            let htmlC = null
+            try { htmlC = await evalWithRetry(async () => page.content()) } catch {}
+            if (htmlC) {
+              try {
+                const vcC3 = new VirtualConsole(); vcC3.sendTo(console, { omitJSDOMErrors: true })
+                const domCn = new JSDOM(htmlC, { virtualConsole: vcC3 })
+                // Try live blog summary again on canonical
+                let rebuilt = null
+                let usedEntries = 0
+                try {
+                  const liveN = buildLiveBlogSummary(domCn.window.document)
+                  if (liveN && liveN.ok) { rebuilt = liveN.html; usedEntries = Number(liveN.count || 0) }
+                } catch {}
+                // Or try paragraph-based summary on canonical
+                if (!rebuilt) {
+                  const scopeN = domCn.window.document.querySelector('main, article, [role="main"]') || domCn.window.document.body
+                  const pN = Array.from(scopeN ? scopeN.querySelectorAll('p') : [])
+                    .map(p => ((p && p.textContent) ? p.textContent.replace(/\s+/g,' ').trim() : ''))
+                    .filter(t => t && t.length > 60)
+                    .slice(0, 5)
+                  if (pN.length >= 2) {
+                    const parts = ['<div class="live-summary">']
+                    for (const pv of pN) parts.push('<div class="entry"><p>' + pv + '</p></div>')
+                    parts.push('</div>')
+                    rebuilt = parts.join('')
+                    usedEntries = pN.length
+                  }
+                }
+                if (rebuilt) {
+                  article.processed.html = await absolutify(rebuilt, article.baseurl)
+                  article.processed.text.formatted = await getFormattedText(article.processed.html, article.title.text, article.baseurl, options.htmltotext)
+                  article.processed.text.html = await getHtmlText(article.processed.text.formatted)
+                  article.processed.text.raw = await getRawText(article.processed.html)
+                  article.bodySelector = '.live-summary'
+                  article.bodyXPath = "/HTML/BODY/DIV[@class=\"live-summary\"]"
+                  try {
+                    article.meta = article.meta || {}
+                    article.meta.liveSummary = { used: true, entries: usedEntries, chars: (article.processed.text.raw || '').length }
+                  } catch {}
+                  log('content', 'live blog detected; using summary', { entries: usedEntries, chars: (article.processed.text.raw || '').length })
+                }
+              } catch {}
+            }
+          }
+        } catch {}
+      }
+      if (paras.length >= 2) {
+        const htmlParts = ['<div class="live-summary">']
+        for (const pv of paras) htmlParts.push('<div class="entry"><p>' + pv + '</p></div>')
+        htmlParts.push('</div>')
+        const synth = htmlParts.join('')
+        article.processed.html = await absolutify(synth, article.baseurl)
+        article.processed.text.formatted = await getFormattedText(article.processed.html, article.title.text, article.baseurl, options.htmltotext)
+        article.processed.text.html = await getHtmlText(article.processed.text.formatted)
+        article.processed.text.raw = await getRawText(article.processed.html)
+        article.bodySelector = '.live-summary'
+        article.bodyXPath = "/HTML/BODY/DIV[@class=\"live-summary\"]"
+        try {
+          article.meta = article.meta || {}
+          if (!article.meta.liveSummary) article.meta.liveSummary = { used: true, entries: paras.length }
+        } catch {}
+        log('content', 'live blog detected; using summary', { entries: paras.length })
+      }
+    }
+  } catch {}
+
+  // Generic rescue for dynamic/live pages yielding too little content (e.g., live blogs)
+  try {
+    const rawLen = (article.processed.text.raw || '').length
+    if (!staticHtmlOverride && rawLen < 200 && timeLeft() > 2000) {
+      log('rescue', 'Low content detected; retrying detection', { chars: rawLen })
+      try { await page.setRequestInterception(false) } catch {}
+      try { await page.waitForTimeout(800) } catch {}
+      try { await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: Math.min(3000, Math.max(0, timeLeft())) }) } catch {}
+      let freshHtml = null
+      try { freshHtml = await evalWithRetry(async () => page.content()) } catch { freshHtml = null }
+      if (freshHtml) {
+        try {
+          const vcR = new VirtualConsole(); vcR.sendTo(console, { omitJSDOMErrors: true })
+          const domR = new JSDOM(freshHtml, { virtualConsole: vcR })
+          const sdR = extractStructuredData(domR.window.document)
+          const detR = detectContent(domR.window.document, options, sdR)
+          const recovered = detR.html || (domR.window.document.body ? domR.window.document.body.innerHTML : freshHtml)
+          article.processed.html = await absolutify(recovered, article.baseurl)
+          article.processed.text.formatted = await getFormattedText(article.processed.html, article.title.text, article.baseurl, options.htmltotext)
+          article.processed.text.html = await getHtmlText(article.processed.text.formatted)
+          article.processed.text.raw = await getRawText(article.processed.html)
+          log('rescue', 'Recovered content', { chars: (article.processed.text.raw || '').length })
+          // refresh nlp input window
+          nlpInput = article.processed.text.raw.length > capForNlp ? article.processed.text.raw.slice(0, capForNlp) : article.processed.text.raw
+        } catch {}
+      }
+    }
+  } catch {}
+
   // Excerpt
   article.excerpt = capitalizeFirstLetter(article.processed.text.raw.replace(/^(.{200}[^\s]*).*/, '$1'))
 
@@ -959,7 +1256,7 @@ log('analyze', 'Evaluating detected content')
   }
 
   // Named Entity Recognition
-  if (options.enabled.includes('entities')) {
+  if (options.enabled.includes('entities') && (!isLiveSummary || timeLeft() > 4000)) {
     log('analyze', 'Extracting named entities')
 
     // People
@@ -987,7 +1284,7 @@ log('analyze', 'Evaluating detected content')
   }
 
   // Spelling
-  if (options.enabled.includes('spelling')) {
+  if (options.enabled.includes('spelling') && (!isLiveSummary || timeLeft() > 5000)) {
     log('analyze', 'Checking spelling')
     if (timeLeft() < 2500) { log('analyze', 'Skipping spelling due to low budget') }
     else {
@@ -1030,6 +1327,7 @@ log('analyze', 'Evaluating detected content')
       ...collectEntityWords(article.places || [])
     ])
 
+    if (!Array.isArray(article.spelling)) article.spelling = []
     article.spelling = article.spelling.filter((item) => {
       const word = String(item.word || '')
       const tokens = splitWords(word)
@@ -1047,7 +1345,7 @@ log('analyze', 'Evaluating detected content')
   }
 
   // Evaluate keywords & keyphrases
-  if (options.enabled.includes('keywords')) {
+  if (options.enabled.includes('keywords') && !(isLiveSummary && timeLeft() < 6000)) {
     log('analyze', 'Evaluating keywords and keyphrases')
 
     // Evaluate meta title keywords & keyphrases

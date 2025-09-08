@@ -10,7 +10,9 @@
                     "train:ranker": "node scripts/train-reranker.js",
                     "batch:crawl": "node scripts/batch-crawl.js scripts/data/urls.txt scripts/data/candidates_with_url.csv",
                     "merge:csv": "node scripts/merge-csv.js scripts/data/merged.csv scripts/data/candidates_with_url.csv",
-                    "curated:urls": "node scripts/fetch-curated-urls.js 1000"
+                    "curated:urls": "node scripts/fetch-curated-urls.js 1000",
+                    "sample:prepare": "node scripts/fetch-curated-urls.js 200",
+                    "sample:run": "node tests/sample-run.js 100 5 scripts/data/urls.txt 20000"
                 },
     "repository":  {
                        "type":  "git",

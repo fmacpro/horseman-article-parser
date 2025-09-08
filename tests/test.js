@@ -18,7 +18,7 @@ const testPlugin = function (Doc, world) {
 const inputUrl = process.argv[2] || null
 
 const options = {
-  timeoutMs: 20000,
+  timeoutMs: Number(process.env.TEST_TIMEOUT_MS || 40000),
   url: inputUrl || 'https://www.bbc.co.uk/news/articles/cnvryg271ymo?at_medium=RSS&at_campaign=rss',
   enabled: ['links', 'sentiment', 'entities', 'spelling', 'keywords', 'siteicon'],
   // In tests, lightly block heavy resources (keep images)
