@@ -96,6 +96,20 @@ Notes
 - `SAMPLE_TICK_MS`: progress update cadence in milliseconds (e.g., 1000).
 - Outputs: per-run summaries `sample_summary_*.json|.csv` and host breakdown `sample_hosts_*.csv` in `tests/results/`.
 
+## Docs
+
+Generate API docs into `APIDOC.md` from JSDoc comments.
+
+```
+npm run docs
+```
+
+PowerShell (if npm.ps1 is blocked):
+
+```
+cmd /c npm run docs
+```
+
 ### Usage
 
 #### parseArticle(options, socket) ⇒ <code>Object</code>
