@@ -17,5 +17,5 @@ export function createLogger({ quiet = false } = {}) {
   }
 }
 
-const defaultLogger = createLogger()
+const defaultLogger = createLogger({ quiet: process.env.NODE_ENV === 'test' })
 export default defaultLogger

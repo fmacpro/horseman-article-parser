@@ -271,11 +271,11 @@ Compromise is the natural language processor that allows `horseman-article-parse
 topics e.g. people, places & organisations. You can now pass custom plugins to compromise to modify or add to the word lists like so:
 
 ```js
-/** add some names
-let testPlugin = function(Doc, world) {
+/** add some names */
+const testPlugin = (Doc, world) => {
   world.addWords({
-    'rishi': 'FirstName',
-    'sunak': 'LastName',
+    rishi: 'FirstName',
+    sunak: 'LastName',
   })
 }
 
@@ -296,7 +296,7 @@ const options = {
 }
 ```
 
-This allows us to match - for example - names which are not in the base compromise word lists.
+By tagging new words as `FirstName` and `LastName`, the parser records fallback hints and can still detect the full name even if Compromise doesn't tag it directly. This allows us to match names which are not in the base Compromise word lists.
 
 Check out the compromise plugin [docs](https://observablehq.com/@spencermountain/compromise-plugins) for more info.
 

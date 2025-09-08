@@ -60,7 +60,9 @@ export function setDefaultOptions (options = {}) {
       }
     }
   }
-  return _.defaultsDeep({}, options, defaults)
+  const opts = _.defaultsDeep({}, options, defaults)
+  if (!opts.enabled.includes('links')) opts.enabled.push('links')
+  return opts
 }
 
 export function capitalizeFirstLetter (string) {
