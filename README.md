@@ -12,6 +12,55 @@ Node.js & NPM
 npm install horseman-article-parser --save
 ```
 
+## Quick Start (CLI)
+
+Run quick tests and batches from this repo without writing code.
+
+### Single URL test
+
+Writes a detailed JSON to `tests/results/`.
+
+```
+TEST_TIMEOUT_MS=40000 node tests/test.js "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html"
+```
+
+PowerShell:
+
+```
+$env:TEST_TIMEOUT_MS=40000; node tests/test.js "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html"
+```
+
+### Batch sampler (curated URLs, progress bar)
+
+1) Fetch a fresh set of URLs:
+
+```
+node scripts/fetch-curated-urls.js 800
+```
+
+2) Run a batch against unique hosts with a simple progress-only view. Progress and a final summary print to the console; JSON/CSV reports are saved under `tests/results/`.
+
+Bash/Zsh:
+
+```
+UNIQUE_HOSTS=1 SAMPLE_PROGRESS_ONLY=1 SAMPLE_TICK_MS=1000 \
+  node tests/sample-run.js 100 8 scripts/data/urls.txt 25000
+```
+
+PowerShell:
+
+```
+$env:UNIQUE_HOSTS=1; $env:SAMPLE_PROGRESS_ONLY=1; $env:SAMPLE_TICK_MS=1000; \
+  node tests/sample-run.js 100 8 scripts/data/urls.txt 25000
+```
+
+Notes
+
+- `UNIQUE_HOSTS=1`: ensures one URL per host (diverse sample).
+- `SAMPLE_PROGRESS_ONLY=1`: hides per-URL logs; shows a compact progress bar and final summary.
+- `SAMPLE_TICK_MS`: progress update cadence in milliseconds (e.g., 1000).
+- Outputs: per-run summaries `sample_summary_*.json|.csv` and host breakdown `sample_hosts_*.csv` in `tests/results/`.
+
 ### Usage
 
 #### parseArticle(options, socket) ⇒ <code>Object</code>
