@@ -241,11 +241,12 @@ async function main() {
     try {
       const done = results.filter(r => r != null).length
       const ok = results.filter(r => r && r.ok).length
-      const err = results.filter(r => r && !r.ok).length
+      const skips = results.filter(r => r && !r.ok && r.kind === 'skip').length
+      const err = results.filter(r => r && !r.ok && r.kind !== 'skip').length
       const inflight = Math.max(0, Math.min(concurrency, urls.length - done))
       const pct = urls.length ? Math.round((done / urls.length) * 100) : 0
       const elapsed = Math.round((now() - t0) / 1000)
-      console.log(`[progress] ${pct}% | ${done}/${urls.length} done | ok:${ok} err:${err} inflight:${inflight} | ${elapsed}s elapsed`)
+      console.log(`[progress] ${pct}% | ${done}/${urls.length} done | ok:${ok} skip:${skips} err:${err} inflight:${inflight} | ${elapsed}s elapsed`)
     } catch {}
   }, Number(process.env.SAMPLE_TICK_MS || 2000))
   async function worker() {
@@ -257,9 +258,10 @@ async function main() {
       console.log(`[sample] parsing ${i+1}/${urls.length} - ${u}`)
       const res = await runOne(u, tweaks, timeoutMs, quiet)
       results[i] = res
-      const tag = res.ok ? 'OK' : 'ERR'
+      const tag = res.ok ? 'OK' : (res?.kind === 'skip' ? 'SKIP' : 'ERR')
       if (quiet) {
         if (tag === 'ERR') console.log(`[sample] Failed: ${u} - ${res.error}`)
+        if (tag === 'SKIP') console.log(`[sample] Skipped: ${u} - ${res.error || 'skip'}`)
       } else {
         console.log(`[sample] ${tag} ${i+1}/${urls.length} url: ${u}`)
       }
