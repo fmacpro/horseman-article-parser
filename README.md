@@ -22,11 +22,11 @@ Convenient npm scripts and useful environment variables.
 
 ### Commands
 
-- single-sample-run: Run a single URL parse and write JSON to `tests/results/`.
-  - `npm run single-sample-run -- "https://example.com/article"`
-- batch-sample-run: Run the multi-URL sample with progress bar and summaries.
-  - `npm run batch-sample-run -- <N> <concurrency> <urlsFile> <timeoutMs>`
-  - Example: `npm run batch-sample-run -- 100 8 scripts/data/urls.txt 25000`
+ - sample:single: Run a single URL parse and write JSON to `tests/results/`.
+   - `npm run sample:single -- "https://example.com/article"`
+ - sample:batch: Run the multi-URL sample with progress bar and summaries.
+   - `npm run sample:batch -- <N> <concurrency> <urlsFile> <timeoutMs>`
+   - Example: `npm run sample:batch -- 100 8 scripts/data/urls.txt 25000`
 - curated:urls: Fetch curated URLs from feeds/sitemaps into `scripts/data/urls.txt`.
   - `npm run curated:urls` or `node scripts/fetch-curated-urls.js <count>`
 - sample:prepare: Fetch a smaller curated set (default 200) for quick sampling.
@@ -54,7 +54,7 @@ Writes a detailed JSON to `tests/results/`.
 ```bash
 TEST_TIMEOUT_MS=40000 node tests/single-sample-run.js "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html"
 # or via npm script
-npm run single-sample-run -- "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html"
+npm run sample:single -- "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html"
 ```
 
 PowerShell:
@@ -62,7 +62,7 @@ PowerShell:
 ```powershell
 $env:TEST_TIMEOUT_MS=40000; node tests/single-sample-run.js "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html"
 # or
-npm run single-sample-run -- "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html"
+npm run sample:single -- "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html"
 ```
 
 Parameters
@@ -90,7 +90,7 @@ Bash/Zsh:
 UNIQUE_HOSTS=1 SAMPLE_PROGRESS_ONLY=1 SAMPLE_TICK_MS=1000 \
   node tests/batch-sample-run.js 100 8 scripts/data/urls.txt 25000
 # or via npm script (defaults shown in package.json)
-npm run batch-sample-run -- 100 8 scripts/data/urls.txt 25000
+npm run sample:batch -- 100 8 scripts/data/urls.txt 25000
 ```
 
 PowerShell:
@@ -99,7 +99,7 @@ PowerShell:
 $env:UNIQUE_HOSTS=1; $env:SAMPLE_PROGRESS_ONLY=1; $env:SAMPLE_TICK_MS=1000; \
   node tests/batch-sample-run.js 100 8 scripts/data/urls.txt 25000
 # or
-npm run batch-sample-run -- 100 8 scripts/data/urls.txt 25000
+npm run sample:batch -- 100 8 scripts/data/urls.txt 25000
 ```
 
 ## Docs
@@ -422,7 +422,7 @@ npm run lint
 Quick single-run (sanity check):
 
 ```
-npm run single-sample-run -- "https://example.com/article"
+npm run sample:single -- "https://example.com/article"
 ```
 
 ### Quick Start (CLI)
