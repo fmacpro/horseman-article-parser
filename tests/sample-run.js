@@ -4,11 +4,28 @@ import { parseArticle } from '../index.js'
 import { applyDomainTweaks, loadTweaksConfig, applyUrlRewrites } from '../scripts/inc/applyDomainTweaks.js'
 
 // Lightweight HTTP helpers using global fetch (Node >=18)
+function defaultHeaders(u) {
+  const h = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Cache-Control': 'no-cache'
+  }
+  try {
+    const host = new URL(u).host
+    // Some hosts are picky; keep defaults but allow future per-domain tweaks
+    if (host.endsWith('openai.com')) {
+      h['Accept'] = 'text/html,*/*'
+    }
+  } catch {}
+  return h
+}
+
 async function httpHead(url, timeoutMs = 3000) {
   const ctrl = new AbortController()
   const t = setTimeout(() => ctrl.abort(), timeoutMs)
   try {
-    const res = await fetch(url, { method: 'HEAD', redirect: 'follow', signal: ctrl.signal })
+    const res = await fetch(url, { method: 'HEAD', redirect: 'follow', signal: ctrl.signal, headers: defaultHeaders(url) })
     return { ok: res.ok, status: res.status }
   } catch (err) {
     return { ok: false, status: 0, error: String(err?.message || err) }
@@ -22,7 +39,7 @@ async function httpProbe(url, timeoutMs = 3000) {
   const ctrl = new AbortController()
   const t = setTimeout(() => ctrl.abort(), timeoutMs)
   try {
-    const res = await fetch(url, { method: 'GET', redirect: 'follow', signal: ctrl.signal })
+    const res = await fetch(url, { method: 'GET', redirect: 'follow', signal: ctrl.signal, headers: defaultHeaders(url) })
     return { ok: res.ok, status: res.status }
   } catch (err) {
     return { ok: false, status: 0, error: String(err?.message || err) }
@@ -75,6 +92,12 @@ function skipUrl(u) {
     const url = new URL(u)
     const host = url.host
     const path = url.pathname || ''
+    // Only handle http(s)
+    if (!/^https?:$/.test(url.protocol)) return 'skip: non-http(s) scheme'
+    // Skip obvious non-HTML resources by extension
+    if (/\.(pdf|docx?|pptx?|xlsx?|zip|gz|rar|7z|tar|mp3|mp4|avi|mov|wmv)$/i.test(path)) return 'skip: non-html resource'
+    // Some mailing list archives consistently 403 robots
+    if (host.endsWith('lists.ding.net')) return 'skip: forbidden archive'
     // Known ephemeral galleries without consistent AMP
     if (host.endsWith('aljazeera.com') && path.startsWith('/gallery/')) return 'skip: aljazeera gallery'
   } catch {}

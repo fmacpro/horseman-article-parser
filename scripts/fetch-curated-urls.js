@@ -25,6 +25,8 @@ function keepLikelyArticles(url) {
   if (!url) return false
   let obj
   try { obj = new URL(url) } catch { return false }
+  // Only allow http(s)
+  if (!/^https?:$/.test(obj.protocol)) return false
   const u = url.toLowerCase()
   const path = obj.pathname || '/'
   const segments = path.split('/').filter(Boolean)
