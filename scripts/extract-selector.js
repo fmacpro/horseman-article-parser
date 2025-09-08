@@ -3,12 +3,14 @@ import StealthPlugin from 'puppeteer-extra-plugin-stealth'
 
 puppeteer.use(StealthPlugin())
 
+import logger from '../controllers/logger.js'
+
 const url = process.argv[2]
 const selectorArg = process.argv[3]
 const selector = selectorArg || 'div.post-body.entry-content, #postBody, .entry-content'
 
 if (!url) {
-  console.error('Usage: node scripts/extract-selector.js <url> [css-selector]')
+  logger.error('Usage: node scripts/extract-selector.js <url> [css-selector]')
   process.exit(1)
 }
 
@@ -70,15 +72,15 @@ if (!url) {
     }, selector)
 
     if (!info.present) {
-      console.log(`Selector not found: ${selector}`)
+      logger.info(`Selector not found: ${selector}`)
     } else {
-      console.log(`Selector found: ${selector}`)
-      console.log(`Text length: ${info.length}`)
-      console.log('--- Preview ---')
-      console.log(info.preview)
+      logger.info(`Selector found: ${selector}`)
+      logger.info(`Text length: ${info.length}`)
+      logger.info('--- Preview ---')
+      logger.info(info.preview)
     }
   } catch (err) {
-    console.error('Error:', err.message)
+    logger.error('Error:', err.message)
     process.exitCode = 1
   } finally {
     try { await browser.close() } catch {}

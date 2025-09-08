@@ -2,6 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import { parseArticle } from '../index.js'
 import { applyDomainTweaks, loadTweaksConfig, applyUrlRewrites } from '../scripts/inc/applyDomainTweaks.js'
+import logger from '../controllers/logger.js'
 
 // Lightweight HTTP helpers using global fetch (Node >=18)
 function defaultHeaders(u) {
@@ -136,7 +137,7 @@ function makeSocket(quiet) {
       try {
         const s = String(status || '')
         if (/^\[parse\] (start|complete)/.test(s) || s.includes('live blog detected') || s.startsWith('[rescue]') || s.startsWith('[clean]')) {
-          if (process?.stdout && process.stdout.writable && !process.stdout.destroyed) console.log(s)
+          logger.info(s)
         }
       } catch {}
     }
@@ -259,7 +260,7 @@ async function main() {
 
   // Progress ticker
   const t0 = now()
-  console.log(`[sample] starting - total: ${urls.length} concurrency: ${concurrency} timeout: ${timeoutMs}ms`)
+  logger.info(`[sample] starting - total: ${urls.length} concurrency: ${concurrency} timeout: ${timeoutMs}ms`)
   const progressOnly = !!process.env.SAMPLE_PROGRESS_ONLY
   const barWidth = Number(process.env.SAMPLE_BAR_WIDTH || 16)
   const makeBar = (pct) => {
@@ -280,7 +281,7 @@ async function main() {
       const elapsed = Math.round((now() - t0) / 1000)
       if (pct !== prevPct) {
         const bar = makeBar(pct)
-        console.log(`[progress] ${bar} ${pct}% | ${done}/${urls.length} done | ok:${ok} skip:${skips} err:${err} inflight:${inflight} | ${elapsed}s elapsed`)
+        logger.info(`[progress] ${bar} ${pct}% | ${done}/${urls.length} done | ok:${ok} skip:${skips} err:${err} inflight:${inflight} | ${elapsed}s elapsed`)
         prevPct = pct
       }
     } catch {}
@@ -291,16 +292,16 @@ async function main() {
       if (i >= urls.length) return
       const u = urls[i]
       started.add(i)
-      if (!progressOnly) console.log(`[sample] parsing ${i+1}/${urls.length} - ${u}`)
+      if (!progressOnly) logger.info(`[sample] parsing ${i+1}/${urls.length} - ${u}`)
       const res = await runOne(u, tweaks, timeoutMs, quiet)
       results[i] = res
       const tag = res.ok ? 'OK' : (res?.kind === 'skip' ? 'SKIP' : 'ERR')
       if (!progressOnly) {
         if (quiet) {
-          if (tag === 'ERR') console.log(`[sample] Failed: ${u} - ${res.error}`)
-          if (tag === 'SKIP') console.log(`[sample] Skipped: ${u} - ${res.error || 'skip'}`)
+          if (tag === 'ERR') logger.info(`[sample] Failed: ${u} - ${res.error}`)
+          if (tag === 'SKIP') logger.info(`[sample] Skipped: ${u} - ${res.error || 'skip'}`)
         } else {
-          console.log(`[sample] ${tag} ${i+1}/${urls.length} url: ${u}`)
+          logger.info(`[sample] ${tag} ${i+1}/${urls.length} url: ${u}`)
         }
       }
     }
@@ -317,9 +318,9 @@ async function main() {
     const pct = 100
     const bar = makeBar(pct)
     const elapsed = Math.round((now() - t0) / 1000)
-    console.log(`[progress] ${bar} ${pct}% | ${urls.length}/${urls.length} done | ok:${ok.length} skip:${skips.length} err:${err.length} inflight:0 | ${elapsed}s elapsed`)
+    logger.info(`[progress] ${bar} ${pct}% | ${urls.length}/${urls.length} done | ok:${ok.length} skip:${skips.length} err:${err.length} inflight:0 | ${elapsed}s elapsed`)
   } catch {}
-  console.log(`[sample] complete - total: ${results.length} ok: ${ok.length} skip: ${skips.length} err: ${err.length}`)
+  logger.info(`[sample] complete - total: ${results.length} ok: ${ok.length} skip: ${skips.length} err: ${err.length}`)
 
   const outDir = path.resolve('tests/results')
   try { fs.mkdirSync(outDir, { recursive: true }) } catch {}
@@ -356,7 +357,7 @@ async function main() {
   // Write JSON summary
   const jsonFile = path.join(outDir, `sample_summary_${stamp}.json`)
   fs.writeFileSync(jsonFile, JSON.stringify({ ...summary, results }, null, 2), 'utf8')
-  console.log(`[sample] wrote summary to ${jsonFile}`)
+  logger.info(`[sample] wrote summary to ${jsonFile}`)
 
   // Write CSV rows
   const csvFile = path.join(outDir, `sample_summary_${stamp}.csv`)
@@ -369,14 +370,14 @@ async function main() {
     return [esc(r?.url), esc(r?.finalUrl || ''), r?.ok ? 1 : 0, r?.source || '', r?.dt || '', r?.size || '', r?.words || '', r?.links || '', esc(r?.error || '')].join(',')
   })
   fs.writeFileSync(csvFile, header + rows.join('\n') + '\n', 'utf8')
-  console.log(`[sample] wrote CSV to ${csvFile}`)
+  logger.info(`[sample] wrote CSV to ${csvFile}`)
 
   // Write host breakdown CSV
   const hostCsv = path.join(outDir, `sample_hosts_${stamp}.csv`)
   const hHeader = 'host,total,ok,skip,err,avg_ms' + '\n'
   const hRows = Object.values(byHost).map(h => [h.host, h.total, h.ok, (h.skip||0), h.err, (h.ok ? Math.round(h.dtSum / h.ok) : '')].join(','))
   fs.writeFileSync(hostCsv, hHeader + hRows.join('\n') + '\n', 'utf8')
-  console.log(`[sample] wrote host breakdown to ${hostCsv}`)
+  logger.info(`[sample] wrote host breakdown to ${hostCsv}`)
 }
 
-main().catch(err => { console.error(err); process.exit(1) })
+main().catch(err => { logger.error(err); process.exit(1) })

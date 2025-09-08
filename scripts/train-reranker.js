@@ -3,6 +3,7 @@
 // CSV columns: len,punct,ld,pc,sem,boiler,label
 
 import fs from 'fs'
+import logger from '../controllers/logger.js'
 
 function parseCsvLine(line) {
   const out = []
@@ -184,4 +185,4 @@ async function main() {
   }
 }
 
-main().catch(err => { console.error(err); throw err })
+main().catch(err => { logger.error(err); throw err })

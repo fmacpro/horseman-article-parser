@@ -1,5 +1,6 @@
 import fs from 'fs'
 import path from 'path'
+import logger from '../controllers/logger.js'
 
 function readLines(file) {
   const text = fs.readFileSync(file, 'utf8')
@@ -43,8 +44,8 @@ async function main() {
 
   const outLines = [header, ...Array.from(rows)]
   writeLines(outFile, outLines)
-  console.log(`Merged ${rows.size} unique rows into ${outFile}`)
+  logger.info(`Merged ${rows.size} unique rows into ${outFile}`)
 }
 
-main().catch(err => { console.error(err); throw err })
+main().catch(err => { logger.error(err); throw err })
 
