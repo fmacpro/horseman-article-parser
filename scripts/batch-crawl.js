@@ -5,6 +5,13 @@ import blockedResourceTypes from '../scripts/inc/blockResourceTypes.js'
 import skippedResources from '../scripts/inc/skipResources.js'
 import { applyDomainTweaks, loadTweaksConfig, applyUrlRewrites } from './inc/applyDomainTweaks.js'
 
+function makeBar(pct) {
+  const w = Math.max(5, Math.min(100, Number(process.env.BATCH_BAR_WIDTH || 16)))
+  const filled = Math.max(0, Math.min(w, Math.round((pct / 100) * w)))
+  const empty = w - filled
+  return `[${'#'.repeat(filled)}${'.'.repeat(empty)}]`
+}
+
 function readUrls(filePath) {
   if (!fs.existsSync(filePath)) throw new Error(`URLs file not found: ${filePath}`)
   const text = fs.readFileSync(filePath, 'utf8')
@@ -15,10 +22,19 @@ async function run(urlsFile, outCsv = 'candidates_with_url.csv', start = 0, limi
   const all = readUrls(urlsFile)
   const end = limit ? Math.min(all.length, start + Number(limit)) : all.length
   const urls = all.slice(Number(start) || 0, end)
-  console.log(`Crawling ${urls.length} URLs (slice ${start}-${end - 1}), dumping candidates to ${outCsv}${Number(concurrency) > 1 ? ` [concurrency=${concurrency}]` : ''}`)
 
-  const quiet = Number(concurrency) > 1
+  const progressOnly = process.env.BATCH_PROGRESS_ONLY ? (process.env.BATCH_PROGRESS_ONLY !== '0') : true
+  const quiet = true // suppress per-URL logs when using progress bar
   const tweaksConfig = loadTweaksConfig()
+  const t0 = Date.now()
+  let processed = 0
+  let okCount = 0
+  let errCount = 0
+  let startedCount = 0
+
+  if (!progressOnly) {
+    console.log(`Crawling ${urls.length} URLs (slice ${start}-${end - 1}), dumping candidates to ${outCsv}${Number(concurrency) > 1 ? ` [concurrency=${concurrency}]` : ''}`)
+  }
 
   function normalizeForCrawl(u) {
     try { return new URL(u).toString() } catch { return u }
@@ -33,6 +49,7 @@ async function run(urlsFile, outCsv = 'candidates_with_url.csv', start = 0, limi
     // Apply URL rewrites from config before normalization
     const rewritten = applyUrlRewrites(url, tweaksConfig)
     const normUrl = normalizeForCrawl(rewritten)
+    startedCount++
     const options = {
       url: normUrl,
       enabled: ['links'],
@@ -75,7 +92,6 @@ async function run(urlsFile, outCsv = 'candidates_with_url.csv', start = 0, limi
     let attempt = 0
     while (attempt <= retryMax) {
       try {
-        if (!quiet) console.log(`Fetching: ${normUrl}`)
         const socket = quiet ? { emit: () => {} } : undefined
         // On the final retry, relax constraints to improve success odds
         if (attempt === retryMax) {
@@ -95,30 +111,38 @@ async function run(urlsFile, outCsv = 'candidates_with_url.csv', start = 0, limi
           } catch { /* ignore */ }
         }
         await parseArticle(options, socket)
-        if (quiet) console.log(`Parsed: ${normUrl}`)
-        return
+        return true
       } catch (err) {
         attempt++
         if (attempt > retryMax) {
-          if (quiet) {
-            console.log(`Failed: ${normUrl}`)
-          } else {
-            console.error(`Error processing ${url}: ${err.message}`)
-          }
-          return
+          return false
         }
         // Backoff before retry
         const delay = 1000 * attempt
-        if (!quiet) console.log(`Retrying (${attempt}/${retryMax}) ${normUrl} after ${delay}ms ...`)
         await new Promise(r => setTimeout(r, delay))
       }
     }
   }
 
+  let prevPct = -1
+  const tickMs = Number(process.env.BATCH_TICK_MS || 2000)
+  const tick = setInterval(() => {
+    const pct = urls.length ? Math.round((processed / urls.length) * 100) : 100
+    if (pct !== prevPct) {
+      const elapsed = Math.round((Date.now() - t0) / 1000)
+      const inflight = Math.max(0, Math.min(Number(concurrency) || 1, startedCount - processed))
+      const bar = makeBar(pct)
+      console.log(`[batch] ${bar} ${pct}% | ${processed}/${urls.length} done | ok:${okCount} err:${errCount} inflight:${inflight} | ${elapsed}s elapsed`)
+      prevPct = pct
+    }
+  }, tickMs)
+
   if (Number(concurrency) <= 1) {
     for (const url of urls) {
-      // sequential
-      await processOne(url)
+      const ok = await processOne(url)
+      processed++
+      if (ok) okCount++
+      else errCount++
     }
   } else {
     // concurrent pool
@@ -128,11 +152,22 @@ async function run(urlsFile, outCsv = 'candidates_with_url.csv', start = 0, limi
       while (true) {
         const i = idx++
         if (i >= urls.length) return
-        await processOne(urls[i])
+        const ok = await processOne(urls[i])
+        processed++
+        if (ok) okCount++
+        else errCount++
       }
     }
     await Promise.all(Array.from({ length: pool }, runNext))
   }
+
+  clearInterval(tick)
+  try {
+    const pct = 100
+    const bar = makeBar(pct)
+    const elapsed = Math.round((Date.now() - t0) / 1000)
+    console.log(`[batch] ${bar} ${pct}% | ${urls.length}/${urls.length} done | ok:${okCount} err:${errCount} inflight:0 | ${elapsed}s elapsed`)
+  } catch {}
 }
 
 const urlsFile = process.argv[2] || path.resolve('scripts/data/urls.txt')

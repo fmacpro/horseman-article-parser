@@ -17,6 +17,15 @@ function readFeedsFile(filePath) {
 
 function uniq(arr) { return Array.from(new Set(arr)) }
 
+function defaultHeaders() {
+  return {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36',
+    'Accept': 'application/rss+xml, application/atom+xml, text/xml, application/xml;q=0.9, */*;q=0.5',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Cache-Control': 'no-cache'
+  }
+}
+
 function normalizeUrl(u) {
   try { return new URL(u).toString() } catch { return null }
 }
@@ -50,10 +59,39 @@ function keepLikelyArticles(url) {
   return true
 }
 
-async function fetchText(url) {
-  const res = await fetch(url, { redirect: 'follow' })
-  if (!res.ok) throw new Error(`Fetch failed ${res.status} for ${url}`)
-  return await res.text()
+async function fetchTextOnce(url, timeoutMs = 12000, headers = defaultHeaders()) {
+  const ctrl = new AbortController()
+  const t = setTimeout(() => ctrl.abort(), Math.max(1000, timeoutMs))
+  try {
+    const res = await fetch(url, { redirect: 'follow', signal: ctrl.signal, headers })
+    if (!res.ok) {
+      const ct = res.headers?.get ? (res.headers.get('content-type') || '') : ''
+      throw new Error(`Fetch failed ${res.status} (${ct}) for ${url}`)
+    }
+    return await res.text()
+  } finally { clearTimeout(t) }
+}
+
+async function fetchText(url, timeoutMs = 12000, maxRetries = 2) {
+  let lastErr
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const broaden = attempt > 0
+      const headers = defaultHeaders()
+      if (broaden) headers.Accept = 'application/xml, text/xml, text/html;q=0.8, */*;q=0.5'
+      return await fetchTextOnce(url, timeoutMs + attempt * 1000, headers)
+    } catch (err) {
+      lastErr = err
+      const s = String(err && (err.message || err))
+      const transient = /(429|502|503|504|network|timeout|abort)/i.test(s)
+      if (attempt < maxRetries && transient) {
+        await new Promise(r => setTimeout(r, 500 * (attempt + 1)))
+        continue
+      }
+      break
+    }
+  }
+  throw lastErr
 }
 
 function extractFromRSS(xml) {
@@ -126,22 +164,77 @@ function extractFromSitemap(xml) {
   return links
 }
 
+function makeBar(pct) {
+  const w = Math.max(5, Math.min(100, Number(process.env.FEED_BAR_WIDTH || 16)))
+  const filled = Math.max(0, Math.min(w, Math.round((pct / 100) * w)))
+  const empty = w - filled
+  return `[${'#'.repeat(filled)}${'.'.repeat(empty)}]`
+}
+
 async function collect(count, feeds) {
-  // Fetch per-feed links first
-  const perFeed = []
-  for (const f of feeds) {
-    try {
-      const xml = await fetchText(f)
-      const isSitemap = /<urlset[\s>]/i.test(xml)
-      const links = (isSitemap ? extractFromSitemap(xml) : extractFromRSS(xml))
-        .map(normalizeUrl)
-        .filter(keepLikelyArticles)
-      perFeed.push(uniq(links))
-    } catch {
-      // ignore individual feed errors
-      perFeed.push([])
+  // Concurrently fetch per-feed links
+  const FEED_CONCURRENCY = Number(process.env.FEED_CONCURRENCY || 6)
+  const FEED_TIMEOUT_MS = Number(process.env.FEED_TIMEOUT_MS || 12000)
+  const progressOnly = !!process.env.FEED_PROGRESS_ONLY
+  const start = Date.now()
+  const perFeed = new Array(feeds.length)
+  let processed = 0
+  let succeeded = 0
+  let failed = 0
+  let nextIndex = 0
+  const started = new Set()
+  const log = (...args) => { if (!process.env.FETCH_QUIET && !progressOnly) { try { console.log(...args) } catch {} } }
+  console.log(`[feeds] starting - total: ${feeds.length} concurrency: ${FEED_CONCURRENCY} timeout: ${FEED_TIMEOUT_MS}ms`)
+
+  async function worker() {
+    while (true) {
+      const i = nextIndex++
+      if (i >= feeds.length) return
+      const f = feeds[i]
+      try {
+        started.add(i)
+        const xml = await fetchText(f, FEED_TIMEOUT_MS)
+        const looksSitemap = /<urlset[\s>]/i.test(xml)
+        const looksRss = /<(rss|feed)[\s>]/i.test(xml)
+        if (!(looksSitemap || looksRss)) throw new Error('not xml/rss (html or empty)')
+        const links = (looksSitemap ? extractFromSitemap(xml) : extractFromRSS(xml))
+          .map(normalizeUrl)
+          .filter(keepLikelyArticles)
+        perFeed[i] = uniq(links)
+        succeeded++
+        log(`[feeds] OK ${i + 1}/${feeds.length} - ${looksSitemap ? 'sitemap' : 'rss'} items:${perFeed[i].length}`)
+      } catch (err) {
+        failed++
+        perFeed[i] = []
+        log(`[feeds] ERR ${i + 1}/${feeds.length} - ${err?.message || err}`)
+      } finally {
+        processed++
+      }
     }
   }
+
+  const workers = Array.from({ length: Math.min(FEED_CONCURRENCY, feeds.length) }, () => worker())
+  let prevPct = -1
+  const tickMs = Number(process.env.FEED_TICK_MS || 2000)
+  const tick = setInterval(() => {
+    const pct = feeds.length ? Math.round((processed / feeds.length) * 100) : 100
+    if (pct !== prevPct) {
+      const elapsed = Math.round((Date.now() - start) / 1000)
+      const inflight = Math.max(0, Math.min(feeds.length, started.size - processed))
+      const bar = makeBar(pct)
+      console.log(`[feeds] ${bar} ${pct}% | ${processed}/${feeds.length} done | ok:${succeeded} err:${failed} inflight:${inflight} | ${elapsed}s elapsed`)
+      prevPct = pct
+    }
+  }, tickMs)
+  await Promise.all(workers).catch(() => {})
+  clearInterval(tick)
+  const elapsed = Math.round((Date.now() - start) / 1000)
+  try {
+    const pct = 100
+    const bar = makeBar(pct)
+    console.log(`[feeds] ${bar} ${pct}% | ${feeds.length}/${feeds.length} done | ok:${succeeded} err:${failed} inflight:0 | ${elapsed}s elapsed`)
+  } catch {}
+  console.log(`[feeds] complete - total: ${feeds.length} ok: ${succeeded} err: ${failed} in ${elapsed}s`)
 
   // Round-robin selection across feeds to maximize diversity
   const selected = []

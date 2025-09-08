@@ -6,13 +6,13 @@
   "main": "index.js",
   "scripts": {
     "lint": "node ./node_modules/eslint/bin/eslint.js . --ext .json --ext .js --fix",
-    "test": "node tests/test.js",
-    "train:ranker": "node scripts/train-reranker.js",
-    "batch:crawl": "node scripts/batch-crawl.js scripts/data/urls.txt scripts/data/candidates_with_url.csv",
     "merge:csv": "node scripts/merge-csv.js scripts/data/merged.csv scripts/data/candidates_with_url.csv",
     "curated:urls": "node scripts/fetch-curated-urls.js 1000",
+    "batch:crawl": "node scripts/batch-crawl.js scripts/data/urls.txt scripts/data/candidates_with_url.csv",
+    "train:ranker": "node scripts/train-reranker.js",
     "sample:prepare": "node scripts/fetch-curated-urls.js 200",
-    "sample:run": "node tests/sample-run.js 100 5 scripts/data/urls.txt 20000",
+    "sample:single": "node tests/single-sample-run.js",
+    "sample:batch": "node tests/batch-sample-run.js 100 5 scripts/data/urls.txt 20000",
     "docs": "jsdoc2md index.js controllers/*.js helpers.js > APIDOC.md"
   },
   "repository": {

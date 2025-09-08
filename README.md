@@ -12,6 +12,106 @@ Node.js & NPM
 npm install horseman-article-parser --save
 ```
 
+## Quick Start (CLI)
+
+Run quick tests and batches from this repo without writing code.
+
+## Scripts
+
+Convenient npm scripts and useful environment variables.
+
+### Commands
+
+- single-sample-run: Run a single URL parse and write JSON to `tests/results/`.
+  - `npm run single-sample-run -- "https://example.com/article"`
+- batch-sample-run: Run the multi-URL sample with progress bar and summaries.
+  - `npm run batch-sample-run -- <N> <concurrency> <urlsFile> <timeoutMs>`
+  - Example: `npm run batch-sample-run -- 100 8 scripts/data/urls.txt 25000`
+- curated:urls: Fetch curated URLs from feeds/sitemaps into `scripts/data/urls.txt`.
+  - `npm run curated:urls` or `node scripts/fetch-curated-urls.js <count>`
+- sample:prepare: Fetch a smaller curated set (default 200) for quick sampling.
+  - `npm run sample:prepare`
+- batch:crawl: Crawl URLs and dump content-candidate features to CSV.
+  - `npm run batch:crawl -- <urlsFile?> <outCsv?>`
+- merge:csv: Merge CSVs (utility for dataset building).
+  - `npm run merge:csv`
+- docs: Generate API docs to `APIDOC.md`.
+  - `npm run docs`
+
+### Environment variables
+
+- SAMPLE_PROGRESS_ONLY: `1` to hide per-URL logs, show compact progress for batch sample runs.
+- SAMPLE_TICK_MS: Milliseconds between sample progress updates (e.g., `1000`).
+- UNIQUE_HOSTS: `1` to pick unique hosts (diverse sample set) in batch sample runs.
+- BATCH_PROGRESS_ONLY: `1` to print progress-only lines during `batch:crawl`.
+- BATCH_TICK_MS / BATCH_BAR_WIDTH: Progress cadence and bar width for `batch:crawl`.
+- FEED_CONCURRENCY / FEED_TIMEOUT_MS / FEED_BAR_WIDTH: Tuning for curated feed collection.
+
+### Single URL test
+
+Writes a detailed JSON to `tests/results/`.
+
+```bash
+TEST_TIMEOUT_MS=40000 node tests/single-sample-run.js "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html"
+# or via npm script
+npm run single-sample-run -- "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html"
+```
+
+PowerShell:
+
+```powershell
+$env:TEST_TIMEOUT_MS=40000; node tests/single-sample-run.js "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html"
+# or
+npm run single-sample-run -- "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html"
+```
+
+Parameters
+
+- `TEST_TIMEOUT_MS`: maximum time (ms) for the parse. If omitted, the test uses its default.
+- `<url>`: the article page to parse.
+
+### Batch sampler (curated URLs, progress bar)
+
+1) Fetch a fresh set of URLs:
+
+```bash
+node scripts/fetch-curated-urls.js 800
+```
+
+Parameters
+
+- `800`: target number of URLs to collect into `scripts/data/urls.txt`.
+
+2) Run a batch against unique hosts with a simple progress-only view. Progress and a final summary print to the console; JSON/CSV reports are saved under `tests/results/`.
+
+Bash/Zsh:
+
+```bash
+UNIQUE_HOSTS=1 SAMPLE_PROGRESS_ONLY=1 SAMPLE_TICK_MS=1000 \
+  node tests/batch-sample-run.js 100 8 scripts/data/urls.txt 25000
+# or via npm script (defaults shown in package.json)
+npm run batch-sample-run -- 100 8 scripts/data/urls.txt 25000
+```
+
+PowerShell:
+
+```powershell
+$env:UNIQUE_HOSTS=1; $env:SAMPLE_PROGRESS_ONLY=1; $env:SAMPLE_TICK_MS=1000; \
+  node tests/batch-sample-run.js 100 8 scripts/data/urls.txt 25000
+# or
+npm run batch-sample-run -- 100 8 scripts/data/urls.txt 25000
+```
+
+## Docs
+
+Generate API docs into APIDOC.md from JSDoc comments.
+
+```bash
+npm run docs
+```
+
+
+
 ### Usage
 
 #### parseArticle(options, socket) ? <code>Object</code>
@@ -319,10 +419,10 @@ Lint the project files with:
 npm run lint
 ```
 
-Test the package with:
+Quick single-run (sanity check):
 
 ```
-npm run test
+npm run single-sample-run -- "https://example.com/article"
 ```
 
 ### Quick Start (CLI)
