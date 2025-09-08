@@ -3,6 +3,32 @@ import path from 'path'
 import { parseArticle } from '../index.js'
 import { applyDomainTweaks, loadTweaksConfig, applyUrlRewrites } from '../scripts/inc/applyDomainTweaks.js'
 
+// Lightweight HTTP helpers using global fetch (Node >=18)
+async function httpHead(url, timeoutMs = 3000) {
+  const ctrl = new AbortController()
+  const t = setTimeout(() => ctrl.abort(), timeoutMs)
+  try {
+    const res = await fetch(url, { method: 'HEAD', redirect: 'follow', signal: ctrl.signal })
+    return { ok: res.ok, status: res.status }
+  } catch (err) {
+    return { ok: false, status: 0, error: String(err?.message || err) }
+  } finally { clearTimeout(t) }
+}
+
+async function httpProbe(url, timeoutMs = 3000) {
+  // Some sites 405 on HEAD; fall back to a very short GET
+  const head = await httpHead(url, timeoutMs)
+  if (head.ok || head.status === 405) return head
+  const ctrl = new AbortController()
+  const t = setTimeout(() => ctrl.abort(), timeoutMs)
+  try {
+    const res = await fetch(url, { method: 'GET', redirect: 'follow', signal: ctrl.signal })
+    return { ok: res.ok, status: res.status }
+  } catch (err) {
+    return { ok: false, status: 0, error: String(err?.message || err) }
+  } finally { clearTimeout(t) }
+}
+
 function readUrls(filePath) {
   const p = path.isAbsolute(filePath) ? filePath : path.resolve(filePath)
   if (!fs.existsSync(p)) throw new Error(`URLs file not found: ${p}`)
@@ -42,6 +68,17 @@ function ampCandidates(raw) {
   } catch {
     return []
   }
+}
+
+function skipUrl(u) {
+  try {
+    const url = new URL(u)
+    const host = url.host
+    const path = url.pathname || ''
+    // Known ephemeral galleries without consistent AMP
+    if (host.endsWith('aljazeera.com') && path.startsWith('/gallery/')) return 'skip: aljazeera gallery'
+  } catch {}
+  return null
 }
 
 function buildOptions(url, timeoutMs, base = {}) {
@@ -102,6 +139,18 @@ function classifyError(msg) {
 async function runOne(url, tweaks, timeoutMs = 20000, quiet = true) {
   const t0 = now()
   const rewritten = applyUrlRewrites(url, tweaks) || url
+  // Pre-skip known problematic URLs
+  const skipReason = skipUrl(rewritten)
+  if (skipReason) {
+    return { ok: false, url, dt: now() - t0, error: skipReason, kind: 'skip', attempts: [] }
+  }
+  // Preflight 4xx to avoid expensive parse on dead links
+  try {
+    const pre = await httpProbe(rewritten, Math.min(4000, timeoutMs))
+    if (!pre.ok && pre.status >= 400 && pre.status < 500 && pre.status !== 405) {
+      return { ok: false, url, dt: now() - t0, error: `preflight ${pre.status}`, kind: 'http4xx', attempts: [] }
+    }
+  } catch {}
   let lastErr = null
   const attempts = []
   // Attempt 1: baseline
@@ -146,9 +195,11 @@ async function runOne(url, tweaks, timeoutMs = 20000, quiet = true) {
     lastErr = new Error('no_content')
   } catch (e3) { lastErr = e3; attempts.push({ step: 'no-js', error: String(e3?.message || e3) }) }
 
-  // Attempt 4: AMP variants directly
+  // Attempt 4: AMP variants directly (gate with quick probe)
   for (const amp of ampCandidates(rewritten)) {
     try {
+      const probe = await httpProbe(amp, Math.min(3000, Math.max(1500, Math.floor(timeoutMs/10))))
+      if (!(probe.ok || probe.status === 405)) { attempts.push({ step: 'amp-direct', error: `probe ${probe.status||0}` }); continue }
       const a4 = await tryParse(amp, tweaks, timeoutMs, { noInterception: true }, quiet)
       const dt = now() - t0
       const raw = (a4?.processed?.text?.raw || '')
