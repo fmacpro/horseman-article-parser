@@ -17,6 +17,17 @@ test('setDefaultOptions overrides provided values', () => {
   assert.equal(opts.puppeteer.launch.handleSIGINT, false)
 })
 
+test('setDefaultOptions deeply merges nested structures', () => {
+  const opts = setDefaultOptions({
+    enabled: ['links'],
+    puppeteer: { launch: { args: ['--no-sandbox'] } }
+  })
+  assert.deepEqual(opts.enabled, ['links'])
+  assert.equal(opts.puppeteer.launch.headless, true)
+  assert.ok(opts.puppeteer.launch.args.includes('--no-sandbox'))
+  assert.equal(opts.puppeteer.goto.waitUntil, 'domcontentloaded')
+})
+
 test('capitalizeFirstLetter capitalizes only first character', () => {
   assert.equal(capitalizeFirstLetter('hello'), 'Hello')
 })
