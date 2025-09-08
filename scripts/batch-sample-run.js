@@ -5,7 +5,7 @@ import { applyDomainTweaks, loadTweaksConfig, applyUrlRewrites } from './inc/app
 import logger from '../controllers/logger.js'
 
 // Lightweight HTTP helpers using global fetch (Node >=18)
-function defaultHeaders(u) {
+export function defaultHeaders(u) {
   const h = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36',
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
@@ -22,7 +22,7 @@ function defaultHeaders(u) {
   return h
 }
 
-async function httpHead(url, timeoutMs = 3000) {
+export async function httpHead(url, timeoutMs = 3000) {
   const ctrl = new AbortController()
   const t = setTimeout(() => ctrl.abort(), timeoutMs)
   try {
@@ -33,7 +33,7 @@ async function httpHead(url, timeoutMs = 3000) {
   } finally { clearTimeout(t) }
 }
 
-async function httpProbe(url, timeoutMs = 3000) {
+export async function httpProbe(url, timeoutMs = 3000) {
   // Some sites 405 on HEAD; fall back to a very short GET
   const head = await httpHead(url, timeoutMs)
   if (head.ok || head.status === 405) return head
@@ -47,18 +47,18 @@ async function httpProbe(url, timeoutMs = 3000) {
   } finally { clearTimeout(t) }
 }
 
-function readUrls(filePath) {
+export function readUrls(filePath) {
   const p = path.isAbsolute(filePath) ? filePath : path.resolve(filePath)
   if (!fs.existsSync(p)) throw new Error(`URLs file not found: ${p}`)
   const text = fs.readFileSync(p, 'utf8')
   return text.split(/\r?\n/).map(s => s.trim()).filter(Boolean)
 }
 
-function uniq(arr) { return Array.from(new Set(arr)) }
+export function uniq(arr) { return Array.from(new Set(arr)) }
 
 function now() { return Date.now() }
 
-function uniqueByHost(urls, limit) {
+export function uniqueByHost(urls, limit) {
   const out = []
   const seen = new Set()
   for (const u of urls) {
@@ -73,7 +73,7 @@ function uniqueByHost(urls, limit) {
   return out
 }
 
-function ampCandidates(raw) {
+export function ampCandidates(raw) {
   try {
     const u = new URL(raw)
     const c = []
@@ -88,7 +88,7 @@ function ampCandidates(raw) {
   }
 }
 
-function skipUrl(u) {
+export function skipUrl(u) {
   try {
     const url = new URL(u)
     const host = url.host
@@ -105,7 +105,7 @@ function skipUrl(u) {
   return null
 }
 
-function buildOptions(url, timeoutMs, base = {}) {
+export function buildOptions(url, timeoutMs, base = {}) {
   return {
     url,
     timeoutMs,
@@ -129,7 +129,7 @@ function buildOptions(url, timeoutMs, base = {}) {
   }
 }
 
-function makeSocket(quiet) {
+export function makeSocket(quiet) {
   if (quiet) return { emit: () => {} }
   // Filter noisy logs to reduce pipe errors while still showing progress
   return {
@@ -144,14 +144,14 @@ function makeSocket(quiet) {
   }
 }
 
-async function tryParse(url, tweaks, timeoutMs, overrides, quiet) {
+export async function tryParse(url, tweaks, timeoutMs, overrides, quiet) {
   const opts = buildOptions(url, timeoutMs, overrides)
   applyDomainTweaks(url, opts, tweaks, { retries: 0 })
   const socket = makeSocket(quiet)
   return await parseArticle(opts, socket)
 }
 
-function classifyError(msg) {
+export function classifyError(msg) {
   const s = String(msg || '').toLowerCase()
   if (/timeout/.test(s)) return 'timeout'
   if (/403|forbidden/.test(s)) return 'forbidden'
@@ -160,7 +160,7 @@ function classifyError(msg) {
   return 'generic'
 }
 
-async function runOne(url, tweaks, timeoutMs = 20000, quiet = true) {
+export async function runOne(url, tweaks, timeoutMs = 20000, quiet = true) {
   const t0 = now()
   const rewritten = applyUrlRewrites(url, tweaks) || url
   // Pre-skip known problematic URLs
@@ -380,4 +380,6 @@ async function main() {
   logger.info(`[sample] wrote host breakdown to ${hostCsv}`)
 }
 
-main().catch(err => { logger.error(err); process.exit(1) })
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main().catch(err => { logger.error(err); process.exit(1) })
+}

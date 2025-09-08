@@ -6,20 +6,20 @@ import skippedResources from '../scripts/inc/skipResources.js'
 import { applyDomainTweaks, loadTweaksConfig, applyUrlRewrites } from './inc/applyDomainTweaks.js'
 import logger from '../controllers/logger.js'
 
-function makeBar(pct) {
+export function makeBar(pct) {
   const w = Math.max(5, Math.min(100, Number(process.env.BATCH_BAR_WIDTH || 16)))
   const filled = Math.max(0, Math.min(w, Math.round((pct / 100) * w)))
   const empty = w - filled
   return `[${'#'.repeat(filled)}${'.'.repeat(empty)}]`
 }
 
-function readUrls(filePath) {
+export function readUrls(filePath) {
   if (!fs.existsSync(filePath)) throw new Error(`URLs file not found: ${filePath}`)
   const text = fs.readFileSync(filePath, 'utf8')
   return text.split(/\r?\n/).map(s => s.trim()).filter(Boolean)
 }
 
-async function run(urlsFile, outCsv = 'candidates_with_url.csv', start = 0, limit = null, concurrency = 1) {
+export async function run(urlsFile, outCsv = 'candidates_with_url.csv', start = 0, limit = null, concurrency = 1) {
   const all = readUrls(urlsFile)
   const end = limit ? Math.min(all.length, start + Number(limit)) : all.length
   const urls = all.slice(Number(start) || 0, end)
@@ -171,9 +171,11 @@ async function run(urlsFile, outCsv = 'candidates_with_url.csv', start = 0, limi
   } catch {}
 }
 
-const urlsFile = process.argv[2] || path.resolve('scripts/data/urls.txt')
-const outCsv = process.argv[3] || path.resolve('scripts/data/candidates_with_url.csv')
-const start = process.argv[4] || 0
-const limit = process.argv[5] || null
-const concurrency = process.argv[6] || process.env.BATCH_CONCURRENCY || 1
-run(urlsFile, outCsv, start, limit, concurrency).catch(err => { logger.error(err); throw err })
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const urlsFile = process.argv[2] || path.resolve('scripts/data/urls.txt')
+  const outCsv = process.argv[3] || path.resolve('scripts/data/candidates_with_url.csv')
+  const start = process.argv[4] || 0
+  const limit = process.argv[5] || null
+  const concurrency = process.argv[6] || process.env.BATCH_CONCURRENCY || 1
+  run(urlsFile, outCsv, start, limit, concurrency).catch(err => { logger.error(err); throw err })
+}

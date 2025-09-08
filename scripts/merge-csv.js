@@ -2,23 +2,16 @@ import fs from 'fs'
 import path from 'path'
 import logger from '../controllers/logger.js'
 
-function readLines(file) {
+export function readLines(file) {
   const text = fs.readFileSync(file, 'utf8')
   return text.split(/\r?\n/)
 }
 
-function writeLines(file, lines) {
+export function writeLines(file, lines) {
   fs.writeFileSync(file, lines.join('\n') + '\n', 'utf8')
 }
 
-async function main() {
-  const args = process.argv.slice(2)
-  if (args.length < 2) {
-    throw new Error('Usage: node scripts/merge-csv.js output.csv input1.csv [input2.csv ...]')
-  }
-  const outFile = args[0]
-  const inFiles = args.slice(1)
-
+export function mergeCsv(outFile, inFiles) {
   let header = null
   const rows = new Set()
 
@@ -47,5 +40,18 @@ async function main() {
   logger.info(`Merged ${rows.size} unique rows into ${outFile}`)
 }
 
-main().catch(err => { logger.error(err); throw err })
+async function main() {
+  const args = process.argv.slice(2)
+  if (args.length < 2) {
+    throw new Error('Usage: node scripts/merge-csv.js output.csv input1.csv [input2.csv ...]')
+  }
+  const outFile = args[0]
+  const inFiles = args.slice(1)
+
+  mergeCsv(outFile, inFiles)
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main().catch(err => { logger.error(err); throw err })
+}
 
