@@ -1,12 +1,12 @@
 {
   "name": "horseman-article-parser",
   "version": "1.0.0",
-  "description": "Web Page Inspection Tool. Sentiment Analysis, Keyword Extraction, Named Entity Recognition \u0026 Spell Check",
+  "description": "Web Page Inspection Tool. Sentiment Analysis, Keyword Extraction, Named Entity Recognition & Spell Check",
   "type": "module",
   "main": "index.js",
   "scripts": {
     "lint": "node ./node_modules/eslint/bin/eslint.js . --ext .json --ext .js --fix",
-    "test": "NODE_ENV=test node --test",
+    "test": "cross-env NODE_ENV=test node --test",
     "merge:csv": "node scripts/merge-csv.js scripts/data/merged.csv scripts/data/candidates_with_url.csv",
     "curated:urls": "node scripts/fetch-curated-urls.js 1000",
     "batch:crawl": "node scripts/batch-crawl.js scripts/data/urls.txt scripts/data/candidates_with_url.csv",
@@ -28,10 +28,10 @@
   "homepage": "https://github.com/fmacpro/horseman-article-parser#readme",
   "dependencies": {
     "absolutify": "^0.1.0",
-    "fast-xml-parser": "^4.4.1",
     "clean-html": "^2.0.1",
     "compromise": "^14.14.4",
     "dictionary-en-gb": "^3.0.0",
+    "fast-xml-parser": "^4.4.1",
     "html-to-text": "^9.0.5",
     "jquery": "^3.6.0",
     "jsdom": "^26.1.0",
@@ -51,6 +51,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
     "@eslint/js": "^9.34.0",
+    "cross-env": "^10.0.0",
     "eslint": "^9.34.0",
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-json": "^4.0.1",
@@ -62,4 +63,3 @@
     "puppeteer-extra-plugin-user-data-dir": "file:overrides/puppeteer-extra-plugin-user-data-dir"
   }
 }
-
