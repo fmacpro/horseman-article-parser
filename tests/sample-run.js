@@ -232,11 +232,29 @@ async function main() {
 
   const results = []
   let idx = 0
+  const started = new Set()
+
+  // Progress ticker
+  const t0 = now()
+  console.log(`[sample] starting - total: ${urls.length} concurrency: ${concurrency} timeout: ${timeoutMs}ms`)
+  const tick = setInterval(() => {
+    try {
+      const done = results.filter(r => r != null).length
+      const ok = results.filter(r => r && r.ok).length
+      const err = results.filter(r => r && !r.ok).length
+      const inflight = Math.max(0, Math.min(concurrency, urls.length - done))
+      const pct = urls.length ? Math.round((done / urls.length) * 100) : 0
+      const elapsed = Math.round((now() - t0) / 1000)
+      console.log(`[progress] ${pct}% | ${done}/${urls.length} done | ok:${ok} err:${err} inflight:${inflight} | ${elapsed}s elapsed`)
+    } catch {}
+  }, Number(process.env.SAMPLE_TICK_MS || 2000))
   async function worker() {
     while (true) {
       const i = idx++
       if (i >= urls.length) return
       const u = urls[i]
+      started.add(i)
+      console.log(`[sample] parsing ${i+1}/${urls.length} - ${u}`)
       const res = await runOne(u, tweaks, timeoutMs, quiet)
       results[i] = res
       const tag = res.ok ? 'OK' : 'ERR'
@@ -250,6 +268,7 @@ async function main() {
 
   const workers = Array.from({ length: Math.max(1, concurrency) }, worker)
   await Promise.all(workers)
+  clearInterval(tick)
 
   const ok = results.filter(r => r && r.ok)
   const err = results.filter(r => r && !r.ok)
