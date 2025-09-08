@@ -62,8 +62,8 @@ const options = {
 
 // Optionally load reranker weights from weights.json
 try {
-  if (fs.existsSync('weights.json')) {
-    const weights = JSON.parse(fs.readFileSync('weights.json', 'utf8'))
+  if (fs.existsSync('../weights.json')) {
+    const weights = JSON.parse(fs.readFileSync('../weights.json', 'utf8'))
     options.contentDetection = options.contentDetection || {}
     options.contentDetection.reranker = { enabled: true, weights }
   }
