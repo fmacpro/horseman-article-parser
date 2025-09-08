@@ -264,13 +264,7 @@ const articleParser = async function (browser, options, socket) {
     // Adaptive navigation with fallbacks to reduce need for per-domain tweaks
     async function navigateWithFallback(url) {
       const headersBackup = options.puppeteer && options.puppeteer.extraHTTPHeaders ? { ...options.puppeteer.extraHTTPHeaders } : {}
-      const tryGoto = async (gotoOpts) => {
-        try {
-          return await page.goto(url, gotoOpts)
-        } catch (err) {
-          throw err
-        }
-      }
+      const tryGoto = async (gotoOpts) => page.goto(url, gotoOpts)
 
       let response
       try {

@@ -1,4 +1,4 @@
-/* eslint-disable n/no-unsupported-features/node-builtins */
+ 
 import fs from 'fs'
 import path from 'path'
 import { XMLParser } from 'fast-xml-parser'
