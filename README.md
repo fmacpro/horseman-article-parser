@@ -7,8 +7,9 @@ Horseman is a focused article scraping module for the open web. It loads pages (
 - [Prerequisites](#prerequisites)
 - [Install](#install)
 - [Usage](#usage)
-- [Usage Example](#usage-example)
+- [Async/Await Example](#asyncawait-example)
 - [Options](#options)
+- [Development](#development)
 - [Dependencies](#dependencies)
 - [Dev Dependencies](#dev-dependencies)
 - [License](#license)
@@ -34,49 +35,6 @@ npm install horseman-article-parser --save
 | socket  | <code>Object</code> | the optional socket |
 
 **Returns**: <code>Object</code> - article parser results object
-
-### Usage Example
-
-```js
-import { parseArticle } from 'horseman-article-parser';
-
-const options = {
-  url: "https://www.theguardian.com/politics/2018/sep/24/theresa-may-calls-for-immigration-based-on-skills-and-wealth",
-  enabled: ['lighthouse', 'screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords']
-}
-
-parseArticle(options)
-  .then(function (article) {
-
-    var response = {
-      title: article.title.text,
-      excerpt: article.excerpt,
-      metadescription: article.meta.description.text,
-      url: article.url,
-      sentiment: { score: article.sentiment.score, comparative: article.sentiment.comparative },
-      keyphrases: article.processed.keyphrases,
-      keywords: article.processed.keywords,
-      people: article.people,
-      orgs: article.orgs,
-      places: article.places,
-      text: {
-        raw: article.processed.text.raw,
-        formatted: article.processed.text.formatted,
-        html: article.processed.text.html
-      },
-      spelling: article.spelling,
-      meta: article.meta,
-      links: article.links,
-      lighthouse: article.lighthouse
-    }
-
-    console.log(response);
-  })
-  .catch(function (error) {
-    console.log(error.message)
-    console.log(error.stack);
-  })
-```
 
 #### Async/Await Example
 
