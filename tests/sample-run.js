@@ -260,7 +260,8 @@ async function main() {
   // Progress ticker
   const t0 = now()
   console.log(`[sample] starting - total: ${urls.length} concurrency: ${concurrency} timeout: ${timeoutMs}ms`)
-  let prevLine = ''
+  const progressOnly = !!process.env.SAMPLE_PROGRESS_ONLY
+  let prevPct = -1
   const tick = setInterval(() => {
     try {
       const done = results.filter(r => r != null).length
@@ -270,10 +271,9 @@ async function main() {
       const inflight = Math.max(0, Math.min(concurrency, urls.length - done))
       const pct = urls.length ? Math.round((done / urls.length) * 100) : 0
       const elapsed = Math.round((now() - t0) / 1000)
-      const line = `[progress] ${pct}% | ${done}/${urls.length} done | ok:${ok} skip:${skips} err:${err} inflight:${inflight} | ${elapsed}s elapsed`
-      if (line !== prevLine) {
-        console.log(line)
-        prevLine = line
+      if (pct !== prevPct) {
+        console.log(`[progress] ${pct}% | ${done}/${urls.length} done | ok:${ok} skip:${skips} err:${err} inflight:${inflight} | ${elapsed}s elapsed`)
+        prevPct = pct
       }
     } catch {}
   }, Number(process.env.SAMPLE_TICK_MS || 2000))
@@ -283,15 +283,17 @@ async function main() {
       if (i >= urls.length) return
       const u = urls[i]
       started.add(i)
-      console.log(`[sample] parsing ${i+1}/${urls.length} - ${u}`)
+      if (!progressOnly) console.log(`[sample] parsing ${i+1}/${urls.length} - ${u}`)
       const res = await runOne(u, tweaks, timeoutMs, quiet)
       results[i] = res
       const tag = res.ok ? 'OK' : (res?.kind === 'skip' ? 'SKIP' : 'ERR')
-      if (quiet) {
-        if (tag === 'ERR') console.log(`[sample] Failed: ${u} - ${res.error}`)
-        if (tag === 'SKIP') console.log(`[sample] Skipped: ${u} - ${res.error || 'skip'}`)
-      } else {
-        console.log(`[sample] ${tag} ${i+1}/${urls.length} url: ${u}`)
+      if (!progressOnly) {
+        if (quiet) {
+          if (tag === 'ERR') console.log(`[sample] Failed: ${u} - ${res.error}`)
+          if (tag === 'SKIP') console.log(`[sample] Skipped: ${u} - ${res.error || 'skip'}`)
+        } else {
+          console.log(`[sample] ${tag} ${i+1}/${urls.length} url: ${u}`)
+        }
       }
     }
   }
