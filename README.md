@@ -63,19 +63,6 @@ $env:UNIQUE_HOSTS=1; $env:SAMPLE_PROGRESS_ONLY=1; $env:SAMPLE_TICK_MS=1000; \
   node tests/sample-run.js 100 8 scripts/data/urls.txt 25000
 ```
 
-Parameters
-
-- Env vars:
-  - `UNIQUE_HOSTS=1`: ensure one URL per host (diverse sample)
-  - `SAMPLE_PROGRESS_ONLY=1`: hide per-URL logs; show compact progress bar + summary
-  - `SAMPLE_TICK_MS=1000`: progress update cadence in ms
-- Positional args (for `tests/sample-run.js`):
-  - `100`: max URLs to process
-  - `8`: concurrency level
-  - `scripts/data/urls.txt`: input list of URLs
-  - `25000`: per-URL timeout in ms
-- Outputs: JSON/CSV summaries under `tests/results/`.
-
 ## Docs
 
 Generate API docs into APIDOC.md from JSDoc comments.
