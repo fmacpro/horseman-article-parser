@@ -54,8 +54,6 @@ $env:UNIQUE_HOSTS=1; $env:SAMPLE_PROGRESS_ONLY=1; $env:SAMPLE_TICK_MS=1000; \
   node tests/sample-run.js 100 8 scripts/data/urls.txt 25000
 ```
 
-Notes
-
 ## Docs
 
 Generate API docs into APIDOC.md from JSDoc comments.
@@ -65,10 +63,6 @@ npm run docs
 ```
 
 
-- `UNIQUE_HOSTS=1`: ensures one URL per host (diverse sample).
-- `SAMPLE_PROGRESS_ONLY=1`: hides per-URL logs; shows a compact progress bar and final summary.
-- `SAMPLE_TICK_MS`: progress update cadence in milliseconds (e.g., 1000).
-- Outputs: per-run summaries `sample_summary_*.json|.csv` and host breakdown `sample_hosts_*.csv` in `tests/results/`.
 
 ### Usage
 
@@ -344,6 +338,13 @@ This allows us to match - for example - names which are not in the base compromi
 
 Check out the compromise plugin [docs](https://observablehq.com/@spencermountain/compromise-plugins) for more info.
 
+## Notes
+
+- UNIQUE_HOSTS=1: ensures one URL per host (diverse sample).
+- SAMPLE_PROGRESS_ONLY=1: hides per-URL logs; shows a compact progress bar and final summary.
+- SAMPLE_TICK_MS: progress update cadence in milliseconds (e.g., 1000).
+- Outputs: per-run summaries sample_summary_*.json|.csv and host breakdown sample_hosts_*.csv in 	ests/results/.
+
 ## Development
 
 Please feel free to fork the repo or open pull requests to the development branch. I've used [eslint](https://eslint.org/) for linting.
@@ -524,6 +525,7 @@ npm run docs
 This project is licensed under the GNU GENERAL PUBLIC LICENSE Version 3 - see the [LICENSE](LICENSE) file for details
 
 ## Notes
+
 
 
 
