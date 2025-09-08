@@ -61,8 +61,8 @@ typings/
 .env
 
 # test results
-/tests/testresults.json
-tests/results/
+scripts/results/*
+!scripts/results/.gitkeep
 
 # Script data outputs
 scripts/data/*

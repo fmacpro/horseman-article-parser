@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { parseArticle } from '../index.js'
-import { applyDomainTweaks, loadTweaksConfig, applyUrlRewrites } from '../scripts/inc/applyDomainTweaks.js'
+import { applyDomainTweaks, loadTweaksConfig, applyUrlRewrites } from './inc/applyDomainTweaks.js'
 import logger from '../controllers/logger.js'
 
 // Lightweight HTTP helpers using global fetch (Node >=18)
@@ -322,7 +322,7 @@ async function main() {
   } catch {}
   logger.info(`[sample] complete - total: ${results.length} ok: ${ok.length} skip: ${skips.length} err: ${err.length}`)
 
-  const outDir = path.resolve('tests/results')
+  const outDir = path.resolve('scripts/results')
   try { fs.mkdirSync(outDir, { recursive: true }) } catch {}
   const ts = new Date()
   const pad = (n) => String(n).padStart(2, '0')

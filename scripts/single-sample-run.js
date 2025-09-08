@@ -1,5 +1,5 @@
 import { parseArticle } from '../index.js'
-import { applyDomainTweaks, loadTweaksConfig, applyUrlRewrites } from '../scripts/inc/applyDomainTweaks.js'
+import { applyDomainTweaks, loadTweaksConfig, applyUrlRewrites } from './inc/applyDomainTweaks.js'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import fs from 'fs'
@@ -14,7 +14,7 @@ const testPlugin = function (Doc, world) {
   })
 }
 
-// Allow passing a URL via CLI: `node tests/test.js <url>`
+// Allow passing a URL via CLI: `node scripts/single-sample-run.js <url>`
 // With npm: `npm run test -- <url>`
 const inputUrl = process.argv[2] || null
 
@@ -134,27 +134,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
     const json = JSON.stringify(response, null, 4)
 
-    // Write results into tests/results with per-run filename including URL and timestamp
+    // Write results into scripts/results with a fixed filename
     const resultsDir = path.join(__dirname, 'results')
     await fs.promises.mkdir(resultsDir, { recursive: true })
-
-    const ts = new Date()
-    const pad = (n) => String(n).padStart(2, '0')
-    const dd = pad(ts.getDate())
-    const mm = pad(ts.getMonth() + 1)
-    const yy = String(ts.getFullYear()).slice(-2)
-    const hh = pad(ts.getHours())
-    const mi = pad(ts.getMinutes())
-    const ss = pad(ts.getSeconds())
-    const timestamp = `${dd}-${mm}-${yy}-${hh}-${mi}-${ss}`
-    const urlForName = (response.url || options.url || 'unknown')
-    const sanitize = (s) => String(s)
-      .replace(/^https?:\/\//i, '')
-      .replace(/[^A-Za-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .slice(0, 120)
-    const fileName = `testresults_${timestamp}__${sanitize(urlForName)}.json`
-    const outPath = path.join(resultsDir, fileName)
+    const outPath = path.join(resultsDir, 'single-sample-run-result.json')
 
     await fs.promises.writeFile(outPath, json, 'utf8')
     logger.info('Results written to', outPath)
