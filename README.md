@@ -523,13 +523,3 @@ npm run docs
 ## License
 
 This project is licensed under the GNU GENERAL PUBLIC LICENSE Version 3 - see the [LICENSE](LICENSE) file for details
-
-## Notes
-
-
-
-
-
-
-
-
