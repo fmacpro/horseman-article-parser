@@ -67,3 +67,6 @@ tests/results/
 # Script data outputs
 scripts/data/*
 !scripts/data/feeds.txt
+
+# Temp test URL files
+tests/tmp_urls_*.txt
