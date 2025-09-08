@@ -70,3 +70,6 @@ scripts/data/*
 
 # Temp test URL files
 tests/tmp_urls_*.txt
+
+# Weights file
+weights.json
