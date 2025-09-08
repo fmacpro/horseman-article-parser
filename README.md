@@ -1,6 +1,6 @@
 ﻿# Horseman Article Parser
 
-A web page article parser which returns an object containing the article's formatted text and other attributes including sentiment, keyphrases, people, places, organisations, spelling suggestions, in-article links, meta data & lighthouse audit results.
+Horseman is a focused article scraping module for the open web. It loads pages (dynamic or AMP), detects the main story body, and returns clean, structured content ready for downstream use. Alongside text and title, it includes in-article links, metadata, sentiment, keywords/keyphrases, named entities, optional spelling suggestions, site icon, and Lighthouse signals. It also copes with live blogs, applies simple per-domain tweaks (headers/cookies/goto), and uses Puppeteer + stealth to reduce blocking.
 
 ### Prerequisites
 
