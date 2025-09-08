@@ -261,7 +261,7 @@ async function main() {
   const t0 = now()
   console.log(`[sample] starting - total: ${urls.length} concurrency: ${concurrency} timeout: ${timeoutMs}ms`)
   const progressOnly = !!process.env.SAMPLE_PROGRESS_ONLY
-  const barWidth = Number(process.env.SAMPLE_BAR_WIDTH || 20)
+  const barWidth = Number(process.env.SAMPLE_BAR_WIDTH || 16)
   const makeBar = (pct) => {
     const w = Math.max(5, Math.min(100, Math.floor(barWidth)))
     const filled = Math.max(0, Math.min(w, Math.round((pct / 100) * w)))
@@ -313,6 +313,12 @@ async function main() {
   const ok = results.filter(r => r && r.ok)
   const skips = results.filter(r => r && !r.ok && r.kind === 'skip')
   const err = results.filter(r => r && !r.ok && r.kind !== 'skip')
+  try {
+    const pct = 100
+    const bar = makeBar(pct)
+    const elapsed = Math.round((now() - t0) / 1000)
+    console.log(`[progress] ${bar} ${pct}% | ${urls.length}/${urls.length} done | ok:${ok.length} skip:${skips.length} err:${err.length} inflight:0 | ${elapsed}s elapsed`)
+  } catch {}
   console.log(`[sample] complete - total: ${results.length} ok: ${ok.length} skip: ${skips.length} err: ${err.length}`)
 
   const outDir = path.resolve('tests/results')
