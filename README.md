@@ -74,7 +74,7 @@ See [horseman-article-parser-ui](https://github.com/fmacpro/horseman-article-par
 
 The options below are set by default
 
-```
+```js
 var options = {
   // puppeteer options (https://github.com/GoogleChrome/puppeteer)
   puppeteer: {
@@ -149,7 +149,7 @@ var options = {
 
 At a minimum you should pass a url
 
-```
+```js
 var options = {
   url: "https://www.theguardian.com/politics/2018/sep/24/theresa-may-calls-for-immigration-based-on-skills-and-wealth"
 }
@@ -157,7 +157,7 @@ var options = {
 
 If you want to enable the advanced features you should pass the following
 
-```
+```js
 var options = {
   url: "https://www.theguardian.com/politics/2018/sep/24/theresa-may-calls-for-immigration-based-on-skills-and-wealth",
   enabled: ['lighthouse', 'screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords']
@@ -167,7 +167,7 @@ var options = {
 You may pass rules for returning an articles title & contents. This is useful in a case
 where the parser is unable to return the desired title or content e.g.
 
-```
+```js
 rules: [
   {
     host: 'www.bbc.co.uk',
@@ -191,7 +191,7 @@ rules: [
 
 If you want to pass cookies to puppeteer use the following
 
-```
+```js
 var options = {
   puppeteer: {
     cookies: [{ name: 'cookie1', value: 'val1', domain: '.domain1' },{ name: 'cookie2', value: 'val2', domain: '.domain2' }]
@@ -201,7 +201,7 @@ var options = {
 
 To strip tags before processing use the following
 
-```
+```js
 var options = {
   striptags: ['.something', '#somethingelse']
 }
@@ -209,7 +209,7 @@ var options = {
 
 If you need to dismiss any popups e.g. a privacy popup use the following
 
-```
+```js
 var options = {
   clickelements: ['#button1', '#button2']
 }
@@ -217,7 +217,7 @@ var options = {
 
 there are some additional "complex" options available
 
-```
+```js
 var options = {
 
   // array of html elements to stip before analysis
@@ -256,7 +256,7 @@ var options = {
 Compromise is the natural language processor that allows `horseman-article-parser` to return
 topics e.g. people, places & organisations. You can now pass custom plugins to compromise to modify or add to the word lists like so:
 
-```
+```js
 /** add some names
 let testPlugin = function(Doc, world) {
   world.addWords({
@@ -294,7 +294,7 @@ The detector is always enabled and uses a structured-data-first strategy, fallin
 - Title detection: Chooses from structured `headline`, `og:title`/`twitter:title`, first `<h1>`, or `document.title`, with normalization.
 
 You can optionally tune thresholds under `options.contentDetection`:
-```
+```js
 contentDetection: {
   minLength: 400,
   maxLinkDensity: 0.5
@@ -483,7 +483,7 @@ Domain-specific navigation and header tweaks can be configured without changing 
   - `rules`: per-domain behavior overrides (disable interception, adjust `goto` wait/timeout, add headers, set retries).
 
 Example:
-```
+```js
 {
   "rewrites": [
     { "type": "prefix", "from": "https://go.theregister.com/feed/www.theregister.com", "to": "https://www.theregister.com" }
