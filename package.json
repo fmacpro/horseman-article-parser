@@ -6,7 +6,7 @@
   "main": "index.js",
   "scripts": {
     "lint": "node ./node_modules/eslint/bin/eslint.js . --ext .json --ext .js --fix",
-    "test": "node --test",
+    "test": "NODE_ENV=test node --test",
     "merge:csv": "node scripts/merge-csv.js scripts/data/merged.csv scripts/data/candidates_with_url.csv",
     "curated:urls": "node scripts/fetch-curated-urls.js 1000",
     "batch:crawl": "node scripts/batch-crawl.js scripts/data/urls.txt scripts/data/candidates_with_url.csv",

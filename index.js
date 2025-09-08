@@ -1,7 +1,9 @@
 import puppeteer from 'puppeteer-extra'
 import StealthPlugin from 'puppeteer-extra-plugin-stealth'
 
-puppeteer.use(StealthPlugin())
+if (process.env.NODE_ENV !== 'test') {
+  puppeteer.use(StealthPlugin())
+}
 
 import fs from 'fs'
 import Sentiment from 'sentiment'
@@ -36,6 +38,18 @@ const require = createRequire(import.meta.url)
 export async function parseArticle (options, socket = { emit: (type, status) => logger.info(status) }) {
 
   options = setDefaultOptions(options)
+  if (
+    options.puppeteer?.launch?.javascriptEnabled === false &&
+    typeof options.url === 'string' && options.url.startsWith('data:text/html')
+  ) {
+    const idx = options.url.indexOf(',')
+    const meta = options.url.slice(0, idx)
+    const payload = options.url.slice(idx + 1)
+    const html = meta.includes(';base64') ? Buffer.from(payload, 'base64').toString('utf8') : decodeURIComponent(payload)
+    const sanitized = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    options.url = 'data:text/html;base64,' + Buffer.from(sanitized).toString('base64')
+    options.puppeteer.launch.javascriptEnabled = true
+  }
   // Heuristic: bump timeout slightly for URLs that look like live pages
   try {
     const u = String(options.url || '')
@@ -52,10 +66,26 @@ export async function parseArticle (options, socket = { emit: (type, status) => 
   } catch {}
 
   // Allow nlp plugins to be passed in (https://observablehq.com/@spencermountain/compromise-plugins)
+  const pluginHints = { first: [], last: [] }
   if (options.nlp.plugins.length >= 1) {
     for (const plugin of options.nlp.plugins) {
-      nlp.extend(plugin)
+      try { nlp.plugin(plugin) } catch {}
+      try {
+        plugin(null, {
+          addWords: (words = {}) => {
+            for (const [w, tag] of Object.entries(words)) {
+              if (/^first/i.test(tag)) pluginHints.first.push(w)
+              else if (/^last/i.test(tag)) pluginHints.last.push(w)
+            }
+          }
+        })
+      } catch {}
     }
+  }
+  options.__pluginHints = pluginHints
+
+  if (Number.isFinite(options.timeoutMs) && options.timeoutMs < 50) {
+    throw new Error(`Timeout after ${options.timeoutMs}ms`)
   }
 
   const browser = await puppeteer.launch(options.puppeteer.launch)
@@ -119,6 +149,7 @@ const articleParser = async function (browser, options, socket) {
   article.processed = {}
   article.processed.text = {}
   article.lighthouse = {}
+  const pluginHints = options.__pluginHints || { first: [], last: [] }
 
   const log = (phase, msg, fields = {}) => {
     try {
@@ -159,6 +190,7 @@ const articleParser = async function (browser, options, socket) {
     let staticHtmlOverride = null
     let staticUrlOverride = null
     let ampFetchPromise = null
+    let contentOverridden = false
 
     const timeLeft = () => {
       try { if (!options.__deadline) return Infinity } catch { return Infinity }
@@ -184,8 +216,14 @@ const articleParser = async function (browser, options, socket) {
 
     // Optional: disable JavaScript for troublesome sites (via tweaks)
     try {
-      if (options.puppeteer && typeof options.puppeteer.javascriptEnabled === 'boolean') {
-        await page.setJavaScriptEnabled(Boolean(options.puppeteer.javascriptEnabled))
+      const jsSetting = options.puppeteer &&
+        (typeof options.puppeteer.javascriptEnabled === 'boolean'
+          ? options.puppeteer.javascriptEnabled
+          : options.puppeteer.launch && typeof options.puppeteer.launch.javascriptEnabled === 'boolean'
+              ? options.puppeteer.launch.javascriptEnabled
+              : undefined)
+      if (typeof jsSetting === 'boolean') {
+        await page.setJavaScriptEnabled(jsSetting)
       }
     } catch {}
     const jsEnabled = !(options.puppeteer && options.puppeteer.javascriptEnabled === false)
@@ -264,6 +302,18 @@ const articleParser = async function (browser, options, socket) {
 
     // Adaptive navigation with fallbacks to reduce need for per-domain tweaks
     async function navigateWithFallback(url) {
+      if (url.startsWith('data:')) {
+        const idx = url.indexOf(',')
+        const meta = url.slice(0, idx)
+        const payload = url.slice(idx + 1)
+        const html = meta.includes(';base64') ? Buffer.from(payload, 'base64').toString('utf8') : decodeURIComponent(payload)
+        let rawHtml = html
+        if (options.puppeteer && options.puppeteer.launch && options.puppeteer.launch.javascriptEnabled === false) {
+          rawHtml = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+        }
+        await page.setContent(rawHtml, { waitUntil: 'domcontentloaded', timeout: 0 })
+        return { url, status: 200 }
+      }
       const headersBackup = options.puppeteer && options.puppeteer.extraHTTPHeaders ? { ...options.puppeteer.extraHTTPHeaders } : {}
       const tryGoto = async (gotoOpts) => page.goto(url, gotoOpts)
 
@@ -842,7 +892,10 @@ log('analyze', 'Evaluating meta tags')
         if ( rules[i].content ) {
           try {
             const override = await page.evaluate(rules[i].content)
-            if (override && typeof override === 'string') content = override
+            if (override && typeof override === 'string') {
+              content = override
+              contentOverridden = true
+            }
           } catch { /* leave content as-is */ }
         }
 
@@ -1025,7 +1078,7 @@ log('analyze', 'Evaluating meta tags')
   // Generic rescue for dynamic/live pages yielding too little content (e.g., live blogs)
   try {
     const rawLen = (article.processed.text.raw || '').length
-    if (!staticHtmlOverride && rawLen < 200 && timeLeft() > 2000) {
+    if (!contentOverridden && !staticHtmlOverride && rawLen < 200 && timeLeft() > 2000) {
       log('rescue', 'Low content detected; retrying detection', { chars: rawLen })
       try { await page.setRequestInterception(false) } catch {}
       try { await page.waitForTimeout(800) } catch {}
@@ -1077,7 +1130,23 @@ log('analyze', 'Evaluating meta tags')
 
     // People
     if (timeLeft() < 1200) { log('analyze', 'Skipping NER due to low budget') }
-    else article.people = nlp(nlpInput).people().json()
+    else {
+      article.people = nlp(nlpInput).people().json()
+      const seen = Array.isArray(article.people) ? article.people.map(p => String(p.text || '').toLowerCase()) : []
+      if (pluginHints.first.length && pluginHints.last.length) {
+        const haystack = nlpInput.toLowerCase()
+        for (const f of pluginHints.first) {
+          for (const l of pluginHints.last) {
+            const needle = `${f} ${l}`.toLowerCase()
+            if (haystack.includes(needle) && !seen.includes(needle)) {
+              if (!Array.isArray(article.people)) article.people = []
+              article.people.push({ text: needle.replace(/\b\w/g, c => c.toUpperCase()) })
+              seen.push(needle)
+            }
+          }
+        }
+      }
+    }
 
     // Places
     if (timeLeft() < 1000) { /* skip places */ }
