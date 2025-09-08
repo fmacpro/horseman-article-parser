@@ -331,21 +331,21 @@ Run quick tests and batches from this repo without writing code.
 
 ### Commands
 
+  - merge:csv: Merge CSVs (utility for dataset building).
+    - `npm run merge:csv`
+  - curated:urls: Fetch curated URLs from feeds/sitemaps into `scripts/data/urls.txt`.
+    - `npm run curated:urls` or `node scripts/fetch-curated-urls.js <count>`
+  - batch:crawl: Crawl URLs and dump content-candidate features to CSV.
+    - `npm run batch:crawl -- <urlsFile?> <outCsv?>`
+  - sample:prepare: Fetch a smaller curated set (default 200) for quick sampling.
+    - `npm run sample:prepare`
  - sample:single: Run a single URL parse and write JSON to `tests/results/`.
    - `npm run sample:single -- "https://example.com/article"`
  - sample:batch: Run the multi-URL sample with progress bar and summaries.
    - `npm run sample:batch -- <N> <concurrency> <urlsFile> <timeoutMs>`
    - Example: `npm run sample:batch -- 100 8 scripts/data/urls.txt 25000`
-- curated:urls: Fetch curated URLs from feeds/sitemaps into `scripts/data/urls.txt`.
-  - `npm run curated:urls` or `node scripts/fetch-curated-urls.js <count>`
-- sample:prepare: Fetch a smaller curated set (default 200) for quick sampling.
-  - `npm run sample:prepare`
-- batch:crawl: Crawl URLs and dump content-candidate features to CSV.
-  - `npm run batch:crawl -- <urlsFile?> <outCsv?>`
-- merge:csv: Merge CSVs (utility for dataset building).
-  - `npm run merge:csv`
 - docs: Generate API docs to `APIDOC.md`.
-  - `npm run docs`
+   - `npm run docs`
 
 ### Environment variables
 
