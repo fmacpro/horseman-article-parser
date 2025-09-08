@@ -18,6 +18,7 @@ import { setDefaultOptions, capitalizeFirstLetter } from './helpers.js'
 import keywordParser from './controllers/keywordParser.js'
 import lighthouseAnalysis from './controllers/lighthouse.js'
 import spellCheck from './controllers/spellCheck.js'
+import logger from './controllers/logger.js'
 
 const require = createRequire(import.meta.url)
 
@@ -31,7 +32,7 @@ const require = createRequire(import.meta.url)
  *
  */
 
-export async function parseArticle (options, socket = { emit: (type, status) => console.log(status) }) {
+export async function parseArticle (options, socket = { emit: (type, status) => logger.info(status) }) {
 
   options = setDefaultOptions(options)
   // Heuristic: bump timeout slightly for URLs that look like live pages

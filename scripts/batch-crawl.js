@@ -4,6 +4,7 @@ import { parseArticle } from '../index.js'
 import blockedResourceTypes from '../scripts/inc/blockResourceTypes.js'
 import skippedResources from '../scripts/inc/skipResources.js'
 import { applyDomainTweaks, loadTweaksConfig, applyUrlRewrites } from './inc/applyDomainTweaks.js'
+import logger from '../controllers/logger.js'
 
 function makeBar(pct) {
   const w = Math.max(5, Math.min(100, Number(process.env.BATCH_BAR_WIDTH || 16)))
@@ -33,7 +34,7 @@ async function run(urlsFile, outCsv = 'candidates_with_url.csv', start = 0, limi
   let startedCount = 0
 
   if (!progressOnly) {
-    console.log(`Crawling ${urls.length} URLs (slice ${start}-${end - 1}), dumping candidates to ${outCsv}${Number(concurrency) > 1 ? ` [concurrency=${concurrency}]` : ''}`)
+    logger.info(`Crawling ${urls.length} URLs (slice ${start}-${end - 1}), dumping candidates to ${outCsv}${Number(concurrency) > 1 ? ` [concurrency=${concurrency}]` : ''}`)
   }
 
   function normalizeForCrawl(u) {
@@ -132,7 +133,7 @@ async function run(urlsFile, outCsv = 'candidates_with_url.csv', start = 0, limi
       const elapsed = Math.round((Date.now() - t0) / 1000)
       const inflight = Math.max(0, Math.min(Number(concurrency) || 1, startedCount - processed))
       const bar = makeBar(pct)
-      console.log(`[batch] ${bar} ${pct}% | ${processed}/${urls.length} done | ok:${okCount} err:${errCount} inflight:${inflight} | ${elapsed}s elapsed`)
+      logger.info(`[batch] ${bar} ${pct}% | ${processed}/${urls.length} done | ok:${okCount} err:${errCount} inflight:${inflight} | ${elapsed}s elapsed`)
       prevPct = pct
     }
   }, tickMs)
@@ -166,7 +167,7 @@ async function run(urlsFile, outCsv = 'candidates_with_url.csv', start = 0, limi
     const pct = 100
     const bar = makeBar(pct)
     const elapsed = Math.round((Date.now() - t0) / 1000)
-    console.log(`[batch] ${bar} ${pct}% | ${urls.length}/${urls.length} done | ok:${okCount} err:${errCount} inflight:0 | ${elapsed}s elapsed`)
+    logger.info(`[batch] ${bar} ${pct}% | ${urls.length}/${urls.length} done | ok:${okCount} err:${errCount} inflight:0 | ${elapsed}s elapsed`)
   } catch {}
 }
 
@@ -175,4 +176,4 @@ const outCsv = process.argv[3] || path.resolve('scripts/data/candidates_with_url
 const start = process.argv[4] || 0
 const limit = process.argv[5] || null
 const concurrency = process.argv[6] || process.env.BATCH_CONCURRENCY || 1
-run(urlsFile, outCsv, start, limit, concurrency).catch(err => { console.error(err); throw err })
+run(urlsFile, outCsv, start, limit, concurrency).catch(err => { logger.error(err); throw err })

@@ -4,6 +4,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import fs from 'fs'
 import assert from 'assert'
+import logger from '../controllers/logger.js'
 
 /** add some names | https://observablehq.com/@spencermountain/compromise-plugins */
 const testPlugin = function (Doc, world) {
@@ -156,10 +157,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
     const outPath = path.join(resultsDir, fileName)
 
     await fs.promises.writeFile(outPath, json, 'utf8')
-    console.log('Results written to', outPath)
+    logger.info('Results written to', outPath)
   } catch (error) {
-    console.error(error.message)
-    console.error(error.stack)
+    logger.error(error.message)
+    logger.error(error.stack)
     throw error
   }
 })()

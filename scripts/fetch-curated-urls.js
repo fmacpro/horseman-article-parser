@@ -2,6 +2,7 @@
 import fs from 'fs'
 import path from 'path'
 import { XMLParser } from 'fast-xml-parser'
+import logger, { createLogger } from '../controllers/logger.js'
 
 // Reads newline-delimited feed URLs from a text file.
 // - ignores blank lines and lines starting with '#'
@@ -176,6 +177,8 @@ async function collect(count, feeds) {
   const FEED_CONCURRENCY = Number(process.env.FEED_CONCURRENCY || 6)
   const FEED_TIMEOUT_MS = Number(process.env.FEED_TIMEOUT_MS || 12000)
   const progressOnly = !!process.env.FEED_PROGRESS_ONLY
+  const progressLogger = createLogger({ quiet: !!process.env.FETCH_QUIET })
+  const detailLogger = createLogger({ quiet: !!process.env.FETCH_QUIET || progressOnly })
   const start = Date.now()
   const perFeed = new Array(feeds.length)
   let processed = 0
@@ -183,8 +186,7 @@ async function collect(count, feeds) {
   let failed = 0
   let nextIndex = 0
   const started = new Set()
-  const log = (...args) => { if (!process.env.FETCH_QUIET && !progressOnly) { try { console.log(...args) } catch {} } }
-  console.log(`[feeds] starting - total: ${feeds.length} concurrency: ${FEED_CONCURRENCY} timeout: ${FEED_TIMEOUT_MS}ms`)
+  progressLogger.info(`[feeds] starting - total: ${feeds.length} concurrency: ${FEED_CONCURRENCY} timeout: ${FEED_TIMEOUT_MS}ms`)
 
   async function worker() {
     while (true) {
@@ -202,11 +204,11 @@ async function collect(count, feeds) {
           .filter(keepLikelyArticles)
         perFeed[i] = uniq(links)
         succeeded++
-        log(`[feeds] OK ${i + 1}/${feeds.length} - ${looksSitemap ? 'sitemap' : 'rss'} items:${perFeed[i].length}`)
+        detailLogger.info(`[feeds] OK ${i + 1}/${feeds.length} - ${looksSitemap ? 'sitemap' : 'rss'} items:${perFeed[i].length}`)
       } catch (err) {
         failed++
         perFeed[i] = []
-        log(`[feeds] ERR ${i + 1}/${feeds.length} - ${err?.message || err}`)
+        detailLogger.warn(`[feeds] ERR ${i + 1}/${feeds.length} - ${err?.message || err}`)
       } finally {
         processed++
       }
@@ -222,7 +224,7 @@ async function collect(count, feeds) {
       const elapsed = Math.round((Date.now() - start) / 1000)
       const inflight = Math.max(0, Math.min(feeds.length, started.size - processed))
       const bar = makeBar(pct)
-      console.log(`[feeds] ${bar} ${pct}% | ${processed}/${feeds.length} done | ok:${succeeded} err:${failed} inflight:${inflight} | ${elapsed}s elapsed`)
+      progressLogger.info(`[feeds] ${bar} ${pct}% | ${processed}/${feeds.length} done | ok:${succeeded} err:${failed} inflight:${inflight} | ${elapsed}s elapsed`)
       prevPct = pct
     }
   }, tickMs)
@@ -232,9 +234,9 @@ async function collect(count, feeds) {
   try {
     const pct = 100
     const bar = makeBar(pct)
-    console.log(`[feeds] ${bar} ${pct}% | ${feeds.length}/${feeds.length} done | ok:${succeeded} err:${failed} inflight:0 | ${elapsed}s elapsed`)
+    progressLogger.info(`[feeds] ${bar} ${pct}% | ${feeds.length}/${feeds.length} done | ok:${succeeded} err:${failed} inflight:0 | ${elapsed}s elapsed`)
   } catch {}
-  console.log(`[feeds] complete - total: ${feeds.length} ok: ${succeeded} err: ${failed} in ${elapsed}s`)
+  progressLogger.info(`[feeds] complete - total: ${feeds.length} ok: ${succeeded} err: ${failed} in ${elapsed}s`)
 
   // Round-robin selection across feeds to maximize diversity
   const selected = []
@@ -264,13 +266,13 @@ async function main() {
   const feeds = readFeedsFile(feedsPath)
   const urls = await collect(target, feeds)
   if (urls.length < target) {
-    console.warn(`Collected ${urls.length} URLs (< ${target}). Consider adding or updating feeds in ${feedsPath}`)
+    logger.warn(`Collected ${urls.length} URLs (< ${target}). Consider adding or updating feeds in ${feedsPath}`)
   }
   const outDir = path.resolve('scripts/data')
   try { fs.mkdirSync(outDir, { recursive: true }) } catch {}
   const outFile = path.join(outDir, 'urls.txt')
   fs.writeFileSync(outFile, urls.join('\n') + '\n', 'utf8')
-  console.log(`Wrote ${urls.length} curated URLs to ${outFile}`)
+  logger.info(`Wrote ${urls.length} curated URLs to ${outFile}`)
 }
 
-main().catch(err => { console.error(err); throw err })
+main().catch(err => { logger.error(err); throw err })
