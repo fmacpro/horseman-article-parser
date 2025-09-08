@@ -4,47 +4,12 @@ A web page article parser which returns an object containing the article's forma
 
 ### Prerequisites
 
-- Node.js 18+ (built-in `fetch`, modern Puppeteer)
-- npm
+Node.js & NPM
 
 ### Install
 
 ```
 npm install horseman-article-parser --save
-```
-
-## Overview & Capabilities
-
-- Clean article text: raw, formatted (for terminals), and minimal HTML
-- Title, excerpt, meta description, canonical/final URL, site icon
-- In-article links extraction
-- Sentiment analysis (score and comparative)
-- Keywords and keyphrases (retext powered)
-- Named entities: people, organizations, places (Compromise NLP)
-- Spelling suggestions with optional offsets/positions
-- Lighthouse audit metadata
-- Live blog awareness: can extract live summaries when appropriate
-- AMP-first rescue with dynamic rendering fallback
-- Per-domain crawl tweaks (headers, cookies, goto, interception) via `scripts/crawl-tweaks.json`
-
-Typical output shape (abridged):
-
-```
-{
-  title: { text: "…" },
-  url: "https://…",
-  excerpt: "…",
-  meta: { description: { text: "…" }, … },
-  processed: {
-    text: { raw: "…", formatted: "…", html: "…" },
-    keywords: ["…"],
-    keyphrases: ["…"]
-  },
-  people: ["…"], orgs: ["…"], places: ["…"],
-  links: [{ text: "…", href: "…" }],
-  sentiment: { score: 0, comparative: 0 },
-  lighthouse: { … }
-}
 ```
 
 ## Quick Start (CLI)
@@ -91,28 +56,23 @@ $env:UNIQUE_HOSTS=1; $env:SAMPLE_PROGRESS_ONLY=1; $env:SAMPLE_TICK_MS=1000; \
 
 Notes
 
+## Docs
+
+Generate API docs into APIDOC.md from JSDoc comments.
+
+`ash
+npm run docs
+``n
+
+
 - `UNIQUE_HOSTS=1`: ensures one URL per host (diverse sample).
 - `SAMPLE_PROGRESS_ONLY=1`: hides per-URL logs; shows a compact progress bar and final summary.
 - `SAMPLE_TICK_MS`: progress update cadence in milliseconds (e.g., 1000).
 - Outputs: per-run summaries `sample_summary_*.json|.csv` and host breakdown `sample_hosts_*.csv` in `tests/results/`.
 
-## Docs
-
-Generate API docs into `APIDOC.md` from JSDoc comments.
-
-```
-npm run docs
-```
-
-PowerShell (if npm.ps1 is blocked):
-
-```
-cmd /c npm run docs
-```
-
 ### Usage
 
-#### parseArticle(options, socket) ⇒ <code>Object</code>
+#### parseArticle(options, socket) ? <code>Object</code>
 
 | Param   | Type                | Description         |
 | ------- | ------------------- | ------------------- |
@@ -384,16 +344,6 @@ This allows us to match - for example - names which are not in the base compromi
 
 Check out the compromise plugin [docs](https://observablehq.com/@spencermountain/compromise-plugins) for more info.
 
-## Troubleshooting (CLI)
-
-- Skipped vs Error: The batch sampler treats known non-HTML or forbidden archives as `skip`, not `err`.
-  - Examples: PDFs, non-http(s) schemes, certain mailing list archives.
-- 4xx preflight: The sampler does a quick HEAD/GET probe with realistic headers before parsing.
-  - If you see `preflight 4xx`, the URL likely blocks scraping or is dead. It’s skipped early to save time.
-- Site-specific behavior: Use `scripts/crawl-tweaks.json` to set headers, cookies, or navigation for a domain.
-  - Example: set `goto.waitUntil: "networkidle2"`, add cookies, or disable interception for a host.
-- Timeouts: Increase via `TEST_TIMEOUT_MS` (single test) or raise the batch timeout (last arg to `tests/sample-run.js`).
-
 ## Development
 
 Please feel free to fork the repo or open pull requests to the development branch. I've used [eslint](https://eslint.org/) for linting.
@@ -435,7 +385,7 @@ contentDetection: {
 
 ### Training the Reranker (optional)
 
-You can train a simple logistic‑regression reranker to improve candidate selection.
+You can train a simple logistic-regression reranker to improve candidate selection.
 
 1) Generate candidate features
 - Single URL (appends candidates):
@@ -474,7 +424,7 @@ You can train a simple logistic‑regression reranker to improve candidate selec
   - `npm run --silent train:ranker -- scripts/data/candidates_with_url.csv > weights.json`
 
 4) Use the weights
-- `test.js` auto‑loads `weights.json` (if present) and enables the reranker:
+- `test.js` auto-loads `weights.json` (if present) and enables the reranker:
   - `options.contentDetection.reranker = { enabled: true, weights }`
 
 Notes
@@ -574,6 +524,8 @@ npm run docs
 This project is licensed under the GNU GENERAL PUBLIC LICENSE Version 3 - see the [LICENSE](LICENSE) file for details
 
 ## Notes
+
+
 
 
 
