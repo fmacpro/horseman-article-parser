@@ -30,6 +30,11 @@ PowerShell:
 $env:TEST_TIMEOUT_MS=40000; node tests/test.js "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html"
 ```
 
+Parameters
+
+- `TEST_TIMEOUT_MS`: maximum time (ms) for the parse. If omitted, the test uses its default.
+- `<url>`: the article page to parse.
+
 ### Batch sampler (curated URLs, progress bar)
 
 1) Fetch a fresh set of URLs:
@@ -37,6 +42,10 @@ $env:TEST_TIMEOUT_MS=40000; node tests/test.js "https://www.cnn.com/business/liv
 ```bash
 node scripts/fetch-curated-urls.js 800
 ```
+
+Parameters
+
+- `800`: target number of URLs to collect into `scripts/data/urls.txt`.
 
 2) Run a batch against unique hosts with a simple progress-only view. Progress and a final summary print to the console; JSON/CSV reports are saved under `tests/results/`.
 
@@ -53,6 +62,19 @@ PowerShell:
 $env:UNIQUE_HOSTS=1; $env:SAMPLE_PROGRESS_ONLY=1; $env:SAMPLE_TICK_MS=1000; \
   node tests/sample-run.js 100 8 scripts/data/urls.txt 25000
 ```
+
+Parameters
+
+- Env vars:
+  - `UNIQUE_HOSTS=1`: ensure one URL per host (diverse sample)
+  - `SAMPLE_PROGRESS_ONLY=1`: hide per-URL logs; show compact progress bar + summary
+  - `SAMPLE_TICK_MS=1000`: progress update cadence in ms
+- Positional args (for `tests/sample-run.js`):
+  - `100`: max URLs to process
+  - `8`: concurrency level
+  - `scripts/data/urls.txt`: input list of URLs
+  - `25000`: per-URL timeout in ms
+- Outputs: JSON/CSV summaries under `tests/results/`.
 
 ## Docs
 
@@ -394,6 +416,12 @@ You can train a simple logistic-regression reranker to improve candidate selecti
 - Batch (recommended):
   - `node scripts/batch-crawl.js scripts/data/urls.txt scripts/data/candidates_with_url.csv 0 200`
   - Adjust `start` and `limit` to process in slices (e.g., `200 200`, `400 200`, ...).
+  Parameters
+
+  - `scripts/data/urls.txt`: input list of URLs to crawl
+  - `scripts/data/candidates_with_url.csv`: output CSV file for candidate features
+  - `0`: start offset (row index) in the URLs file
+  - `200`: limit (number of URLs to process in this run)
 - The project dumps candidate features with URL by default (see `test.js`):
   - Header: `url,xpath,css_selector,text_length,punctuation_count,link_density,paragraph_count,has_semantic_container,boilerplate_penalty,direct_paragraph_count,direct_block_count,paragraph_to_block_ratio,average_paragraph_length,dom_depth,heading_children_count,aria_role_main,aria_role_negative,aria_hidden,image_alt_ratio,image_count,training_label,default_selected`
   - Up to `topN` unique-XPath rows per page (default 5)
@@ -423,6 +451,13 @@ You can train a simple logistic-regression reranker to improve candidate selecti
   - `node scripts/train-reranker.js scripts/data/candidates_with_url.csv weights.json`
 - Or via npm (use `--silent` and arg separator):
   - `npm run --silent train:ranker -- scripts/data/candidates_with_url.csv > weights.json`
+  Parameters
+
+  - `scripts/data/candidates_with_url.csv`: labeled candidates CSV (input)
+  - `weights.json`: output weights file (JSON)
+  Tips
+  - `--` passes subsequent args to the underlying script
+  - `> weights.json` redirects stdout to a file (Bash/PowerShell)
 
 4) Use the weights
 - `test.js` auto-loads `weights.json` (if present) and enables the reranker:
