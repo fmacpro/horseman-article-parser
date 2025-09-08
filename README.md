@@ -411,6 +411,16 @@ $env:UNIQUE_HOSTS=1; $env:SAMPLE_PROGRESS_ONLY=1; $env:SAMPLE_TICK_MS=1000; \
 npm run sample:batch -- 100 8 scripts/data/urls.txt 25000
 ```
 
+Parameters
+
+- `UNIQUE_HOSTS`: `1` to ensure each sampled URL has a unique host (optional).
+- `SAMPLE_PROGRESS_ONLY`: `1` to print only progress updates (optional).
+- `SAMPLE_TICK_MS`: interval in milliseconds between progress updates.
+- `<N>`: number of URLs to process.
+- `<concurrency>`: number of concurrent parses.
+- `<urlsFile>`: file containing URLs to parse.
+- `<timeoutMs>`: maximum time (ms) allowed for each parse.
+
 ### Training the Reranker (optional)
 
 You can train a simple logistic-regression reranker to improve candidate selection.
