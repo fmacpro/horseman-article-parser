@@ -7,6 +7,10 @@ import { applyDomainTweaks, loadTweaksConfig, applyUrlRewrites } from './inc/app
 import logger, { createLogger } from '../controllers/logger.js'
 import { fileURLToPath } from 'url'
 import { parseArgs } from 'node:util'
+import { suppressTaskkillErrors } from './inc/suppressTaskkillErrors.js'
+
+// Silence noisy Windows taskkill errors when cleaning up Chromium
+suppressTaskkillErrors()
 
 const progressLogger = createLogger()
 

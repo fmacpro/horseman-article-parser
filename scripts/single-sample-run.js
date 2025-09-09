@@ -6,6 +6,10 @@ import fs from 'fs'
 import assert from 'assert'
 import logger from '../controllers/logger.js'
 import { parseArgs } from 'node:util'
+import { suppressTaskkillErrors } from './inc/suppressTaskkillErrors.js'
+
+// Silence noisy Windows taskkill errors when cleaning up Chromium
+suppressTaskkillErrors()
 
 /** add some names | https://observablehq.com/@spencermountain/compromise-plugins */
 const testPlugin = function (Doc, world) {
