@@ -14,6 +14,7 @@ test('parseArticle processes local HTML', async (t) => {
     const article = await parseArticle({
       url: dataUrl,
       enabled: ['spelling'],
+      timeoutMs: 20000,
       puppeteer: { launch: { headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] } }
     }, quietSocket)
     assert.equal(article.title.text, 'Sample Story')
@@ -36,6 +37,7 @@ test('parseArticle uses rules overrides for title and content', async (t) => {
   try {
     const baseline = await parseArticle({
       url,
+      timeoutMs: 20000,
       puppeteer: { launch: { headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] } }
     }, quietSocket)
     assert.equal(baseline.title.text, 'Wrong')
@@ -48,6 +50,7 @@ test('parseArticle uses rules overrides for title and content', async (t) => {
         title: () => 'Right',
         content: () => '<article><p>Correct</p></article>'
       }],
+      timeoutMs: 20000,
       puppeteer: { launch: { headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] } }
     }, quietSocket)
     assert.equal(article.title.text, 'Right')
@@ -84,12 +87,14 @@ test('parseArticle can disable JavaScript execution', async (t) => {
   try {
     const withJs = await parseArticle({
       url: dataUrl,
+      timeoutMs: 20000,
       puppeteer: { launch: { headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] } }
     }, quietSocket)
     assert.equal(withJs.title.text, 'Changed')
 
     const withoutJs = await parseArticle({
       url: dataUrl,
+      timeoutMs: 20000,
       puppeteer: { launch: { headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'], javascriptEnabled: false } }
     }, quietSocket)
     assert.equal(withoutJs.title.text, 'Original')
@@ -105,6 +110,7 @@ test('parseArticle strips selectors listed in striptags', async (t) => {
     const article = await parseArticle({
       url: dataUrl,
       striptags: ['.ad', '#remove-me'],
+      timeoutMs: 20000,
       puppeteer: { launch: { headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] } }
     }, quietSocket)
     assert.equal(article.title.text, 'StripTags Test')
@@ -130,6 +136,7 @@ test('parseArticle applies custom Compromise plugins', async (t) => {
     const withoutPlugin = await parseArticle({
       url: dataUrl,
       enabled: ['entities'],
+      timeoutMs: 20000,
       puppeteer: { launch: { headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] } }
     }, quietSocket)
     const foundWithout = Array.isArray(withoutPlugin.people) && withoutPlugin.people.some(p => /rishi/i.test(p.text))
@@ -139,6 +146,7 @@ test('parseArticle applies custom Compromise plugins', async (t) => {
       url: dataUrl,
       enabled: ['entities'],
       nlp: { plugins: [testPlugin] },
+      timeoutMs: 20000,
       puppeteer: { launch: { headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] } }
     }, quietSocket)
     const foundWith = Array.isArray(withPlugin.people) && withPlugin.people.some(p => /rishi sunak/i.test(p.text))
