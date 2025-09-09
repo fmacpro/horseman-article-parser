@@ -20,6 +20,10 @@ import logger from './controllers/logger.js'
 import { autoDismissConsent } from './controllers/consent.js'
 import { buildLiveBlogSummary } from './controllers/liveBlog.js'
 import { getRawText, getFormattedText, getHtmlText, htmlCleaner } from './controllers/textProcessing.js'
+import { sanitizeDataUrl } from './controllers/utils.js'
+import { safeAwait } from './controllers/async.js'
+import { timeLeftFactory, waitForFrameStability, navigateWithFallback } from './controllers/navigation.js'
+import { loadNlpPlugins } from './controllers/nlpPlugins.js'
 
 const require = createRequire(import.meta.url)
 
@@ -40,12 +44,8 @@ export async function parseArticle (options, socket = { emit: (type, status) => 
     options.puppeteer?.launch?.javascriptEnabled === false &&
     typeof options.url === 'string' && options.url.startsWith('data:text/html')
   ) {
-    const idx = options.url.indexOf(',')
-    const meta = options.url.slice(0, idx)
-    const payload = options.url.slice(idx + 1)
-    const html = meta.includes(';base64') ? Buffer.from(payload, 'base64').toString('utf8') : decodeURIComponent(payload)
-    const sanitized = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-    options.url = 'data:text/html;base64,' + Buffer.from(sanitized).toString('base64')
+    const { sanitizedUrl } = sanitizeDataUrl(options.url, false)
+    options.url = sanitizedUrl
     options.puppeteer.launch.javascriptEnabled = true
   }
   // Heuristic: bump timeout slightly for URLs that look like live pages
@@ -55,31 +55,19 @@ export async function parseArticle (options, socket = { emit: (type, status) => 
       const base = Number(options.timeoutMs || 0)
       if (Number.isFinite(base)) options.timeoutMs = base + 5000
     }
-  } catch {}
+  } catch (err) {
+    logger.warn('timeout heuristic failed', err)
+  }
   // Enforce no-screenshot globally regardless of caller configuration
   try {
     if (Array.isArray(options.enabled)) {
       options.enabled = options.enabled.filter(k => k !== 'screenshot')
     }
-  } catch {}
-
-  // Allow nlp plugins to be passed in (https://observablehq.com/@spencermountain/compromise-plugins)
-  const pluginHints = { first: [], last: [] }
-  if (options.nlp.plugins.length >= 1) {
-    for (const plugin of options.nlp.plugins) {
-      try { nlp.plugin(plugin) } catch {}
-      try {
-        plugin(null, {
-          addWords: (words = {}) => {
-            for (const [w, tag] of Object.entries(words)) {
-              if (/^first/i.test(tag)) pluginHints.first.push(w)
-              else if (/^last/i.test(tag)) pluginHints.last.push(w)
-            }
-          }
-        })
-      } catch {}
-    }
+  } catch (err) {
+    logger.warn('failed to filter enabled features', err)
   }
+
+  const pluginHints = loadNlpPlugins(options)
   options.__pluginHints = pluginHints
 
   if (Number.isFinite(options.timeoutMs) && options.timeoutMs < 50) {
@@ -99,7 +87,7 @@ export async function parseArticle (options, socket = { emit: (type, status) => 
     if (!totalTimeoutMs) return
     timeoutHandle = setTimeout(async () => {
       timedOut = true
-      try { await browser.close() } catch {}
+      await safeAwait(browser.close(), 'browser.close on timeout')
       reject(new Error(`Timeout after ${totalTimeoutMs}ms`))
     }, totalTimeoutMs)
   })
@@ -115,7 +103,7 @@ export async function parseArticle (options, socket = { emit: (type, status) => 
       return article
     } finally {
       // always close browser if not already; safe to call twice
-      try { await browser.close() } catch {}
+      await safeAwait(browser.close(), 'browser.close final')
     }
   })()
 
@@ -168,7 +156,9 @@ const articleParser = async function (browser, options, socket) {
         .map(([k, v]) => `${k.replace(/_/g, ' ')}: ${fmtVal(k, v)}`)
         .join(' | ')
       socket.emit('parse:status', ctx ? `${header} - ${ctx}` : header)
-    } catch {}
+    } catch (err) {
+      logger.warn('log emit failed', err)
+    }
   }
   const t0 = Date.now()
   const elapsed = () => Date.now() - t0
@@ -177,12 +167,14 @@ const articleParser = async function (browser, options, socket) {
 
   try {
     // Track frame navigations to wait for brief stability before evaluating
-    let __lastNavAt = Date.now()
+    page.__lastNavAt = Date.now()
     try {
-      page.on('framenavigated', () => { __lastNavAt = Date.now() })
-      page.on('load', () => { __lastNavAt = Date.now() })
-      page.on('domcontentloaded', () => { __lastNavAt = Date.now() })
-    } catch {}
+      page.on('framenavigated', () => { page.__lastNavAt = Date.now() })
+      page.on('load', () => { page.__lastNavAt = Date.now() })
+      page.on('domcontentloaded', () => { page.__lastNavAt = Date.now() })
+    } catch (err) {
+      logger.warn('failed to attach frame listeners', err)
+    }
 
     // Allow static HTML override (e.g., fetched AMP) when dynamic content is obstructed
     let staticHtmlOverride = null
@@ -190,27 +182,10 @@ const articleParser = async function (browser, options, socket) {
     let ampFetchPromise = null
     let contentOverridden = false
 
-    const timeLeft = () => {
-      try { if (!options.__deadline) return Infinity } catch { return Infinity }
-      return Math.max(0, options.__deadline - Date.now())
-    }
-
-    const waitForFrameStability = async (quietMs = 400, maxMs = 1500) => {
-      const start = Date.now()
-      const deadline = Math.min(maxMs, timeLeft())
-      // Prefer a readyState complete check when possible
-      try {
-        await page.waitForFunction(() => document.readyState === 'complete', { timeout: Math.min(1200, Math.max(0, timeLeft())) })
-      } catch {}
-      while ((Date.now() - __lastNavAt) < quietMs && (Date.now() - start) < deadline) {
-        const slice = Math.min(120, Math.max(40, quietMs / 4))
-        try { await page.waitForTimeout(slice) } catch {}
-      }
-    }
-    // Keep waits proportional to remaining time (helps heavier sites)
+    const timeLeft = timeLeftFactory(options)
     const tl = () => Math.max(0, timeLeft())
-    try { await page.setDefaultTimeout(Math.min(5000, Math.max(2500, tl()))) } catch {}
-    try { await page.setDefaultNavigationTimeout(Math.min(8000, Math.max(3500, tl()))) } catch {}
+    await safeAwait(page.setDefaultTimeout(Math.min(5000, Math.max(2500, tl()))), 'setDefaultTimeout')
+    await safeAwait(page.setDefaultNavigationTimeout(Math.min(8000, Math.max(3500, tl()))), 'setDefaultNavigationTimeout')
 
     // Optional: disable JavaScript for troublesome sites (via tweaks)
     try {
@@ -223,38 +198,42 @@ const articleParser = async function (browser, options, socket) {
       if (typeof jsSetting === 'boolean') {
         await page.setJavaScriptEnabled(jsSetting)
       }
-    } catch {}
+    } catch (err) {
+      logger.warn('setJavaScriptEnabled failed', err)
+    }
     const jsEnabled = !(options.puppeteer && options.puppeteer.javascriptEnabled === false)
 
     // Ignore content security policies
-    await page.setBypassCSP(options.puppeteer.setBypassCSP)
+    await safeAwait(page.setBypassCSP(options.puppeteer.setBypassCSP), 'setBypassCSP')
 
     // Optional: set user agent and extra headers from options
     if (options.puppeteer && options.puppeteer.userAgent) {
-      await page.setUserAgent(options.puppeteer.userAgent)
+      await safeAwait(page.setUserAgent(options.puppeteer.userAgent), 'setUserAgent')
     }
     if (options.puppeteer && options.puppeteer.extraHTTPHeaders) {
       const hdrs = { ...options.puppeteer.extraHTTPHeaders }
       if (!('Referer' in hdrs)) hdrs.Referer = 'https://www.google.com/'
-      await page.setExtraHTTPHeaders(hdrs)
+      await safeAwait(page.setExtraHTTPHeaders(hdrs), 'setExtraHTTPHeaders')
     } else {
-      try { await page.setExtraHTTPHeaders({ Referer: 'https://www.google.com/' }) } catch {}
+      await safeAwait(page.setExtraHTTPHeaders({ Referer: 'https://www.google.com/' }), 'setExtraHTTPHeaders')
     }
 
-    let interceptionActive = false
+    const interceptionActive = { current: false }
     let reqTotal = 0
     let reqBlocked = 0
     let reqSkipped = 0
     let reqContinued = 0
     if (!options.noInterception) {
       await page.setRequestInterception(true)
-      interceptionActive = true
+      interceptionActive.current = true
       try {
         log('intercept', 'enabled', {
           blocked: (options.blockedResourceTypes || []).join(',') || '(none)',
           skipped: (options.skippedResources || []).slice(0, 5).join(',') || '(none)'
         })
-      } catch {}
+      } catch (err) {
+        logger.warn('intercept logging failed', err)
+      }
 
       const blockedResourceTypes = new Set(options.blockedResourceTypes)
       const skippedResources = new Set(options.skippedResources)
@@ -270,16 +249,13 @@ const articleParser = async function (browser, options, socket) {
         }
         const isBlockedType = blockedResourceTypes.has(request.resourceType())
         const isSkippedMatch = [...skippedResources].some(resource => requestUrl.includes(resource))
-        if (interceptionActive && (isBlockedType || isSkippedMatch)) {
+        if (interceptionActive.current && (isBlockedType || isSkippedMatch)) {
           if (isBlockedType) reqBlocked++
           else if (isSkippedMatch) reqSkipped++
-          try { request.abort().catch(() => {}) } catch {}
-        } else if (interceptionActive) {
+          request.abort().catch(err => logger.warn('request.abort failed', err))
+        } else if (interceptionActive.current) {
           reqContinued++
-          try { request.continue().catch(() => {}) } catch {}
-        } else {
-          // If interception disabled, ignore handler (no continue/abort)
-          return
+          request.continue().catch(err => logger.warn('request.continue failed', err))
         }
       })
     }
@@ -289,70 +265,20 @@ const articleParser = async function (browser, options, socket) {
       require.resolve('jquery/dist/jquery.min.js'),
       'utf8'
     )
-    try { await page.addScriptTag({ content: jquerySource }) } catch {}
+    await safeAwait(page.addScriptTag({ content: jquerySource }), 'addScriptTag')
 
     // Pre-seed cookies if provided (helps bypass consent walls)
     try {
       if (options.puppeteer && Array.isArray(options.puppeteer.cookies) && options.puppeteer.cookies.length) {
         await page.setCookie(...options.puppeteer.cookies)
       }
-    } catch {}
-
-    // Adaptive navigation with fallbacks to reduce need for per-domain tweaks
-    async function navigateWithFallback(url) {
-      if (url.startsWith('data:')) {
-        const idx = url.indexOf(',')
-        const meta = url.slice(0, idx)
-        const payload = url.slice(idx + 1)
-        const html = meta.includes(';base64') ? Buffer.from(payload, 'base64').toString('utf8') : decodeURIComponent(payload)
-        let rawHtml = html
-        if (options.puppeteer && options.puppeteer.launch && options.puppeteer.launch.javascriptEnabled === false) {
-          rawHtml = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-        }
-        await page.setContent(rawHtml, { waitUntil: 'domcontentloaded', timeout: 0 })
-        return { url, status: 200 }
-      }
-      const headersBackup = options.puppeteer && options.puppeteer.extraHTTPHeaders ? { ...options.puppeteer.extraHTTPHeaders } : {}
-      const tryGoto = async (gotoOpts) => page.goto(url, gotoOpts)
-
-      let response
-      try {
-        const baseTimeout = Math.min(7000, Math.max(3000, tl()))
-        const go = Object.assign({ waitUntil: 'domcontentloaded', timeout: baseTimeout }, options.puppeteer.goto || {})
-        if (!Number.isFinite(go.timeout)) go.timeout = baseTimeout
-        log('nav', 'attempt', { wait_until: go.waitUntil, timeout_ms: go.timeout })
-        response = await tryGoto(go)
-      } catch (err1) {
-        // Fallback 1: relax waitUntil
-        try {
-          response = await tryGoto({ waitUntil: 'domcontentloaded', timeout: Math.min(5000, Math.max(2500, tl())) })
-        } catch (err2) {
-          // Fallback 2: disable interception if enabled and retry
-          try { await page.setRequestInterception(false); interceptionActive = false } catch {}
-          try {
-            response = await tryGoto({ waitUntil: 'domcontentloaded', timeout: Math.min(4000, Math.max(2000, tl())) })
-          } catch (err3) {
-            // Fallback 3: try with a benign Referer (some sites require it)
-            try { await page.setExtraHTTPHeaders({ ...(headersBackup || {}), Referer: 'https://www.google.com/' }) } catch {}
-            try {
-              response = await tryGoto({ waitUntil: 'domcontentloaded', timeout: Math.min(4000, Math.max(2000, tl())) })
-            } catch (err4) {
-              const message = 'Failed to fetch ' + url + ': ' + err4.message
-              log('nav', 'failed', { error: err4.message })
-              throw new Error(message)
-            } finally {
-              // restore headers
-              try { await page.setExtraHTTPHeaders(headersBackup || {}) } catch {}
-            }
-          }
-        }
-      }
-
-      return response
+    } catch (err) {
+      logger.warn('setCookie failed', err)
     }
 
-    let response = await navigateWithFallback(options.url)
-    try { await waitForFrameStability(400, 1500) } catch {}
+    // Adaptive navigation with fallbacks to reduce need for per-domain tweaks
+    let response = await navigateWithFallback(page, options, options.url, tl, log, interceptionActive)
+    try { await waitForFrameStability(page, timeLeft, 400, 1500) } catch (err) { logger.warn('waitForFrameStability failed', err) }
 
     // Start background AMP/static fallback fetch in parallel
     try {
@@ -419,7 +345,7 @@ const articleParser = async function (browser, options, socket) {
   if (!staticHtmlOverride && jsEnabled && options.consent && options.consent.autoDismiss) {
     await autoDismissConsent(page, options.consent)
   }
-  try { await waitForFrameStability(350, 1200) } catch {}
+  try { await waitForFrameStability(page, timeLeft, 350, 1200) } catch (err) { logger.warn('waitForFrameStability failed', err) }
 
   // Wait briefly for common article/content selectors to appear (helps dynamic blogs)
   try {
@@ -664,7 +590,7 @@ const articleParser = async function (browser, options, socket) {
       if (timeLeft() <= 0) throw err
       if (!isCtxError(err)) throw err
       try { await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: Math.min(2000, Math.max(0, timeLeft())) }) } catch {}
-      try { await waitForFrameStability(400, 1500) } catch {}
+      try { await waitForFrameStability(page, timeLeft, 400, 1500) } catch (err) { logger.warn('waitForFrameStability failed', err) }
       return await fn()
     }
   }
@@ -716,18 +642,18 @@ log('analyze', 'Evaluating meta tags')
     })()
     if (!staticHtmlOverride && looksLikeConsent && timeLeft() > 1200) {
       log('consent', 'retry')
-      try { await navigateWithFallback(options.url) } catch {}
+      try { await navigateWithFallback(page, options, options.url, tl, log, interceptionActive) } catch (err) { logger.warn('navigateWithFallback retry failed', err) }
       if (jsEnabled && options.consent && options.consent.autoDismiss) {
-        try { await autoDismissConsent(page, options.consent) } catch {}
-        try { await waitForFrameStability(400, 1200) } catch {}
+        try { await autoDismissConsent(page, options.consent) } catch (err) { logger.warn('autoDismissConsent failed', err) }
+        try { await waitForFrameStability(page, timeLeft, 400, 1200) } catch (err) { logger.warn('waitForFrameStability failed', err) }
       }
       // If still consent-like, try once with JavaScript disabled to avoid dynamic consent flows
       let titleNow = ''
       try { titleNow = await page.title() } catch { titleNow = '' }
       if (/(cookie|cookies|consent|privacy|gdpr)/i.test(String(titleNow))) {
-        try { await page.setJavaScriptEnabled(false) } catch {}
-        try { await navigateWithFallback(options.url) } catch {}
-        try { await waitForFrameStability(400, 1200) } catch {}
+        try { await page.setJavaScriptEnabled(false) } catch (err) { logger.warn('setJavaScriptEnabled false failed', err) }
+        try { await navigateWithFallback(page, options, options.url, tl, log, interceptionActive) } catch (err) { logger.warn('navigateWithFallback JS-disabled failed', err) }
+        try { await waitForFrameStability(page, timeLeft, 400, 1200) } catch (err) { logger.warn('waitForFrameStability failed', err) }
       }
       // Refresh meta after retry
       const meta2 = await evalWithRetry(async () => page.evaluate(() => {
@@ -1006,7 +932,7 @@ log('analyze', 'Evaluating meta tags')
             log('content', 'canonical retry', { url: canon })
             try { await page.setRequestInterception(false) } catch {}
             try { await page.goto(canon, { waitUntil: 'domcontentloaded', timeout: Math.min(1500, Math.max(300, timeLeft())) }) } catch {}
-            try { await waitForFrameStability(300, 1000) } catch {}
+            try { await waitForFrameStability(page, timeLeft, 300, 1000) } catch (err) { logger.warn('waitForFrameStability failed', err) }
             let htmlC = null
             try { htmlC = await evalWithRetry(async () => page.content()) } catch {}
             if (htmlC) {

@@ -37,17 +37,14 @@ export function getRawText (html) {
   return rawText.replace(/\s+/g, ' ').trim()
 }
 
-export function getFormattedText (html, title, baseurl, options) {
-  if (typeof options === 'undefined') {
-    options = {
-      wordwrap: 100,
-      noLinkBrackets: true,
-      ignoreHref: true,
-      tables: true,
-      uppercaseHeadings: true,
-      linkHrefBaseUrl: baseurl
-    }
-  }
+export function getFormattedText (html, title, baseurl, options = {
+  wordwrap: 100,
+  noLinkBrackets: true,
+  ignoreHref: true,
+  tables: true,
+  uppercaseHeadings: true,
+  linkHrefBaseUrl: baseurl
+}) {
   if (typeof options.linkHrefBaseUrl === 'undefined') {
     options.linkHrefBaseUrl = baseurl
   }
@@ -69,15 +66,12 @@ export function getHtmlText (text) {
   return textArray.join('\n')
 }
 
-export function htmlCleaner (html, options) {
+export function htmlCleaner (html, options = {
+  'add-remove-tags': ['blockquote', 'span'],
+  'remove-empty-tags': ['span'],
+  'replace-nbsp': true
+}) {
   return new Promise((resolve) => {
-    if (typeof options === 'undefined') {
-      options = {
-        'add-remove-tags': ['blockquote', 'span'],
-        'remove-empty-tags': ['span'],
-        'replace-nbsp': true
-      }
-    }
     cleaner.clean(html, options, function (out) {
       resolve(out)
     })
