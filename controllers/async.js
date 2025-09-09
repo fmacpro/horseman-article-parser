@@ -14,3 +14,10 @@ export async function safeAwait (promise, msg = 'Async operation failed') {
     return undefined
   }
 }
+
+/**
+ * Sleep for a specified number of milliseconds.
+ * @param {number} ms time in milliseconds
+ * @returns {Promise<void>}
+ */
+export const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))

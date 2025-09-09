@@ -21,7 +21,7 @@ import { autoDismissConsent } from './controllers/consent.js'
 import { buildLiveBlogSummary } from './controllers/liveBlog.js'
 import { getRawText, getFormattedText, getHtmlText, htmlCleaner } from './controllers/textProcessing.js'
 import { sanitizeDataUrl } from './controllers/utils.js'
-import { safeAwait } from './controllers/async.js'
+import { safeAwait, sleep } from './controllers/async.js'
 import { timeLeftFactory, waitForFrameStability, navigateWithFallback } from './controllers/navigation.js'
 import { loadNlpPlugins } from './controllers/nlpPlugins.js'
 
@@ -470,7 +470,7 @@ const articleParser = async function (browser, options, socket) {
       })
     })
     // small settle delay
-    await page.waitForTimeout(400)
+    await sleep(400)
     // Re-check preferred selectors after scroll
     const contentSelectors2 = options.contentWaitSelectors || [
       '.entry-content', '.post-body', '#postBody', '.post-content', '.article-content'
@@ -494,7 +494,7 @@ const articleParser = async function (browser, options, socket) {
           }, 120)
         })
       })
-      await page.waitForTimeout(300)
+      await sleep(300)
       for (const sel of contentSelectors2) {
         try { await page.waitForSelector(sel, { timeout: 2000 }) ; break } catch {}
       }
@@ -1005,7 +1005,7 @@ log('analyze', 'Evaluating meta tags')
     if (!contentOverridden && !staticHtmlOverride && rawLen < 200 && timeLeft() > 2000) {
       log('rescue', 'Low content detected; retrying detection', { chars: rawLen })
       try { await page.setRequestInterception(false) } catch {}
-      try { await page.waitForTimeout(800) } catch {}
+      try { await sleep(800) } catch {}
       try { await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: Math.min(3000, Math.max(0, timeLeft())) }) } catch {}
       let freshHtml = null
       try { freshHtml = await evalWithRetry(async () => page.content()) } catch { freshHtml = null }

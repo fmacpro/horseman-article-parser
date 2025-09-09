@@ -1,6 +1,6 @@
 import logger from './logger.js'
 import { sanitizeDataUrl } from './utils.js'
-import { safeAwait } from './async.js'
+import { safeAwait, sleep } from './async.js'
 
 export const timeLeftFactory = (options) => () => {
   try { if (!options.__deadline) return Infinity } catch { return Infinity }
@@ -13,7 +13,7 @@ export async function waitForFrameStability (page, timeLeft, quietMs = 400, maxM
   await safeAwait(page.waitForFunction(() => document.readyState === 'complete', { timeout: Math.min(1200, Math.max(0, timeLeft())) }), 'readyState wait')
   while ((Date.now() - (page.__lastNavAt || 0)) < quietMs && (Date.now() - start) < deadline) {
     const slice = Math.min(120, Math.max(40, quietMs / 4))
-    await safeAwait(page.waitForTimeout(slice), 'waitForTimeout')
+    await safeAwait(sleep(slice), 'wait')
   }
 }
 
