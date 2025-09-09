@@ -1,10 +1,7 @@
 import puppeteer from 'puppeteer-extra'
 import StealthPlugin from 'puppeteer-extra-plugin-stealth'
 
-const isTestRun = process.execArgv.includes('--test')
-if (!isTestRun) {
-  puppeteer.use(StealthPlugin())
-}
+puppeteer.use(StealthPlugin())
 
 import fs from 'fs'
 import Sentiment from 'sentiment'
