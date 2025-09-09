@@ -371,14 +371,14 @@ Run quick tests and batches from this repo without writing code.
 Writes a detailed JSON to `scripts/results/single-sample-run-result.json`.
 
 ```bash
-npx cross-env TEST_TIMEOUT_MS=40000 node scripts/single-sample-run.js --url "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html"
+node scripts/single-sample-run.js --url "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html" --timeout 40000
 # or via npm script
-npm run sample:single -- --url "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html"
+npm run sample:single -- --url "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html" --timeout 40000
 ```
 
 Parameters
 
-- `TEST_TIMEOUT_MS`: maximum time (ms) for the parse. If omitted, the test uses its default.
+- `--timeout`: maximum time (ms) for the parse. If omitted, the test uses its default (40000 ms).
 - `--url`: the article page to parse.
 
 ### Batch sampler (curated URLs, progress bar)
