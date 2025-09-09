@@ -363,28 +363,18 @@ Run quick tests and batches from this repo without writing code.
 
 ### Environment variables
 
-- SAMPLE_PROGRESS_ONLY: `1` to hide per-URL logs, show compact progress for batch sample runs.
-- SAMPLE_TICK_MS: Milliseconds between sample progress updates (e.g., `1000`).
-- UNIQUE_HOSTS: `1` to pick unique hosts (diverse sample set) in batch sample runs.
-- BATCH_PROGRESS_ONLY: `1` to print progress-only lines during `batch:crawl`.
-- BATCH_TICK_MS / BATCH_BAR_WIDTH: Progress cadence and bar width for `batch:crawl`.
-- FEED_CONCURRENCY / FEED_TIMEOUT_MS / FEED_BAR_WIDTH: Tuning for curated feed collection.
+- PROGRESS_ONLY: `1` to hide per-URL logs and show compact progress.
+- UNIQUE_HOSTS: `1` to pick unique hosts (diverse sample set) in batch sample runs (or pass `true/1` as an argument).
+- BATCH_BAR_WIDTH: progress bar width for `batch:crawl`.
+- FEED_CONCURRENCY / FEED_TIMEOUT_MS / FEED_BAR_WIDTH: tuning for curated feed collection.
 
 ### Single URL test
 
 Writes a detailed JSON to `scripts/results/single-sample-run-result.json`.
 
 ```bash
-TEST_TIMEOUT_MS=40000 node scripts/single-sample-run.js "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html"
+npx cross-env TEST_TIMEOUT_MS=40000 node scripts/single-sample-run.js "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html"
 # or via npm script
-npm run sample:single -- "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html"
-```
-
-PowerShell:
-
-```powershell
-$env:TEST_TIMEOUT_MS=40000; node scripts/single-sample-run.js "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html"
-# or
 npm run sample:single -- "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html"
 ```
 
@@ -407,29 +397,17 @@ Parameters
 
 2) Run a batch against unique hosts with a simple progress-only view. Progress and a final summary print to the console; JSON/CSV reports are saved under `scripts/results/`.
 
-Bash/Zsh:
-
 ```bash
-UNIQUE_HOSTS=1 SAMPLE_PROGRESS_ONLY=1 SAMPLE_TICK_MS=1000 \
-  node scripts/batch-sample-run.js 100 5 scripts/data/urls.txt 20000
+npx cross-env PROGRESS_ONLY=1 \
+  node scripts/batch-sample-run.js 100 5 scripts/data/urls.txt 20000 true
 # or via npm script (defaults shown in package.json)
-npm run sample:batch -- 100 5 scripts/data/urls.txt 20000
-```
-
-PowerShell:
-
-```powershell
-$env:UNIQUE_HOSTS=1; $env:SAMPLE_PROGRESS_ONLY=1; $env:SAMPLE_TICK_MS=1000; \
-  node scripts/batch-sample-run.js 100 5 scripts/data/urls.txt 20000
-# or
-npm run sample:batch -- 100 5 scripts/data/urls.txt 20000
+npm run sample:batch -- 100 5 scripts/data/urls.txt 20000 true
 ```
 
 Parameters
 
-- `UNIQUE_HOSTS`: `1` to ensure each sampled URL has a unique host (optional).
-- `SAMPLE_PROGRESS_ONLY`: `1` to print only progress updates (optional).
-- `SAMPLE_TICK_MS`: interval in milliseconds between progress updates.
+- `PROGRESS_ONLY`: `1` to print only progress updates (optional).
+- `UNIQUE_HOSTS`/`<uniqueHosts>`: `1`/`true` to ensure each sampled URL has a unique host (optional).
 - `<N>`: number of URLs to process.
 - `<concurrency>`: number of concurrent parses.
 - `<urlsFile>`: file containing URLs to parse.
@@ -486,7 +464,7 @@ You can train a simple logistic-regression reranker to improve candidate selecti
   - `weights.json`: output weights file (JSON)
   Tips
   - `--` passes subsequent args to the underlying script
-  - `> weights.json` redirects stdout to a file (Bash/PowerShell)
+  - `> weights.json` redirects stdout to a file
 
 4) Use the weights
 - `scripts/single-sample-run.js` auto-loads `weights.json` (if present) and enables the reranker:

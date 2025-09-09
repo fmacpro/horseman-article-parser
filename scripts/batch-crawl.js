@@ -25,8 +25,9 @@ export async function run(urlsFile, outCsv = 'candidates_with_url.csv', start = 
   const end = limit ? Math.min(all.length, start + Number(limit)) : all.length
   const urls = all.slice(Number(start) || 0, end)
 
-  const progressOnly = process.env.BATCH_PROGRESS_ONLY ? (process.env.BATCH_PROGRESS_ONLY !== '0') : true
-  const quiet = true // suppress per-URL logs when using progress bar
+  const progressEnv = process.env.PROGRESS_ONLY ?? process.env.BATCH_PROGRESS_ONLY
+  const progressOnly = progressEnv ? (progressEnv !== '0') : true
+  const quiet = progressOnly // suppress per-URL logs when using progress bar
   const tweaksConfig = loadTweaksConfig()
   const t0 = Date.now()
   let processed = 0
@@ -127,8 +128,7 @@ export async function run(urlsFile, outCsv = 'candidates_with_url.csv', start = 
   }
 
   let prevPct = -1
-  const tickMs = Number(process.env.BATCH_TICK_MS || 2000)
-  const tick = setInterval(() => {
+  function updateProgress() {
     const pct = urls.length ? Math.round((processed / urls.length) * 100) : 100
     if (pct !== prevPct) {
       const elapsed = Math.round((Date.now() - t0) / 1000)
@@ -137,7 +137,7 @@ export async function run(urlsFile, outCsv = 'candidates_with_url.csv', start = 
       logger.info(`[batch] ${bar} ${pct}% | ${processed}/${urls.length} done | ok:${okCount} err:${errCount} inflight:${inflight} | ${elapsed}s elapsed`)
       prevPct = pct
     }
-  }, tickMs)
+  }
 
   if (Number(concurrency) <= 1) {
     for (const url of urls) {
@@ -145,6 +145,7 @@ export async function run(urlsFile, outCsv = 'candidates_with_url.csv', start = 
       processed++
       if (ok) okCount++
       else errCount++
+      updateProgress()
     }
   } else {
     // concurrent pool
@@ -158,12 +159,11 @@ export async function run(urlsFile, outCsv = 'candidates_with_url.csv', start = 
         processed++
         if (ok) okCount++
         else errCount++
+        updateProgress()
       }
     }
     await Promise.all(Array.from({ length: pool }, runNext))
   }
-
-  clearInterval(tick)
   try {
     const pct = 100
     const bar = makeBar(pct)

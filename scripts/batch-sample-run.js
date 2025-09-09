@@ -246,26 +246,27 @@ export async function runOne(url, tweaks, timeoutMs = 20000, quiet = true) {
 async function main() {
   const defaultUrlsFile = path.resolve('scripts/data/urls.txt')
   const args = process.argv.slice(2)
-  const [NArg, concurrencyArg, urlsArg, timeoutArg] = args.slice(-4)
+  const [NArg, concurrencyArg, urlsArg, timeoutArg, uniqueArg] = args
   const N = Number(NArg ?? 100)
   const concurrency = Number(concurrencyArg ?? 5)
   const urlsFile = urlsArg ? path.resolve(urlsArg) : defaultUrlsFile
   const timeoutMs = Number(timeoutArg ?? 20000)
+  const uniqueHosts = uniqueArg != null ? /^(1|true)$/i.test(uniqueArg) : !!process.env.UNIQUE_HOSTS
   const quiet = process.env.SAMPLE_VERBOSE ? false : (concurrency > 1)
 
   const tweaks = loadTweaksConfig()
   let urls = uniq(readUrls(urlsFile))
-  if (process.env.UNIQUE_HOSTS) urls = uniqueByHost(urls, N)
-  if (!process.env.UNIQUE_HOSTS && urls.length > N) urls = urls.slice(0, N)
+  if (uniqueHosts) urls = uniqueByHost(urls, N)
+  if (!uniqueHosts && urls.length > N) urls = urls.slice(0, N)
 
   const results = []
   let idx = 0
   const started = new Set()
 
-  // Progress ticker
+  // Progress tracker
   const t0 = now()
   logger.info(`[sample] starting - total: ${urls.length} concurrency: ${concurrency} timeout: ${timeoutMs}ms`)
-  const progressOnly = !!process.env.SAMPLE_PROGRESS_ONLY
+  const progressOnly = !!(process.env.PROGRESS_ONLY || process.env.SAMPLE_PROGRESS_ONLY)
   const barWidth = Number(process.env.SAMPLE_BAR_WIDTH || 16)
   const makeBar = (pct) => {
     const w = Math.max(5, Math.min(100, Math.floor(barWidth)))
@@ -274,7 +275,7 @@ async function main() {
     return `[${'#'.repeat(filled)}${'.'.repeat(empty)}]`
   }
   let prevPct = -1
-  const tick = setInterval(() => {
+  function updateProgress() {
     try {
       const done = results.filter(r => r != null).length
       const ok = results.filter(r => r && r.ok).length
@@ -289,7 +290,7 @@ async function main() {
         prevPct = pct
       }
     } catch {}
-  }, Number(process.env.SAMPLE_TICK_MS || 2000))
+  }
   async function worker() {
     while (true) {
       const i = idx++
@@ -299,6 +300,7 @@ async function main() {
       if (!progressOnly) logger.info(`[sample] parsing ${i+1}/${urls.length} - ${u}`)
       const res = await runOne(u, tweaks, timeoutMs, quiet)
       results[i] = res
+      updateProgress()
       const tag = res.ok ? 'OK' : (res?.kind === 'skip' ? 'SKIP' : 'ERR')
       if (!progressOnly) {
         if (quiet) {
@@ -313,7 +315,6 @@ async function main() {
 
   const workers = Array.from({ length: Math.max(1, concurrency) }, worker)
   await Promise.all(workers)
-  clearInterval(tick)
 
   const ok = results.filter(r => r && r.ok)
   const skips = results.filter(r => r && !r.ok && r.kind === 'skip')
