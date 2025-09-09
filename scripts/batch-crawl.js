@@ -6,9 +6,10 @@ import skippedResources from '../scripts/inc/skipResources.js'
 import { applyDomainTweaks, loadTweaksConfig, applyUrlRewrites } from './inc/applyDomainTweaks.js'
 import logger from '../controllers/logger.js'
 import { fileURLToPath } from 'url'
+import { parseArgs } from 'node:util'
 
 export function makeBar(pct) {
-  const w = Math.max(5, Math.min(100, Number(process.env.BATCH_BAR_WIDTH || 16)))
+  const w = Math.max(5, Math.min(100, Number(process.env.PROGRESS_BAR_WIDTH || 16)))
   const filled = Math.max(0, Math.min(w, Math.round((pct / 100) * w)))
   const empty = w - filled
   return `[${'#'.repeat(filled)}${'.'.repeat(empty)}]`
@@ -189,12 +190,21 @@ export async function run(urlsFile, outCsv = 'candidates_with_url.csv', start = 
 const isCli =
   process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])
 if (isCli) {
-  const urlsFile = process.argv[2] || path.resolve('scripts/data/urls.txt')
-  const outCsv = process.argv[3] || path.resolve('scripts/data/candidates_with_url.csv')
-  const start = process.argv[4] || 0
-  const limit = process.argv[5] || null
-  const concurrency = process.argv[6] || process.env.BATCH_CONCURRENCY || 1
-  const uniqueArg = process.argv[7]
-  const uniqueHosts = uniqueArg != null ? /^(1|true)$/i.test(uniqueArg) : !!process.env.UNIQUE_HOSTS
+  const { values } = parseArgs({
+    options: {
+      'urls-file': { type: 'string', default: path.resolve('scripts/data/urls.txt') },
+      'out-file': { type: 'string', default: path.resolve('scripts/data/candidates_with_url.csv') },
+      start: { type: 'string', default: '0' },
+      limit: { type: 'string' },
+      concurrency: { type: 'string', default: process.env.BATCH_CONCURRENCY || '1' },
+      'unique-hosts': { type: 'boolean', default: !!process.env.UNIQUE_HOSTS }
+    }
+  })
+  const urlsFile = values['urls-file']
+  const outCsv = values['out-file']
+  const start = Number(values.start)
+  const limit = values.limit != null ? Number(values.limit) : null
+  const concurrency = Number(values.concurrency)
+  const uniqueHosts = values['unique-hosts']
   run(urlsFile, outCsv, start, limit, concurrency, uniqueHosts).catch(err => { logger.error(err); throw err })
 }

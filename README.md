@@ -336,7 +336,7 @@ npm run lint
 Quick single-run (sanity check):
 
 ```
-npm run sample:single -- "https://example.com/article"
+npm run sample:single -- --url "https://example.com/article"
 ```
 
 ## Quick Start (CLI)
@@ -348,14 +348,14 @@ Run quick tests and batches from this repo without writing code.
   - merge:csv: Merge CSVs (utility for dataset building).
     - `npm run merge:csv`
   - sample:prepare: Fetch curated URLs from feeds/sitemaps into `scripts/data/urls.txt` (default 200).
-    - `npm run sample:prepare` or `node scripts/fetch-curated-urls.js <count>`
+    - `npm run sample:prepare` or `node scripts/fetch-curated-urls.js --count <n>`
   - sample:single: Run a single URL parse and write JSON to `scripts/results/single-sample-run-result.json`.
-    - `npm run sample:single -- "https://example.com/article"`
+    - `npm run sample:single -- --url "https://example.com/article"`
   - sample:batch: Run the multi-URL sample with progress bar and summaries.
-    - `npm run sample:batch -- <N> <concurrency> <urlsFile> <timeoutMs>`
-    - Example: `npm run sample:batch -- 100 5 scripts/data/urls.txt 20000`
+    - `npm run sample:batch` (defaults shown in package.json)
+    - Example override: `npm run sample:batch -- --count 100 --concurrency 5 --urls-file scripts/data/urls.txt --timeout 20000`
   - batch:crawl: Crawl URLs and dump content-candidate features to CSV.
-    - `npm run batch:crawl -- <urlsFile?> <outCsv?>`
+    - `npm run batch:crawl` (defaults shown in package.json)
   - train:ranker: Train reranker weights from a candidates CSV.
     - `npm run train:ranker -- <candidatesCsv>`
   - docs: Generate API docs to `APIDOC.md`.
@@ -365,43 +365,43 @@ Run quick tests and batches from this repo without writing code.
 
 - PROGRESS_ONLY: `1` to hide per-URL logs and show compact progress.
 - UNIQUE_HOSTS: `1` to pick unique hosts (diverse sample set) in batch sample runs (or pass `true/1` as an argument).
-- BATCH_BAR_WIDTH: progress bar width for `batch:crawl`.
-- FEED_CONCURRENCY / FEED_TIMEOUT_MS / FEED_BAR_WIDTH: tuning for curated feed collection.
+- PROGRESS_BAR_WIDTH: progress bar width for scripts with progress bars.
+- FEED_CONCURRENCY / FEED_TIMEOUT_MS: tuning for curated feed collection.
 
 ### Single URL test
 
 Writes a detailed JSON to `scripts/results/single-sample-run-result.json`.
 
 ```bash
-npx cross-env TEST_TIMEOUT_MS=40000 node scripts/single-sample-run.js "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html"
+npx cross-env TEST_TIMEOUT_MS=40000 node scripts/single-sample-run.js --url "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html"
 # or via npm script
-npm run sample:single -- "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html"
+npm run sample:single -- --url "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html"
 ```
 
 Parameters
 
 - `TEST_TIMEOUT_MS`: maximum time (ms) for the parse. If omitted, the test uses its default.
-- `<url>`: the article page to parse.
+- `--url`: the article page to parse.
 
 ### Batch sampler (curated URLs, progress bar)
 
 1) Fetch a fresh set of URLs:
 
 ```bash
-npx cross-env PROGRESS_ONLY=1 node scripts/fetch-curated-urls.js 200
+npx cross-env PROGRESS_ONLY=1 node scripts/fetch-curated-urls.js --count 200
 # or via npm script
-sample:prepare
+npm run sample:prepare
 ```
 
 Parameters
 
-- `800`: target number of URLs to collect into `scripts/data/urls.txt`.
+- `--count`: target number of URLs to collect into `scripts/data/urls.txt`.
 
 2) Run a batch against unique hosts with a simple progress-only view. Progress and a final summary print to the console; JSON/CSV reports are saved under `scripts/results/`.
 
 ```bash
 npx cross-env PROGRESS_ONLY=1 \
-  node scripts/batch-sample-run.js 100 5 scripts/data/urls.txt 20000 true
+  node scripts/batch-sample-run.js --count 100 --concurrency 5 --urls-file scripts/data/urls.txt --timeout 20000 --unique-hosts
 # or via npm script (defaults shown in package.json)
 npm run sample:batch
 ```
@@ -409,11 +409,11 @@ npm run sample:batch
 Parameters
 
 - `PROGRESS_ONLY`: `1` to print only progress updates (optional).
-- `<N>`: number of URLs to process.
-- `<concurrency>`: number of concurrent parses.
-- `<urlsFile>`: file containing URLs to parse.
-- `<timeoutMs>`: maximum time (ms) allowed for each parse.
-- `<uniqueHosts>`: `1`/`true` to ensure each sampled URL has a unique host (optional).
+- `--count`: number of URLs to process.
+- `--concurrency`: number of concurrent parses.
+- `--urls-file`: file containing URLs to parse.
+- `--timeout`: maximum time (ms) allowed for each parse.
+- `--unique-hosts`: ensure each sampled URL has a unique host (optional).
 
 ### Training the Reranker (optional)
 
@@ -421,18 +421,18 @@ You can train a simple logistic-regression reranker to improve candidate selecti
 
 1) Generate candidate features
 - Single URL (appends candidates):
-  - `node scripts/single-sample-run.js`
+  - `node scripts/single-sample-run.js --url <articleUrl>`
 - Batch (recommended):
-  - `npx cross-env PROGRESS_ONLY=1 node scripts/batch-crawl.js scripts/data/urls.txt scripts/data/candidates_with_url.csv 0 200 1 true`
-  - Adjust `start` and `limit` to process in slices (e.g., `200 200`, `400 200`, ...).
+  - `npx cross-env PROGRESS_ONLY=1 node scripts/batch-crawl.js --urls-file scripts/data/urls.txt --out-file scripts/data/candidates_with_url.csv --start 0 --limit 200 --concurrency 1 --unique-hosts`
+  - Adjust `--start` and `--limit` to process in slices (e.g., `--start 200 --limit 200`, `--start 400 --limit 200`, ...).
   Parameters
 
-  - `scripts/data/urls.txt`: input list of URLs to crawl
-  - `scripts/data/candidates_with_url.csv`: output CSV file for candidate features
-  - `0`: start offset (row index) in the URLs file
-  - `200`: limit (number of URLs to process in this run)
-  - `1`: concurrency (number of parallel crawlers)
-  - `true`: ensure each URL has a unique host (optional)
+  - `--urls-file`: input list of URLs to crawl
+  - `--out-file`: output CSV file for candidate features
+  - `--start`: start offset (row index) in the URLs file
+  - `--limit`: number of URLs to process in this run
+  - `--concurrency`: number of parallel crawlers
+  - `--unique-hosts`: ensure each URL has a unique host (optional)
   - `PROGRESS_ONLY`: `1` to show only progress updates (optional)
 - The project dumps candidate features with URL by default (see `scripts/single-sample-run.js`):
   - Header: `url,xpath,css_selector,text_length,punctuation_count,link_density,paragraph_count,has_semantic_container,boilerplate_penalty,direct_paragraph_count,direct_block_count,paragraph_to_block_ratio,average_paragraph_length,dom_depth,heading_children_count,aria_role_main,aria_role_negative,aria_hidden,image_alt_ratio,image_count,training_label,default_selected`

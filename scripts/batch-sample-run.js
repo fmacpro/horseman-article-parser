@@ -4,6 +4,7 @@ import { parseArticle } from '../index.js'
 import { applyDomainTweaks, loadTweaksConfig, applyUrlRewrites } from './inc/applyDomainTweaks.js'
 import logger from '../controllers/logger.js'
 import { fileURLToPath } from 'url'
+import { parseArgs } from 'node:util'
 
 // Lightweight HTTP helpers using global fetch (Node >=18)
 export function defaultHeaders(u) {
@@ -245,13 +246,20 @@ export async function runOne(url, tweaks, timeoutMs = 20000, quiet = true) {
 
 async function main() {
   const defaultUrlsFile = path.resolve('scripts/data/urls.txt')
-  const args = process.argv.slice(2)
-  const [NArg, concurrencyArg, urlsArg, timeoutArg, uniqueArg] = args
-  const N = Number(NArg ?? 100)
-  const concurrency = Number(concurrencyArg ?? 5)
-  const urlsFile = urlsArg ? path.resolve(urlsArg) : defaultUrlsFile
-  const timeoutMs = Number(timeoutArg ?? 20000)
-  const uniqueHosts = uniqueArg != null ? /^(1|true)$/i.test(uniqueArg) : !!process.env.UNIQUE_HOSTS
+  const { values } = parseArgs({
+    options: {
+      count: { type: 'string', default: '100' },
+      concurrency: { type: 'string', default: '5' },
+      'urls-file': { type: 'string', default: defaultUrlsFile },
+      timeout: { type: 'string', default: '20000' },
+      'unique-hosts': { type: 'boolean', default: !!process.env.UNIQUE_HOSTS }
+    }
+  })
+  const N = Number(values.count)
+  const concurrency = Number(values.concurrency)
+  const urlsFile = path.resolve(values['urls-file'])
+  const timeoutMs = Number(values.timeout)
+  const uniqueHosts = values['unique-hosts']
   const quiet = process.env.SAMPLE_VERBOSE ? false : (concurrency > 1)
 
   const tweaks = loadTweaksConfig()
@@ -267,7 +275,7 @@ async function main() {
   const t0 = now()
   logger.info(`[sample] starting - total: ${urls.length} concurrency: ${concurrency} timeout: ${timeoutMs}ms`)
   const progressOnly = process.env.PROGRESS_ONLY ? process.env.PROGRESS_ONLY !== '0' : false
-  const barWidth = Number(process.env.SAMPLE_BAR_WIDTH || 16)
+  const barWidth = Number(process.env.PROGRESS_BAR_WIDTH || 16)
   const makeBar = (pct) => {
     const w = Math.max(5, Math.min(100, Math.floor(barWidth)))
     const filled = Math.max(0, Math.min(w, Math.round((pct / 100) * w)))
