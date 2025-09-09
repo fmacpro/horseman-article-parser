@@ -388,7 +388,7 @@ Parameters
 1) Fetch a fresh set of URLs:
 
 ```bash
-node scripts/fetch-curated-urls.js 800
+npx cross-env PROGRESS_ONLY=1 node scripts/fetch-curated-urls.js 200
 ```
 
 Parameters
