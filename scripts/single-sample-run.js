@@ -15,13 +15,14 @@ const testPlugin = function (Doc, world) {
   })
 }
 
-// Allow passing a URL via CLI: `node scripts/single-sample-run.js --url <url>`
-// With npm: `npm run sample:single -- --url <url>`
-const { values } = parseArgs({ options: { url: { type: 'string' } } })
+// Allow passing a URL via CLI: `node scripts/single-sample-run.js --url <url> --timeout <ms>`
+// With npm: `npm run sample:single -- --url <url> --timeout <ms>`
+const { values } = parseArgs({ options: { url: { type: 'string' }, timeout: { type: 'string' } } })
 const inputUrl = values.url || null
+const timeoutMs = Number(values.timeout || 40000)
 
 const options = {
-  timeoutMs: Number(process.env.TEST_TIMEOUT_MS || 40000),
+  timeoutMs,
   url: inputUrl || 'https://www.bbc.co.uk/news/articles/cnvryg271ymo?at_medium=RSS&at_campaign=rss',
   enabled: ['links', 'sentiment', 'entities', 'spelling', 'keywords', 'siteicon'],
   // In tests, lightly block heavy resources (keep images)
