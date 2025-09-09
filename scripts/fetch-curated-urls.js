@@ -178,19 +178,25 @@ export function extractFromSitemap(xml) {
   return links
 }
 
-export function makeBar(pct) {
-  const w = Math.max(5, Math.min(100, Number(process.env.PROGRESS_BAR_WIDTH || 16)))
+export function makeBar(pct, width = 16) {
+  const w = Math.max(5, Math.min(100, Number(width)))
   const filled = Math.max(0, Math.min(w, Math.round((pct / 100) * w)))
   const empty = w - filled
   return `[${'#'.repeat(filled)}${'.'.repeat(empty)}]`
 }
 
-export async function collect(count, feeds, { progressOnly = false } = {}) {
+export async function collect(count, feeds, {
+  progressOnly = false,
+  feedConcurrency = 6,
+  feedTimeoutMs = 12000,
+  barWidth = 16,
+  quiet = false
+} = {}) {
   // Concurrently fetch per-feed links
-  const FEED_CONCURRENCY = Number(process.env.FEED_CONCURRENCY || 6)
-  const FEED_TIMEOUT_MS = Number(process.env.FEED_TIMEOUT_MS || 12000)
-  const progressLogger = createLogger({ quiet: !!process.env.FETCH_QUIET })
-  const detailLogger = createLogger({ quiet: !!process.env.FETCH_QUIET || progressOnly })
+  const FEED_CONCURRENCY = Number(feedConcurrency)
+  const FEED_TIMEOUT_MS = Number(feedTimeoutMs)
+  const progressLogger = createLogger({ quiet })
+  const detailLogger = createLogger({ quiet: quiet || progressOnly })
   const start = Date.now()
   const perFeed = new Array(feeds.length)
   let processed = 0
@@ -235,7 +241,7 @@ export async function collect(count, feeds, { progressOnly = false } = {}) {
     if (pct !== prevPct) {
       const elapsed = Math.round((Date.now() - start) / 1000)
       const inflight = Math.max(0, Math.min(feeds.length, started.size - processed))
-      const bar = makeBar(pct)
+      const bar = makeBar(pct, barWidth)
       progressLogger.info(`[feeds] ${bar} ${pct}% | ${processed}/${feeds.length} done | ok:${succeeded} err:${failed} inflight:${inflight} | ${elapsed}s elapsed`)
       prevPct = pct
     }
@@ -245,7 +251,7 @@ export async function collect(count, feeds, { progressOnly = false } = {}) {
   const elapsed = Math.round((Date.now() - start) / 1000)
   try {
     const pct = 100
-    const bar = makeBar(pct)
+    const bar = makeBar(pct, barWidth)
     progressLogger.info(`[feeds] ${bar} ${pct}% | ${feeds.length}/${feeds.length} done | ok:${succeeded} err:${failed} inflight:0 | ${elapsed}s elapsed`)
   } catch {}
   progressLogger.info(`[feeds] complete - total: ${feeds.length} ok: ${succeeded} err: ${failed} in ${elapsed}s`)
@@ -276,15 +282,23 @@ async function main() {
   const { values } = parseArgs({
     options: {
       count: { type: 'string', default: '1000' },
-      'feeds-file': { type: 'string', default: process.env.FEEDS_FILE || path.resolve('scripts/data/feeds.txt') },
-      'progress-only': { type: 'boolean', default: false }
+      'feeds-file': { type: 'string', default: path.resolve('scripts/data/feeds.txt') },
+      'progress-only': { type: 'boolean', default: false },
+      'feed-concurrency': { type: 'string', default: '6' },
+      'feed-timeout': { type: 'string', default: '12000' },
+      'bar-width': { type: 'string', default: '16' },
+      'quiet': { type: 'boolean', default: false }
     }
   })
   const target = Number(values.count)
   const feedsPath = values['feeds-file']
   const progressOnly = values['progress-only']
+  const feedConcurrency = Number(values['feed-concurrency'])
+  const feedTimeoutMs = Number(values['feed-timeout'])
+  const barWidth = Number(values['bar-width'])
+  const quiet = values.quiet
   const feeds = readFeedsFile(feedsPath)
-  const urls = await collect(target, feeds, { progressOnly })
+  const urls = await collect(target, feeds, { progressOnly, feedConcurrency, feedTimeoutMs, barWidth, quiet })
   if (urls.length < target) {
     logger.warn(`Collected ${urls.length} URLs (< ${target}). Consider adding or updating feeds in ${feedsPath}`)
   }

@@ -28,7 +28,6 @@ test('extractFromSitemap returns loc entries', () => {
   assert.deepEqual(extractFromSitemap(xml), ['http://example.com/a', 'http://example.com/b'])
 })
 
-test('makeBar respects width env', () => {
-  process.env.PROGRESS_BAR_WIDTH = '10'
-  assert.equal(makeBar(30), '[###.......]')
+test('makeBar respects width arg', () => {
+  assert.equal(makeBar(30, 10), '[###.......]')
 })

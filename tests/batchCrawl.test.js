@@ -5,9 +5,8 @@ import path from 'path'
 import os from 'os'
 import { makeBar, readUrls } from '../scripts/batch-crawl.js'
 
-test('makeBar respects width env', () => {
-  process.env.PROGRESS_BAR_WIDTH = '10'
-  assert.equal(makeBar(50), '[#####.....]')
+test('makeBar respects width arg', () => {
+  assert.equal(makeBar(50, 10), '[#####.....]')
 })
 
 test('readUrls trims and filters lines', () => {
