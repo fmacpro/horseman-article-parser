@@ -4,6 +4,7 @@ import path from 'path'
 import { XMLParser } from 'fast-xml-parser'
 import { ProxyAgent, setGlobalDispatcher } from 'undici'
 import logger, { createLogger } from '../controllers/logger.js'
+import { fileURLToPath } from 'url'
 
 // Enable proxy support when HTTP(S)_PROXY env vars are present
 const proxy =
@@ -286,6 +287,11 @@ async function main() {
   logger.info(`Wrote ${urls.length} curated URLs to ${outFile}`)
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
-  main().catch(err => { logger.error(err); throw err })
+const isCli =
+  process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])
+if (isCli) {
+  main().catch(err => {
+    logger.error(err)
+    throw err
+  })
 }
