@@ -14,7 +14,7 @@ test('mergeCsv merges unique rows across files', () => {
   fs.writeFileSync(input1, 'header\nrow1\nrow2\n')
   fs.writeFileSync(input2, 'header\nrow2\nrow3\n')
 
-  mergeCsv(outFile, [input1, input2])
+  mergeCsv(outFile, [input1, input2], { quiet: true })
 
   const result = fs.readFileSync(outFile, 'utf8').trim().split(/\r?\n/)
   assert.deepEqual(result, ['header', 'row1', 'row2', 'row3'])
