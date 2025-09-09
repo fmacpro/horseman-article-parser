@@ -35,14 +35,14 @@ export function uniqueByHost(urls, limit = Infinity) {
   }
   return out
 }
-export async function run(urlsFile, outCsv = 'candidates_with_url.csv', start = 0, limit = null, concurrency = 1, uniqueHosts = false, progressOnly = false, barWidth = 16) {
+export async function run(urlsFile, outCsv = 'candidates_with_url.csv', start = 0, limit = null, concurrency = 1, uniqueHosts = false, progressOnly = false, barWidth = 16, tweaksFile) {
   let all = readUrls(urlsFile)
   if (uniqueHosts) all = uniqueByHost(all)
   const end = limit ? Math.min(all.length, Number(start) + Number(limit)) : all.length
   const urls = all.slice(Number(start) || 0, end)
 
   const quiet = progressOnly // suppress per-URL logs when using progress bar
-  const tweaksConfig = loadTweaksConfig()
+  const tweaksConfig = loadTweaksConfig(tweaksFile)
   const t0 = Date.now()
   let processed = 0
   let okCount = 0
@@ -198,7 +198,8 @@ if (isCli) {
       concurrency: { type: 'string', default: '1' },
       'unique-hosts': { type: 'boolean', default: false },
       'progress-only': { type: 'boolean', default: false },
-      'bar-width': { type: 'string', default: '16' }
+      'bar-width': { type: 'string', default: '16' },
+      'tweaks-file': { type: 'string' }
     }
   })
   const urlsFile = values['urls-file']
@@ -208,5 +209,5 @@ if (isCli) {
   const concurrency = Number(values.concurrency)
   const uniqueHosts = values['unique-hosts']
   const barWidth = Number(values['bar-width'])
-  run(urlsFile, outCsv, start, limit, concurrency, uniqueHosts, values['progress-only'], barWidth).catch(err => { logger.error(err); throw err })
+  run(urlsFile, outCsv, start, limit, concurrency, uniqueHosts, values['progress-only'], barWidth, values['tweaks-file']).catch(err => { logger.error(err); throw err })
 }

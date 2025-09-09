@@ -255,7 +255,8 @@ async function main() {
       'unique-hosts': { type: 'boolean', default: false },
       'progress-only': { type: 'boolean', default: false },
       'bar-width': { type: 'string', default: '16' },
-      'verbose': { type: 'boolean', default: false }
+      'verbose': { type: 'boolean', default: false },
+      'tweaks-file': { type: 'string' }
     }
   })
   const N = Number(values.count)
@@ -268,7 +269,7 @@ async function main() {
   const verbose = values.verbose
   const quiet = verbose ? false : (concurrency > 1)
 
-  const tweaks = loadTweaksConfig()
+  const tweaks = loadTweaksConfig(values['tweaks-file'])
   let urls = uniq(readUrls(urlsFile))
   if (uniqueHosts) urls = uniqueByHost(urls, N)
   if (!uniqueHosts && urls.length > N) urls = urls.slice(0, N)

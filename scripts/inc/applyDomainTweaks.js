@@ -94,8 +94,7 @@ export function applyDomainTweaks(url, options, config, context = {}) {
 }
 
 export function loadTweaksConfig(configPath) {
-  const envPath = process.env.CRAWL_TWEAKS_FILE
-  const p = envPath || configPath || path.resolve('scripts/crawl-tweaks.json')
+  const p = configPath || path.resolve('scripts/crawl-tweaks.json')
   return loadConfig(p)
 }
 

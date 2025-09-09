@@ -17,9 +17,10 @@ const testPlugin = function (Doc, world) {
 
 // Allow passing a URL via CLI: `node scripts/single-sample-run.js --url <url> --timeout <ms>`
 // With npm: `npm run sample:single -- --url <url> --timeout <ms>`
-const { values } = parseArgs({ options: { url: { type: 'string' }, timeout: { type: 'string' } } })
+const { values } = parseArgs({ options: { url: { type: 'string' }, timeout: { type: 'string' }, 'tweaks-file': { type: 'string' } } })
 const inputUrl = values.url || null
 const timeoutMs = Number(values.timeout || 40000)
+const tweaksFile = values['tweaks-file']
 
 const options = {
   timeoutMs,
@@ -76,7 +77,7 @@ try {
 
 // Apply crawl tweaks (rewrites, headers, goto, consent clicks, interception) from scripts/crawl-tweaks.json
 try {
-  const tweaks = loadTweaksConfig()
+  const tweaks = loadTweaksConfig(tweaksFile)
   if (tweaks) {
     // Apply URL rewrites first
     const rewritten = applyUrlRewrites(options.url, tweaks)
