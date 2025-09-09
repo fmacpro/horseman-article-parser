@@ -7,11 +7,11 @@
   "scripts": {
     "lint": "node ./node_modules/eslint/bin/eslint.js . --ext .json --ext .js --fix",
     "test": "cross-env NODE_ENV=test node --test",
-    "merge:csv": "node scripts/merge-csv.js scripts/data/merged.csv scripts/data/candidates_with_url.csv",
-    "sample:prepare": "cross-env PROGRESS_ONLY=1 node scripts/fetch-curated-urls.js --count 200",
+    "merge:csv": "node scripts/merge-csv.js",
+    "sample:prepare": "node scripts/fetch-curated-urls.js",
     "sample:single": "node scripts/single-sample-run.js",
-    "sample:batch": "cross-env PROGRESS_ONLY=1 node scripts/batch-sample-run.js --count 100 --concurrency 5 --urls-file scripts/data/urls.txt --timeout 20000",
-    "batch:crawl": "cross-env PROGRESS_ONLY=1 node scripts/batch-crawl.js --urls-file scripts/data/urls.txt --out-file scripts/data/candidates_with_url.csv",
+    "sample:batch": "node scripts/batch-sample-run.js",
+    "batch:crawl": "node scripts/batch-crawl.js",
     "train:ranker": "node scripts/train-reranker.js",
     "docs": "jsdoc2md index.js controllers/*.js helpers.js > APIDOC.md"
   },

@@ -346,16 +346,15 @@ Run quick tests and batches from this repo without writing code.
 ### Commands
 
   - merge:csv: Merge CSVs (utility for dataset building).
-    - `npm run merge:csv`
-  - sample:prepare: Fetch curated URLs from feeds/sitemaps into `scripts/data/urls.txt` (default 200).
-    - `npm run sample:prepare` or `node scripts/fetch-curated-urls.js --count <n>`
+    - `npm run merge:csv -- scripts/data/merged.csv scripts/data/candidates_with_url.csv`
+  - sample:prepare: Fetch curated URLs from feeds/sitemaps into `scripts/data/urls.txt`.
+    - `npm run sample:prepare -- --count 200 --progress-only`
   - sample:single: Run a single URL parse and write JSON to `scripts/results/single-sample-run-result.json`.
     - `npm run sample:single -- --url "https://example.com/article"`
   - sample:batch: Run the multi-URL sample with progress bar and summaries.
-    - `npm run sample:batch` (defaults shown in package.json)
-    - Example override: `npm run sample:batch -- --count 100 --concurrency 5 --urls-file scripts/data/urls.txt --timeout 20000`
+    - `npm run sample:batch -- --count 100 --concurrency 5 --urls-file scripts/data/urls.txt --timeout 20000 --progress-only`
   - batch:crawl: Crawl URLs and dump content-candidate features to CSV.
-    - `npm run batch:crawl` (defaults shown in package.json)
+    - `npm run batch:crawl -- --urls-file scripts/data/urls.txt --out-file scripts/data/candidates_with_url.csv --start 0 --limit 200 --concurrency 1 --unique-hosts --progress-only`
   - train:ranker: Train reranker weights from a candidates CSV.
     - `npm run train:ranker -- <candidatesCsv>`
   - docs: Generate API docs to `APIDOC.md`.
@@ -363,7 +362,6 @@ Run quick tests and batches from this repo without writing code.
 
 ### Environment variables
 
-- PROGRESS_ONLY: `1` to hide per-URL logs and show compact progress.
 - UNIQUE_HOSTS: `1` to pick unique hosts (diverse sample set) in batch sample runs (or pass `true/1` as an argument).
 - PROGRESS_BAR_WIDTH: progress bar width for scripts with progress bars.
 - FEED_CONCURRENCY / FEED_TIMEOUT_MS: tuning for curated feed collection.
@@ -388,9 +386,9 @@ Parameters
 1) Fetch a fresh set of URLs:
 
 ```bash
-npx cross-env PROGRESS_ONLY=1 node scripts/fetch-curated-urls.js --count 200
+node scripts/fetch-curated-urls.js --count 200 --progress-only
 # or via npm script
-npm run sample:prepare
+npm run sample:prepare -- --count 200 --progress-only
 ```
 
 Parameters
@@ -400,20 +398,19 @@ Parameters
 2) Run a batch against unique hosts with a simple progress-only view. Progress and a final summary print to the console; JSON/CSV reports are saved under `scripts/results/`.
 
 ```bash
-npx cross-env PROGRESS_ONLY=1 \
-  node scripts/batch-sample-run.js --count 100 --concurrency 5 --urls-file scripts/data/urls.txt --timeout 20000 --unique-hosts
-# or via npm script (defaults shown in package.json)
-npm run sample:batch
+node scripts/batch-sample-run.js --count 100 --concurrency 5 --urls-file scripts/data/urls.txt --timeout 20000 --unique-hosts --progress-only
+# or via npm script
+npm run sample:batch -- --count 100 --concurrency 5 --urls-file scripts/data/urls.txt --timeout 20000 --unique-hosts --progress-only
 ```
 
 Parameters
 
-- `PROGRESS_ONLY`: `1` to print only progress updates (optional).
 - `--count`: number of URLs to process.
 - `--concurrency`: number of concurrent parses.
 - `--urls-file`: file containing URLs to parse.
 - `--timeout`: maximum time (ms) allowed for each parse.
 - `--unique-hosts`: ensure each sampled URL has a unique host (optional).
+- `--progress-only`: print only progress updates (optional).
 
 ### Training the Reranker (optional)
 
@@ -423,7 +420,7 @@ You can train a simple logistic-regression reranker to improve candidate selecti
 - Single URL (appends candidates):
   - `node scripts/single-sample-run.js --url <articleUrl>`
 - Batch (recommended):
-  - `npx cross-env PROGRESS_ONLY=1 node scripts/batch-crawl.js --urls-file scripts/data/urls.txt --out-file scripts/data/candidates_with_url.csv --start 0 --limit 200 --concurrency 1 --unique-hosts`
+  - `node scripts/batch-crawl.js --urls-file scripts/data/urls.txt --out-file scripts/data/candidates_with_url.csv --start 0 --limit 200 --concurrency 1 --unique-hosts --progress-only`
   - Adjust `--start` and `--limit` to process in slices (e.g., `--start 200 --limit 200`, `--start 400 --limit 200`, ...).
   Parameters
 
@@ -433,7 +430,7 @@ You can train a simple logistic-regression reranker to improve candidate selecti
   - `--limit`: number of URLs to process in this run
   - `--concurrency`: number of parallel crawlers
   - `--unique-hosts`: ensure each URL has a unique host (optional)
-  - `PROGRESS_ONLY`: `1` to show only progress updates (optional)
+  - `--progress-only`: show only progress updates (optional)
 - The project dumps candidate features with URL by default (see `scripts/single-sample-run.js`):
   - Header: `url,xpath,css_selector,text_length,punctuation_count,link_density,paragraph_count,has_semantic_container,boilerplate_penalty,direct_paragraph_count,direct_block_count,paragraph_to_block_ratio,average_paragraph_length,dom_depth,heading_children_count,aria_role_main,aria_role_negative,aria_hidden,image_alt_ratio,image_count,training_label,default_selected`
   - Up to `topN` unique-XPath rows per page (default 5)
@@ -477,7 +474,7 @@ You can train a simple logistic-regression reranker to improve candidate selecti
 
 Notes
 - If no reranker is configured, the detector uses heuristic scoring only.
-- You can merge CSVs from multiple runs: `npm run merge:csv` (writes `scripts/data/merged.csv`).
+- You can merge CSVs from multiple runs: `npm run merge:csv -- scripts/data/merged.csv scripts/data/candidates_with_url.csv`.
 - Tip: placing a `weights.json` in the project root will make `scripts/single-sample-run.js` auto-enable the reranker on the next run.
 
 ### Crawl Tweaks (config-driven)
