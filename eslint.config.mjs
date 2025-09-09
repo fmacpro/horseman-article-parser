@@ -38,7 +38,7 @@ export default [
     },
     rules: {
       'no-prototype-builtins': 'off',
-      'no-empty': 'off',
+      'no-empty': ['error', { allowEmptyCatch: true }],
       'no-unused-vars': 'off',
       'promise/param-names': 'off',
       'n/no-process-exit': 'off',
