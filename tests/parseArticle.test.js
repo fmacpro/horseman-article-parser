@@ -1,11 +1,32 @@
-import { test } from 'node:test'
+import { test, before, after } from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'fs'
 import http from 'node:http'
+import puppeteer from 'puppeteer-extra'
 import { parseArticle } from '../index.js'
 
 // Silent socket to suppress parser status logs during tests
 const quietSocket = { emit: () => {} }
+
+// Reuse a single browser instance across tests to avoid repeated startups
+let sharedBrowser
+let originalLaunch
+let originalClose
+
+before(async () => {
+  originalLaunch = puppeteer.launch
+  const boundLaunch = puppeteer.launch.bind(puppeteer)
+  sharedBrowser = await boundLaunch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] })
+  originalClose = sharedBrowser.close.bind(sharedBrowser)
+  // Prevent individual tests from closing the shared browser
+  sharedBrowser.close = async () => {}
+  puppeteer.launch = async () => sharedBrowser
+})
+
+after(async () => {
+  puppeteer.launch = originalLaunch
+  if (originalClose) await originalClose()
+})
 
 test('parseArticle processes local HTML', async (t) => {
   const html = fs.readFileSync('tests/fixtures/integration/sample.html', 'utf8')
