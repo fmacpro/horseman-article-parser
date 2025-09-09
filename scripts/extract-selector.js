@@ -11,10 +11,9 @@ const selector = selectorArg || 'div.post-body.entry-content, #postBody, .entry-
 
 if (!url) {
   logger.error('Usage: node scripts/extract-selector.js <url> [css-selector]')
-  process.exit(1)
-}
-
-;(async () => {
+  process.exitCode = 1
+} else {
+  ;(async () => {
   const browser = await puppeteer.launch({
     headless: true,
     defaultViewport: null,
@@ -57,8 +56,7 @@ if (!url) {
     } catch {}
 
     // Wait for selector (fallback to a few seconds)
-    let found = false
-    try { await page.waitForSelector(selector, { timeout: 10000 }); found = true } catch {}
+    try { await page.waitForSelector(selector, { timeout: 10000 }) } catch {}
 
     const info = await page.evaluate((sel) => {
       const el = document.querySelector(sel)
@@ -85,5 +83,5 @@ if (!url) {
   } finally {
     try { await browser.close() } catch {}
   }
-})()
-
+  })()
+}

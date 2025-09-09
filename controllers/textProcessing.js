@@ -19,7 +19,7 @@ export function getRawText (html) {
     const str = String(s)
     if (/(?:https?:\/\/|ftp:\/\/)/i.test(str)) return true
     if (/\bwww\.[^\s\]]+/i.test(str)) return true
-    if (/\b[\w-]+(?:\.[\w-]+)+(?:\/[\w\-._~:/?#\[\]@!$&'()*+,;=%]*)?/i.test(str)) return true
+    if (/\b[\w-]+(?:\.[\w-]+)+(?:\/[\w\-._~:/?#\[\]@!$&'()*+,;=%]*)?/i.test(str)) return true // eslint-disable-line no-useless-escape
     return false
   }
   rawText = rawText.replace(/\[[^\]]*\]/g, m => {
@@ -30,7 +30,7 @@ export function getRawText (html) {
     if (!s || typeof s !== 'string') return s
     let out = s.replace(/(?:https?:\/\/|ftp:\/\/)[^\s]+/gi, ' ')
     out = out.replace(/\bwww\.[^\s]+/gi, ' ')
-    out = out.replace(/\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:[a-z]{2,})(?:\/[\w\-._~:/?#\[\]@!$&'()*+,;=%]*)?/gi, ' ')
+    out = out.replace(/\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:[a-z]{2,})(?:\/[\w\-._~:/?#\[\]@!$&'()*+,;=%]*)?/gi, ' ') // eslint-disable-line no-useless-escape
     return out
   }
   rawText = stripUrls(rawText)

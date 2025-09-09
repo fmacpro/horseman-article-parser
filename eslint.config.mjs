@@ -38,14 +38,7 @@ export default [
     },
     rules: {
       'no-prototype-builtins': 'off',
-      'no-empty': ['error', { allowEmptyCatch: true }],
-      'no-unused-vars': 'off',
-      'promise/param-names': 'off',
-      'n/no-process-exit': 'off',
-      'n/no-unsupported-features/node-builtins': 'off',
-      'import/no-unresolved': 'off',
-      'n/no-missing-import': 'off',
-      'no-useless-escape': 'off'
+      'no-empty': ['error', { allowEmptyCatch: true }]
     }
   }
 ];

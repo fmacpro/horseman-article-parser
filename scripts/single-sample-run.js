@@ -134,7 +134,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
         let out = s.replace(/(?:https?:\/\/|ftp:\/\/)[^\s]+/gi, ' ')
         out = out.replace(/\bwww\.[^\s]+/gi, ' ')
         // Remove bare domains like example.com/path
-        out = out.replace(/\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:[a-z]{2,})(?:\/[\w\-._~:/?#\[\]@!$&'()*+,;=%]*)?/gi, ' ')
+        out = out.replace(/\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:[a-z]{2,})(?:\/[\w\-._~:/?#\[\]@!$&'()*+,;=%]*)?/gi, ' ') // eslint-disable-line no-useless-escape
         return out.replace(/\s{2,}/g, ' ').trim()
       }
       response.text.raw = stripUrls(response.text.raw)

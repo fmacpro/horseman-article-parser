@@ -137,14 +137,14 @@ export async function run(urlsFile, outCsv = 'candidates_with_url.csv', start = 
         }
         await parseArticle(options, socket)
         return true
-      } catch (err) {
+      } catch {
         attempt++
         if (attempt > retryMax) {
           return false
         }
         // Backoff before retry
         const delay = 1000 * attempt
-        await new Promise(r => setTimeout(r, delay))
+        await new Promise(resolve => setTimeout(resolve, delay))
       }
     }
   }

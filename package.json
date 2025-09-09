@@ -25,6 +25,9 @@
     "url": "https://github.com/fmacpro/horseman-article-parser/issues"
   },
   "homepage": "https://github.com/fmacpro/horseman-article-parser#readme",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "dependencies": {
     "absolutify": "^0.1.0",
     "clean-html": "^2.0.1",
