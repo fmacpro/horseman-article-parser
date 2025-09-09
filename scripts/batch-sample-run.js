@@ -252,8 +252,10 @@ async function main() {
       concurrency: { type: 'string', default: '5' },
       'urls-file': { type: 'string', default: defaultUrlsFile },
       timeout: { type: 'string', default: '20000' },
-      'unique-hosts': { type: 'boolean', default: !!process.env.UNIQUE_HOSTS },
-      'progress-only': { type: 'boolean', default: false }
+      'unique-hosts': { type: 'boolean', default: false },
+      'progress-only': { type: 'boolean', default: false },
+      'bar-width': { type: 'string', default: '16' },
+      'verbose': { type: 'boolean', default: false }
     }
   })
   const N = Number(values.count)
@@ -262,7 +264,9 @@ async function main() {
   const timeoutMs = Number(values.timeout)
   const uniqueHosts = values['unique-hosts']
   const progressOnly = values['progress-only']
-  const quiet = process.env.SAMPLE_VERBOSE ? false : (concurrency > 1)
+  const barWidth = Number(values['bar-width'])
+  const verbose = values.verbose
+  const quiet = verbose ? false : (concurrency > 1)
 
   const tweaks = loadTweaksConfig()
   let urls = uniq(readUrls(urlsFile))
@@ -276,7 +280,6 @@ async function main() {
   // Progress tracker
   const t0 = now()
   logger.info(`[sample] starting - total: ${urls.length} concurrency: ${concurrency} timeout: ${timeoutMs}ms`)
-  const barWidth = Number(process.env.PROGRESS_BAR_WIDTH || 16)
   const makeBar = (pct) => {
     const w = Math.max(5, Math.min(100, Math.floor(barWidth)))
     const filled = Math.max(0, Math.min(w, Math.round((pct / 100) * w)))

@@ -8,8 +8,8 @@ import logger from '../controllers/logger.js'
 import { fileURLToPath } from 'url'
 import { parseArgs } from 'node:util'
 
-export function makeBar(pct) {
-  const w = Math.max(5, Math.min(100, Number(process.env.PROGRESS_BAR_WIDTH || 16)))
+export function makeBar(pct, width = 16) {
+  const w = Math.max(5, Math.min(100, Number(width)))
   const filled = Math.max(0, Math.min(w, Math.round((pct / 100) * w)))
   const empty = w - filled
   return `[${'#'.repeat(filled)}${'.'.repeat(empty)}]`
@@ -35,7 +35,7 @@ export function uniqueByHost(urls, limit = Infinity) {
   }
   return out
 }
-export async function run(urlsFile, outCsv = 'candidates_with_url.csv', start = 0, limit = null, concurrency = 1, uniqueHosts = false, progressOnly = false) {
+export async function run(urlsFile, outCsv = 'candidates_with_url.csv', start = 0, limit = null, concurrency = 1, uniqueHosts = false, progressOnly = false, barWidth = 16) {
   let all = readUrls(urlsFile)
   if (uniqueHosts) all = uniqueByHost(all)
   const end = limit ? Math.min(all.length, Number(start) + Number(limit)) : all.length
@@ -147,7 +147,7 @@ export async function run(urlsFile, outCsv = 'candidates_with_url.csv', start = 
     if (pct !== prevPct) {
       const elapsed = Math.round((Date.now() - t0) / 1000)
       const inflight = Math.max(0, Math.min(Number(concurrency) || 1, startedCount - processed))
-      const bar = makeBar(pct)
+      const bar = makeBar(pct, barWidth)
       logger.info(`[batch] ${bar} ${pct}% | ${processed}/${urls.length} done | ok:${okCount} err:${errCount} inflight:${inflight} | ${elapsed}s elapsed`)
       prevPct = pct
     }
@@ -180,7 +180,7 @@ export async function run(urlsFile, outCsv = 'candidates_with_url.csv', start = 
   }
   try {
     const pct = 100
-    const bar = makeBar(pct)
+    const bar = makeBar(pct, barWidth)
     const elapsed = Math.round((Date.now() - t0) / 1000)
     logger.info(`[batch] ${bar} ${pct}% | ${urls.length}/${urls.length} done | ok:${okCount} err:${errCount} inflight:0 | ${elapsed}s elapsed`)
   } catch {}
@@ -195,9 +195,10 @@ if (isCli) {
       'out-file': { type: 'string', default: path.resolve('scripts/data/candidates_with_url.csv') },
       start: { type: 'string', default: '0' },
       limit: { type: 'string' },
-      concurrency: { type: 'string', default: process.env.BATCH_CONCURRENCY || '1' },
-      'unique-hosts': { type: 'boolean', default: !!process.env.UNIQUE_HOSTS },
-      'progress-only': { type: 'boolean', default: false }
+      concurrency: { type: 'string', default: '1' },
+      'unique-hosts': { type: 'boolean', default: false },
+      'progress-only': { type: 'boolean', default: false },
+      'bar-width': { type: 'string', default: '16' }
     }
   })
   const urlsFile = values['urls-file']
@@ -206,5 +207,6 @@ if (isCli) {
   const limit = values.limit != null ? Number(values.limit) : null
   const concurrency = Number(values.concurrency)
   const uniqueHosts = values['unique-hosts']
-  run(urlsFile, outCsv, start, limit, concurrency, uniqueHosts, values['progress-only']).catch(err => { logger.error(err); throw err })
+  const barWidth = Number(values['bar-width'])
+  run(urlsFile, outCsv, start, limit, concurrency, uniqueHosts, values['progress-only'], barWidth).catch(err => { logger.error(err); throw err })
 }

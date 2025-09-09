@@ -352,7 +352,7 @@ Run quick tests and batches from this repo without writing code.
   - sample:single: Run a single URL parse and write JSON to `scripts/results/single-sample-run-result.json`.
     - `npm run sample:single -- --url "https://example.com/article"`
   - sample:batch: Run the multi-URL sample with progress bar and summaries.
-    - `npm run sample:batch -- --count 100 --concurrency 5 --urls-file scripts/data/urls.txt --timeout 20000 --progress-only`
+    - `npm run sample:batch -- --count 100 --concurrency 5 --urls-file scripts/data/urls.txt --timeout 20000 --unique-hosts --progress-only`
   - batch:crawl: Crawl URLs and dump content-candidate features to CSV.
     - `npm run batch:crawl -- --urls-file scripts/data/urls.txt --out-file scripts/data/candidates_with_url.csv --start 0 --limit 200 --concurrency 1 --unique-hosts --progress-only`
   - train:ranker: Train reranker weights from a candidates CSV.
@@ -360,20 +360,19 @@ Run quick tests and batches from this repo without writing code.
   - docs: Generate API docs to `APIDOC.md`.
     - `npm run docs`
 
-### Environment variables
+### Common arguments
 
-- UNIQUE_HOSTS: `1` to pick unique hosts (diverse sample set) in batch sample runs (or pass `true/1` as an argument).
-- PROGRESS_BAR_WIDTH: progress bar width for scripts with progress bars.
-- FEED_CONCURRENCY / FEED_TIMEOUT_MS: tuning for curated feed collection.
+- `--bar-width`: progress bar width for scripts with progress bars.
+- `--feed-concurrency` / `--feed-timeout`: tuning for curated feed collection.
 
 ### Single URL test
 
 Writes a detailed JSON to `scripts/results/single-sample-run-result.json`.
 
 ```bash
-node scripts/single-sample-run.js --url "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html" --timeout 40000
-# or via npm script
 npm run sample:single -- --url "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html" --timeout 40000
+# or run directly
+node scripts/single-sample-run.js --url "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html" --timeout 40000
 ```
 
 Parameters
@@ -386,21 +385,25 @@ Parameters
 1) Fetch a fresh set of URLs:
 
 ```bash
-node scripts/fetch-curated-urls.js --count 200 --progress-only
-# or via npm script
-npm run sample:prepare -- --count 200 --progress-only
+npm run sample:prepare -- --count 200 --feed-concurrency 8 --feed-timeout 15000 --bar-width 20 --progress-only
+# or run directly
+node scripts/fetch-curated-urls.js --count 200 --feed-concurrency 8 --feed-timeout 15000 --bar-width 20 --progress-only
 ```
 
 Parameters
 
 - `--count`: target number of URLs to collect into `scripts/data/urls.txt`.
+- `--feed-concurrency`: number of feeds to fetch in parallel (optional).
+- `--feed-timeout`: per-feed timeout in ms (optional).
+- `--bar-width`: progress bar width (optional).
+- `--progress-only`: print only progress updates (optional).
 
 2) Run a batch against unique hosts with a simple progress-only view. Progress and a final summary print to the console; JSON/CSV reports are saved under `scripts/results/`.
 
 ```bash
-node scripts/batch-sample-run.js --count 100 --concurrency 5 --urls-file scripts/data/urls.txt --timeout 20000 --unique-hosts --progress-only
-# or via npm script
-npm run sample:batch -- --count 100 --concurrency 5 --urls-file scripts/data/urls.txt --timeout 20000 --unique-hosts --progress-only
+npm run sample:batch -- --count 100 --concurrency 5 --urls-file scripts/data/urls.txt --timeout 20000 --unique-hosts --bar-width 20 --progress-only
+# or run directly
+node scripts/batch-sample-run.js --count 100 --concurrency 5 --urls-file scripts/data/urls.txt --timeout 20000 --unique-hosts --bar-width 20 --progress-only
 ```
 
 Parameters
@@ -411,6 +414,7 @@ Parameters
 - `--timeout`: maximum time (ms) allowed for each parse.
 - `--unique-hosts`: ensure each sampled URL has a unique host (optional).
 - `--progress-only`: print only progress updates (optional).
+- `--bar-width`: progress bar width (optional).
 
 ### Training the Reranker (optional)
 
@@ -418,9 +422,9 @@ You can train a simple logistic-regression reranker to improve candidate selecti
 
 1) Generate candidate features
 - Single URL (appends candidates):
-  - `node scripts/single-sample-run.js --url <articleUrl>`
+  - `npm run sample:single -- --url <articleUrl>`
 - Batch (recommended):
-  - `node scripts/batch-crawl.js --urls-file scripts/data/urls.txt --out-file scripts/data/candidates_with_url.csv --start 0 --limit 200 --concurrency 1 --unique-hosts --progress-only`
+  - `npm run batch:crawl -- --urls-file scripts/data/urls.txt --out-file scripts/data/candidates_with_url.csv --start 0 --limit 200 --concurrency 1 --unique-hosts --progress-only`
   - Adjust `--start` and `--limit` to process in slices (e.g., `--start 200 --limit 200`, `--start 400 --limit 200`, ...).
   Parameters
 
@@ -456,10 +460,10 @@ You can train a simple logistic-regression reranker to improve candidate selecti
   - `default_selected`: 1 if this candidate would be chosen by the default heuristic (no custom weights)
 
 3) Train weights and export JSON
-- Direct (avoids npm banner output):
-  - `node scripts/train-reranker.js scripts/data/candidates_with_url.csv weights.json`
-- Or via npm (use `--silent` and arg separator):
+- Via npm (use `--silent` and arg separator):
   - `npm run --silent train:ranker -- scripts/data/candidates_with_url.csv > weights.json`
+- Or run directly (avoids npm banner output):
+  - `node scripts/train-reranker.js scripts/data/candidates_with_url.csv weights.json`
   Parameters
 
   - `scripts/data/candidates_with_url.csv`: labeled candidates CSV (input)
