@@ -1,6 +1,7 @@
 import fs from 'fs'
 import path from 'path'
-import logger from '../controllers/logger.js'
+import { parseArgs } from 'node:util'
+import logger, { createLogger } from '../controllers/logger.js'
 
 export function readLines(file) {
   const text = fs.readFileSync(file, 'utf8')
@@ -11,7 +12,8 @@ export function writeLines(file, lines) {
   fs.writeFileSync(file, lines.join('\n') + '\n', 'utf8')
 }
 
-export function mergeCsv(outFile, inFiles) {
+export function mergeCsv(outFile, inFiles, { quiet = process.execArgv.includes('--test') } = {}) {
+  const log = quiet ? createLogger({ quiet: true }) : logger
   let header = null
   const rows = new Set()
 
@@ -37,18 +39,22 @@ export function mergeCsv(outFile, inFiles) {
 
   const outLines = [header, ...Array.from(rows)]
   writeLines(outFile, outLines)
-  logger.info(`Merged ${rows.size} unique rows into ${outFile}`)
+  log.info(`Merged ${rows.size} unique rows into ${outFile}`)
 }
 
 async function main() {
-  const args = process.argv.slice(2)
-  if (args.length < 2) {
+  const { values, positionals } = parseArgs({
+    options: {
+      quiet: { type: 'boolean', default: false }
+    },
+    allowPositionals: true
+  })
+  if (positionals.length < 2) {
     throw new Error('Usage: node scripts/merge-csv.js output.csv input1.csv [input2.csv ...]')
   }
-  const outFile = args[0]
-  const inFiles = args.slice(1)
+  const [outFile, ...inFiles] = positionals
 
-  mergeCsv(outFile, inFiles)
+  mergeCsv(outFile, inFiles, { quiet: values.quiet })
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
