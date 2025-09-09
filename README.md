@@ -485,7 +485,7 @@ Notes
 
 Domain-specific navigation and header tweaks can be configured without changing code.
 
-- Config file: `scripts/crawl-tweaks.json` (override via `CRAWL_TWEAKS_FILE=/path/to/config.json`).
+- Config file: `scripts/crawl-tweaks.json` (override via `--tweaks-file /path/to/config.json`).
 - Two sections:
   - `rewrites`: URL rewrites applied before crawling (e.g., normalize feed wrappers).
   - `rules`: per-domain behavior overrides (disable interception, adjust `goto` wait/timeout, add headers, set retries).
