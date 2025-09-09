@@ -266,7 +266,7 @@ async function main() {
   // Progress tracker
   const t0 = now()
   logger.info(`[sample] starting - total: ${urls.length} concurrency: ${concurrency} timeout: ${timeoutMs}ms`)
-  const progressOnly = !!(process.env.PROGRESS_ONLY || process.env.SAMPLE_PROGRESS_ONLY)
+  const progressOnly = process.env.PROGRESS_ONLY ? process.env.PROGRESS_ONLY !== '0' : false
   const barWidth = Number(process.env.SAMPLE_BAR_WIDTH || 16)
   const makeBar = (pct) => {
     const w = Math.max(5, Math.min(100, Math.floor(barWidth)))

@@ -188,7 +188,7 @@ export async function collect(count, feeds) {
   // Concurrently fetch per-feed links
   const FEED_CONCURRENCY = Number(process.env.FEED_CONCURRENCY || 6)
   const FEED_TIMEOUT_MS = Number(process.env.FEED_TIMEOUT_MS || 12000)
-  const progressOnly = !!(process.env.PROGRESS_ONLY || process.env.FEED_PROGRESS_ONLY)
+  const progressOnly = process.env.PROGRESS_ONLY ? process.env.PROGRESS_ONLY !== '0' : false
   const progressLogger = createLogger({ quiet: !!process.env.FETCH_QUIET })
   const detailLogger = createLogger({ quiet: !!process.env.FETCH_QUIET || progressOnly })
   const start = Date.now()

@@ -401,7 +401,7 @@ Parameters
 npx cross-env PROGRESS_ONLY=1 \
   node scripts/batch-sample-run.js 100 5 scripts/data/urls.txt 20000 true
 # or via npm script (defaults shown in package.json)
-npm run sample:batch -- 100 5 scripts/data/urls.txt 20000 true
+npm run sample:batch -- true
 ```
 
 Parameters
@@ -421,7 +421,7 @@ You can train a simple logistic-regression reranker to improve candidate selecti
 - Single URL (appends candidates):
   - `node scripts/single-sample-run.js`
 - Batch (recommended):
-  - `node scripts/batch-crawl.js scripts/data/urls.txt scripts/data/candidates_with_url.csv 0 200`
+  - `npx cross-env PROGRESS_ONLY=1 node scripts/batch-crawl.js scripts/data/urls.txt scripts/data/candidates_with_url.csv 0 200 1 true`
   - Adjust `start` and `limit` to process in slices (e.g., `200 200`, `400 200`, ...).
   Parameters
 
@@ -429,6 +429,9 @@ You can train a simple logistic-regression reranker to improve candidate selecti
   - `scripts/data/candidates_with_url.csv`: output CSV file for candidate features
   - `0`: start offset (row index) in the URLs file
   - `200`: limit (number of URLs to process in this run)
+  - `1`: concurrency (number of parallel crawlers)
+  - `true`: ensure each URL has a unique host (optional)
+  - `PROGRESS_ONLY`: `1` to show only progress updates (optional)
 - The project dumps candidate features with URL by default (see `scripts/single-sample-run.js`):
   - Header: `url,xpath,css_selector,text_length,punctuation_count,link_density,paragraph_count,has_semantic_container,boilerplate_penalty,direct_paragraph_count,direct_block_count,paragraph_to_block_ratio,average_paragraph_length,dom_depth,heading_children_count,aria_role_main,aria_role_negative,aria_hidden,image_alt_ratio,image_count,training_label,default_selected`
   - Up to `topN` unique-XPath rows per page (default 5)
