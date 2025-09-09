@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url'
 import fs from 'fs'
 import assert from 'assert'
 import logger from '../controllers/logger.js'
+import { parseArgs } from 'node:util'
 
 /** add some names | https://observablehq.com/@spencermountain/compromise-plugins */
 const testPlugin = function (Doc, world) {
@@ -14,9 +15,10 @@ const testPlugin = function (Doc, world) {
   })
 }
 
-// Allow passing a URL via CLI: `node scripts/single-sample-run.js <url>`
-// With npm: `npm run test -- <url>`
-const inputUrl = process.argv[2] || null
+// Allow passing a URL via CLI: `node scripts/single-sample-run.js --url <url>`
+// With npm: `npm run sample:single -- --url <url>`
+const { values } = parseArgs({ options: { url: { type: 'string' } } })
+const inputUrl = values.url || null
 
 const options = {
   timeoutMs: Number(process.env.TEST_TIMEOUT_MS || 40000),

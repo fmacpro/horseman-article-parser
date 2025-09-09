@@ -6,7 +6,7 @@ import os from 'os'
 import { makeBar, readUrls } from '../scripts/batch-crawl.js'
 
 test('makeBar respects width env', () => {
-  process.env.BATCH_BAR_WIDTH = '10'
+  process.env.PROGRESS_BAR_WIDTH = '10'
   assert.equal(makeBar(50), '[#####.....]')
 })
 

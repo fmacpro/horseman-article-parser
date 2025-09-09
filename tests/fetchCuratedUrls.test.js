@@ -29,6 +29,6 @@ test('extractFromSitemap returns loc entries', () => {
 })
 
 test('makeBar respects width env', () => {
-  process.env.FEED_BAR_WIDTH = '10'
+  process.env.PROGRESS_BAR_WIDTH = '10'
   assert.equal(makeBar(30), '[###.......]')
 })

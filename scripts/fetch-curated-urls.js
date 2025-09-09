@@ -5,6 +5,7 @@ import { XMLParser } from 'fast-xml-parser'
 import { ProxyAgent, setGlobalDispatcher } from 'undici'
 import logger, { createLogger } from '../controllers/logger.js'
 import { fileURLToPath } from 'url'
+import { parseArgs } from 'node:util'
 
 // Enable proxy support when HTTP(S)_PROXY env vars are present
 const proxy =
@@ -178,7 +179,7 @@ export function extractFromSitemap(xml) {
 }
 
 export function makeBar(pct) {
-  const w = Math.max(5, Math.min(100, Number(process.env.FEED_BAR_WIDTH || 16)))
+  const w = Math.max(5, Math.min(100, Number(process.env.PROGRESS_BAR_WIDTH || 16)))
   const filled = Math.max(0, Math.min(w, Math.round((pct / 100) * w)))
   const empty = w - filled
   return `[${'#'.repeat(filled)}${'.'.repeat(empty)}]`
@@ -273,8 +274,14 @@ export async function collect(count, feeds) {
 }
 
 async function main() {
-  const target = Number(process.argv[2] || 1000)
-  const feedsPath = process.argv[3] || process.env.FEEDS_FILE || path.resolve('scripts/data/feeds.txt')
+  const { values } = parseArgs({
+    options: {
+      count: { type: 'string', default: '1000' },
+      'feeds-file': { type: 'string', default: process.env.FEEDS_FILE || path.resolve('scripts/data/feeds.txt') }
+    }
+  })
+  const target = Number(values.count)
+  const feedsPath = values['feeds-file']
   const feeds = readFeedsFile(feedsPath)
   const urls = await collect(target, feeds)
   if (urls.length < target) {
