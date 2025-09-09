@@ -252,10 +252,18 @@ const articleParser = async function (browser, options, socket) {
         if (interceptionActive.current && (isBlockedType || isSkippedMatch)) {
           if (isBlockedType) reqBlocked++
           else if (isSkippedMatch) reqSkipped++
-          request.abort().catch(err => logger.warn('request.abort failed', err))
+          request.abort().catch(err => {
+            if (!/interception is not enabled/i.test(err?.message)) {
+              logger.warn('request.abort failed', err)
+            }
+          })
         } else if (interceptionActive.current) {
           reqContinued++
-          request.continue().catch(err => logger.warn('request.continue failed', err))
+          request.continue().catch(err => {
+            if (!/interception is not enabled/i.test(err?.message)) {
+              logger.warn('request.continue failed', err)
+            }
+          })
         }
       })
     }

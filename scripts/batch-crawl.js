@@ -4,9 +4,11 @@ import { parseArticle } from '../index.js'
 import blockedResourceTypes from '../scripts/inc/blockResourceTypes.js'
 import skippedResources from '../scripts/inc/skipResources.js'
 import { applyDomainTweaks, loadTweaksConfig, applyUrlRewrites } from './inc/applyDomainTweaks.js'
-import logger from '../controllers/logger.js'
+import logger, { createLogger } from '../controllers/logger.js'
 import { fileURLToPath } from 'url'
 import { parseArgs } from 'node:util'
+
+const progressLogger = createLogger()
 
 export function makeBar(pct, width = 16) {
   const w = Math.max(5, Math.min(100, Number(width)))
@@ -49,8 +51,10 @@ export async function run(urlsFile, outCsv = 'candidates_with_url.csv', start = 
   let errCount = 0
   let startedCount = 0
 
+  logger.setQuiet(progressOnly)
+
   if (!progressOnly) {
-    logger.info(`Crawling ${urls.length} URLs (slice ${start}-${end - 1}), dumping candidates to ${outCsv}${Number(concurrency) > 1 ? ` [concurrency=${concurrency}]` : ''}`)
+    progressLogger.info(`Crawling ${urls.length} URLs (slice ${start}-${end - 1}), dumping candidates to ${outCsv}${Number(concurrency) > 1 ? ` [concurrency=${concurrency}]` : ''}`)
   }
 
   function normalizeForCrawl(u) {
@@ -148,7 +152,7 @@ export async function run(urlsFile, outCsv = 'candidates_with_url.csv', start = 
       const elapsed = Math.round((Date.now() - t0) / 1000)
       const inflight = Math.max(0, Math.min(Number(concurrency) || 1, startedCount - processed))
       const bar = makeBar(pct, barWidth)
-      logger.info(`[batch] ${bar} ${pct}% | ${processed}/${urls.length} done | ok:${okCount} err:${errCount} inflight:${inflight} | ${elapsed}s elapsed`)
+      progressLogger.info(`[batch] ${bar} ${pct}% | ${processed}/${urls.length} done | ok:${okCount} err:${errCount} inflight:${inflight} | ${elapsed}s elapsed`)
       prevPct = pct
     }
   }
@@ -182,7 +186,7 @@ export async function run(urlsFile, outCsv = 'candidates_with_url.csv', start = 
     const pct = 100
     const bar = makeBar(pct, barWidth)
     const elapsed = Math.round((Date.now() - t0) / 1000)
-    logger.info(`[batch] ${bar} ${pct}% | ${urls.length}/${urls.length} done | ok:${okCount} err:${errCount} inflight:0 | ${elapsed}s elapsed`)
+    progressLogger.info(`[batch] ${bar} ${pct}% | ${urls.length}/${urls.length} done | ok:${okCount} err:${errCount} inflight:0 | ${elapsed}s elapsed`)
   } catch {}
 }
 
@@ -209,5 +213,5 @@ if (isCli) {
   const concurrency = Number(values.concurrency)
   const uniqueHosts = values['unique-hosts']
   const barWidth = Number(values['bar-width'])
-  run(urlsFile, outCsv, start, limit, concurrency, uniqueHosts, values['progress-only'], barWidth, values['tweaks-file']).catch(err => { logger.error(err); throw err })
+  run(urlsFile, outCsv, start, limit, concurrency, uniqueHosts, values['progress-only'], barWidth, values['tweaks-file']).catch(err => { progressLogger.error(err); throw err })
 }

@@ -2,9 +2,11 @@ import fs from 'fs'
 import path from 'path'
 import { parseArticle } from '../index.js'
 import { applyDomainTweaks, loadTweaksConfig, applyUrlRewrites } from './inc/applyDomainTweaks.js'
-import logger from '../controllers/logger.js'
+import logger, { createLogger } from '../controllers/logger.js'
 import { fileURLToPath } from 'url'
 import { parseArgs } from 'node:util'
+
+const progressLogger = createLogger()
 
 // Lightweight HTTP helpers using global fetch (Node >=18)
 export function defaultHeaders(u) {
@@ -131,7 +133,7 @@ export function buildOptions(url, timeoutMs, base = {}) {
   }
 }
 
-export function makeSocket(quiet) {
+export function makeSocket(quiet, log = progressLogger) {
   if (quiet) return { emit: () => {} }
   // Filter noisy logs to reduce pipe errors while still showing progress
   return {
@@ -139,7 +141,7 @@ export function makeSocket(quiet) {
       try {
         const s = String(status || '')
         if (/^\[parse\] (start|complete)/.test(s) || s.includes('live blog detected') || s.startsWith('[rescue]') || s.startsWith('[clean]')) {
-          logger.info(s)
+          log.info(s)
         }
       } catch {}
     }
@@ -149,7 +151,7 @@ export function makeSocket(quiet) {
 export async function tryParse(url, tweaks, timeoutMs, overrides, quiet) {
   const opts = buildOptions(url, timeoutMs, overrides)
   applyDomainTweaks(url, opts, tweaks, { retries: 0 })
-  const socket = makeSocket(quiet)
+  const socket = makeSocket(quiet, progressLogger)
   return await parseArticle(opts, socket)
 }
 
@@ -268,6 +270,7 @@ async function main() {
   const barWidth = Number(values['bar-width'])
   const verbose = values.verbose
   const quiet = verbose ? false : (concurrency > 1)
+  logger.setQuiet(progressOnly)
 
   const tweaks = loadTweaksConfig(values['tweaks-file'])
   let urls = uniq(readUrls(urlsFile))
@@ -280,7 +283,7 @@ async function main() {
 
   // Progress tracker
   const t0 = now()
-  logger.info(`[sample] starting - total: ${urls.length} concurrency: ${concurrency} timeout: ${timeoutMs}ms`)
+  progressLogger.info(`[sample] starting - total: ${urls.length} concurrency: ${concurrency} timeout: ${timeoutMs}ms`)
   const makeBar = (pct) => {
     const w = Math.max(5, Math.min(100, Math.floor(barWidth)))
     const filled = Math.max(0, Math.min(w, Math.round((pct / 100) * w)))
@@ -299,7 +302,7 @@ async function main() {
       const elapsed = Math.round((now() - t0) / 1000)
       if (pct !== prevPct) {
         const bar = makeBar(pct)
-        logger.info(`[progress] ${bar} ${pct}% | ${done}/${urls.length} done | ok:${ok} skip:${skips} err:${err} inflight:${inflight} | ${elapsed}s elapsed`)
+        progressLogger.info(`[progress] ${bar} ${pct}% | ${done}/${urls.length} done | ok:${ok} skip:${skips} err:${err} inflight:${inflight} | ${elapsed}s elapsed`)
         prevPct = pct
       }
     } catch {}
@@ -310,17 +313,17 @@ async function main() {
       if (i >= urls.length) return
       const u = urls[i]
       started.add(i)
-      if (!progressOnly) logger.info(`[sample] parsing ${i+1}/${urls.length} - ${u}`)
+      if (!progressOnly) progressLogger.info(`[sample] parsing ${i+1}/${urls.length} - ${u}`)
       const res = await runOne(u, tweaks, timeoutMs, quiet)
       results[i] = res
       updateProgress()
       const tag = res.ok ? 'OK' : (res?.kind === 'skip' ? 'SKIP' : 'ERR')
       if (!progressOnly) {
         if (quiet) {
-          if (tag === 'ERR') logger.info(`[sample] Failed: ${u} - ${res.error}`)
-          if (tag === 'SKIP') logger.info(`[sample] Skipped: ${u} - ${res.error || 'skip'}`)
+          if (tag === 'ERR') progressLogger.info(`[sample] Failed: ${u} - ${res.error}`)
+          if (tag === 'SKIP') progressLogger.info(`[sample] Skipped: ${u} - ${res.error || 'skip'}`)
         } else {
-          logger.info(`[sample] ${tag} ${i+1}/${urls.length} url: ${u}`)
+          progressLogger.info(`[sample] ${tag} ${i+1}/${urls.length} url: ${u}`)
         }
       }
     }
@@ -336,9 +339,9 @@ async function main() {
     const pct = 100
     const bar = makeBar(pct)
     const elapsed = Math.round((now() - t0) / 1000)
-    logger.info(`[progress] ${bar} ${pct}% | ${urls.length}/${urls.length} done | ok:${ok.length} skip:${skips.length} err:${err.length} inflight:0 | ${elapsed}s elapsed`)
+    progressLogger.info(`[progress] ${bar} ${pct}% | ${urls.length}/${urls.length} done | ok:${ok.length} skip:${skips.length} err:${err.length} inflight:0 | ${elapsed}s elapsed`)
   } catch {}
-  logger.info(`[sample] complete - total: ${results.length} ok: ${ok.length} skip: ${skips.length} err: ${err.length}`)
+  progressLogger.info(`[sample] complete - total: ${results.length} ok: ${ok.length} skip: ${skips.length} err: ${err.length}`)
 
   const outDir = path.resolve('scripts/results')
   try { fs.mkdirSync(outDir, { recursive: true }) } catch {}
@@ -375,7 +378,7 @@ async function main() {
   // Write JSON summary
   const jsonFile = path.join(outDir, `sample_summary_${stamp}.json`)
   fs.writeFileSync(jsonFile, JSON.stringify({ ...summary, results }, null, 2), 'utf8')
-  logger.info(`[sample] wrote summary to ${jsonFile}`)
+  progressLogger.info(`[sample] wrote summary to ${jsonFile}`)
 
   // Write CSV rows
   const csvFile = path.join(outDir, `sample_summary_${stamp}.csv`)
@@ -388,18 +391,18 @@ async function main() {
     return [esc(r?.url), esc(r?.finalUrl || ''), r?.ok ? 1 : 0, r?.source || '', r?.dt || '', r?.size || '', r?.words || '', r?.links || '', esc(r?.error || '')].join(',')
   })
   fs.writeFileSync(csvFile, header + rows.join('\n') + '\n', 'utf8')
-  logger.info(`[sample] wrote CSV to ${csvFile}`)
+  progressLogger.info(`[sample] wrote CSV to ${csvFile}`)
 
   // Write host breakdown CSV
   const hostCsv = path.join(outDir, `sample_hosts_${stamp}.csv`)
   const hHeader = 'host,total,ok,skip,err,avg_ms' + '\n'
   const hRows = Object.values(byHost).map(h => [h.host, h.total, h.ok, (h.skip||0), h.err, (h.ok ? Math.round(h.dtSum / h.ok) : '')].join(','))
   fs.writeFileSync(hostCsv, hHeader + hRows.join('\n') + '\n', 'utf8')
-  logger.info(`[sample] wrote host breakdown to ${hostCsv}`)
+  progressLogger.info(`[sample] wrote host breakdown to ${hostCsv}`)
 }
 
 const isCli =
   process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])
 if (isCli) {
-  main().catch(err => { logger.error(err); process.exit(1) })
+  main().catch(err => { progressLogger.error(err); process.exit(1) })
 }
