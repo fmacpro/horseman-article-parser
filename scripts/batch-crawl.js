@@ -5,6 +5,7 @@ import blockedResourceTypes from '../scripts/inc/blockResourceTypes.js'
 import skippedResources from '../scripts/inc/skipResources.js'
 import { applyDomainTweaks, loadTweaksConfig, applyUrlRewrites } from './inc/applyDomainTweaks.js'
 import logger from '../controllers/logger.js'
+import { fileURLToPath } from 'url'
 
 export function makeBar(pct) {
   const w = Math.max(5, Math.min(100, Number(process.env.BATCH_BAR_WIDTH || 16)))
@@ -171,7 +172,9 @@ export async function run(urlsFile, outCsv = 'candidates_with_url.csv', start = 
   } catch {}
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+const isCli =
+  process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])
+if (isCli) {
   const urlsFile = process.argv[2] || path.resolve('scripts/data/urls.txt')
   const outCsv = process.argv[3] || path.resolve('scripts/data/candidates_with_url.csv')
   const start = process.argv[4] || 0
