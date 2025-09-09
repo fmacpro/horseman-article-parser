@@ -28,6 +28,12 @@ test('setDefaultOptions deeply merges nested structures', () => {
   assert.equal(opts.puppeteer.goto.waitUntil, 'domcontentloaded')
 })
 
+test('setDefaultOptions does not duplicate links in enabled array', () => {
+  const opts = setDefaultOptions({ enabled: ['links', 'extra'] })
+  const linkCount = opts.enabled.filter(e => e === 'links').length
+  assert.equal(linkCount, 1)
+})
+
 test('capitalizeFirstLetter capitalizes only first character', () => {
   assert.equal(capitalizeFirstLetter('hello'), 'Hello')
 })
