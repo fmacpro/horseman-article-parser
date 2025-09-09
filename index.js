@@ -24,6 +24,7 @@ import { sanitizeDataUrl } from './controllers/utils.js'
 import { safeAwait, sleep } from './controllers/async.js'
 import { timeLeftFactory, waitForFrameStability, navigateWithFallback } from './controllers/navigation.js'
 import { loadNlpPlugins } from './controllers/nlpPlugins.js'
+import { fetch as undiciFetch } from 'undici'
 
 const require = createRequire(import.meta.url)
 
@@ -82,11 +83,9 @@ export async function parseArticle (options, socket = { emit: (type, status) => 
   const deadline = totalTimeoutMs ? startAt + totalTimeoutMs : null
   if (deadline) options.__deadline = deadline
   let timeoutHandle = null
-  let timedOut = false
-  const timeoutPromise = new Promise((_, reject) => {
+  const timeoutPromise = new Promise((_resolve, reject) => {
     if (!totalTimeoutMs) return
     timeoutHandle = setTimeout(async () => {
-      timedOut = true
       await safeAwait(browser.close(), 'browser.close on timeout')
       reject(new Error(`Timeout after ${totalTimeoutMs}ms`))
     }, totalTimeoutMs)
@@ -301,7 +300,7 @@ const articleParser = async function (browser, options, socket) {
         return c
       }
       const tryFetch = async (u) => {
-        const res = await fetch(u, {
+        const res = await undiciFetch(u, {
           headers: {
             'User-Agent': options.puppeteer?.userAgent || 'Mozilla/5.0',
             'Accept-Language': options.puppeteer?.extraHTTPHeaders?.['Accept-Language'] || 'en-US,en;q=0.9',
@@ -329,7 +328,7 @@ const articleParser = async function (browser, options, socket) {
     try {
       if (ampFetchPromise) {
         const earlyWait = Math.min(1000, Math.max(300, Math.floor(tl() * 0.2)))
-        await Promise.race([ampFetchPromise, new Promise(r => setTimeout(r, earlyWait))])
+        await Promise.race([ampFetchPromise, new Promise(resolve => setTimeout(resolve, earlyWait))])
       }
     } catch {}
 
@@ -370,7 +369,6 @@ const articleParser = async function (browser, options, socket) {
 
   // If page still lacks readable content, try a generic AMP/static fallback fetch
   try {
-    const maxMs = Math.min(500, Math.max(300, tl()))
     const hasReadable = await page.evaluate(() => {
       const paras = Array.from(document.querySelectorAll('article p, main p, [role="main"] p, p'))
       let longCount = 0
@@ -394,7 +392,7 @@ const articleParser = async function (browser, options, socket) {
           return c
         }
         const tryFetch = async (u) => {
-          const res = await fetch(u, {
+          const res = await undiciFetch(u, {
             headers: {
               'User-Agent': options.puppeteer?.userAgent || 'Mozilla/5.0',
               'Accept-Language': options.puppeteer?.extraHTTPHeaders?.['Accept-Language'] || 'en-US,en;q=0.9',
@@ -450,7 +448,7 @@ const articleParser = async function (browser, options, socket) {
   try {
     if (ampFetchPromise) {
       const waitMs = Math.min(1500, Math.max(200, Math.floor(tl() * 0.3)))
-      try { await Promise.race([ampFetchPromise, new Promise(r => setTimeout(r, waitMs))]) } catch {}
+      try { await Promise.race([ampFetchPromise, new Promise(resolve => setTimeout(resolve, waitMs))]) } catch {}
     }
     if (staticHtmlOverride) {
       article.url = staticUrlOverride || article.url
@@ -550,7 +548,7 @@ const articleParser = async function (browser, options, socket) {
   // Evaluate title (retry once on context loss)
   try {
     article.meta.title.text = await page.title()
-  } catch (err) {
+  } catch {
     try { await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 1500 }) } catch {}
     try { article.meta.title.text = await page.title() } catch { article.meta.title.text = '' }
   }
@@ -916,21 +914,21 @@ log('analyze', 'Evaluating meta tags')
         // Try canonical URL fetch to get non-AMP content
         try {
           const link = dom.window.document.querySelector('link[rel="canonical"]')
-          const canon = (link && link.href) ? link.href : null
-          if (canon && typeof fetch === 'function') {
-            const res = await fetch(canon, { headers: { 'User-Agent': options.puppeteer?.userAgent || 'Mozilla/5.0', 'Accept-Language': options.puppeteer?.extraHTTPHeaders?.['Accept-Language'] || 'en-US,en;q=0.9' } })
-            if (res && res.ok) {
-              const txt = await res.text()
-              const vcC2 = new VirtualConsole(); vcC2.sendTo(console, { omitJSDOMErrors: true })
-              const domC = new JSDOM(txt, { virtualConsole: vcC2 })
-              const scopeC = domC.window.document.querySelector('main, article, [role="main"]') || domC.window.document.body
-              const p2 = Array.from(scopeC ? scopeC.querySelectorAll('p') : [])
-                .map(p => ((p && p.textContent) ? p.textContent.replace(/\s+/g,' ').trim() : ''))
-                .filter(t => t && t.length > 60)
-                .slice(0, 5)
-              if (p2.length >= 2) paras = p2
+            const canon = (link && link.href) ? link.href : null
+            if (canon) {
+              const res = await undiciFetch(canon, { headers: { 'User-Agent': options.puppeteer?.userAgent || 'Mozilla/5.0', 'Accept-Language': options.puppeteer?.extraHTTPHeaders?.['Accept-Language'] || 'en-US,en;q=0.9' } })
+              if (res && res.ok) {
+                const txt = await res.text()
+                const vcC2 = new VirtualConsole(); vcC2.sendTo(console, { omitJSDOMErrors: true })
+                const domC = new JSDOM(txt, { virtualConsole: vcC2 })
+                const scopeC = domC.window.document.querySelector('main, article, [role="main"]') || domC.window.document.body
+                const p2 = Array.from(scopeC ? scopeC.querySelectorAll('p') : [])
+                  .map(p => ((p && p.textContent) ? p.textContent.replace(/\s+/g,' ').trim() : ''))
+                  .filter(t => t && t.length > 60)
+                  .slice(0, 5)
+                if (p2.length >= 2) paras = p2
+              }
             }
-          }
         } catch {}
       }
       if (paras.length < 2) {

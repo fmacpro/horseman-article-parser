@@ -2,7 +2,7 @@
 import fs from 'fs'
 import path from 'path'
 import { XMLParser } from 'fast-xml-parser'
-import { ProxyAgent, setGlobalDispatcher } from 'undici'
+import { ProxyAgent, setGlobalDispatcher, fetch as undiciFetch } from 'undici'
 import logger, { createLogger } from '../controllers/logger.js'
 import { fileURLToPath } from 'url'
 import { parseArgs } from 'node:util'
@@ -77,7 +77,7 @@ export async function fetchTextOnce(url, timeoutMs = 12000, headers = defaultHea
   const ctrl = new AbortController()
   const t = setTimeout(() => ctrl.abort(), Math.max(1000, timeoutMs))
   try {
-    const res = await fetch(url, { redirect: 'follow', signal: ctrl.signal, headers })
+    const res = await undiciFetch(url, { redirect: 'follow', signal: ctrl.signal, headers })
     if (!res.ok) {
       const ct = res.headers?.get ? (res.headers.get('content-type') || '') : ''
       throw new Error(`Fetch failed ${res.status} (${ct}) for ${url}`)
@@ -99,7 +99,7 @@ export async function fetchText(url, timeoutMs = 12000, maxRetries = 2) {
       const s = String(err && (err.message || err))
       const transient = /(429|502|503|504|network|timeout|abort)/i.test(s)
       if (attempt < maxRetries && transient) {
-        await new Promise(r => setTimeout(r, 500 * (attempt + 1)))
+        await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)))
         continue
       }
       break

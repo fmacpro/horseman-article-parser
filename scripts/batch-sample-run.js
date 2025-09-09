@@ -6,6 +6,7 @@ import logger, { createLogger } from '../controllers/logger.js'
 import { fileURLToPath } from 'url'
 import { parseArgs } from 'node:util'
 import { suppressTaskkillErrors } from './inc/suppressTaskkillErrors.js'
+import { fetch as undiciFetch } from 'undici'
 
 // Silence noisy Windows taskkill errors when cleaning up Chromium
 suppressTaskkillErrors()
@@ -34,7 +35,7 @@ export async function httpHead(url, timeoutMs = 3000) {
   const ctrl = new AbortController()
   const t = setTimeout(() => ctrl.abort(), timeoutMs)
   try {
-    const res = await fetch(url, { method: 'HEAD', redirect: 'follow', signal: ctrl.signal, headers: defaultHeaders(url) })
+    const res = await undiciFetch(url, { method: 'HEAD', redirect: 'follow', signal: ctrl.signal, headers: defaultHeaders(url) })
     return { ok: res.ok, status: res.status }
   } catch (err) {
     return { ok: false, status: 0, error: String(err?.message || err) }
@@ -48,7 +49,7 @@ export async function httpProbe(url, timeoutMs = 3000) {
   const ctrl = new AbortController()
   const t = setTimeout(() => ctrl.abort(), timeoutMs)
   try {
-    const res = await fetch(url, { method: 'GET', redirect: 'follow', signal: ctrl.signal, headers: defaultHeaders(url) })
+    const res = await undiciFetch(url, { method: 'GET', redirect: 'follow', signal: ctrl.signal, headers: defaultHeaders(url) })
     return { ok: res.ok, status: res.status }
   } catch (err) {
     return { ok: false, status: 0, error: String(err?.message || err) }
@@ -411,5 +412,8 @@ async function main() {
 const isCli =
   process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])
 if (isCli) {
-  main().catch(err => { progressLogger.error(err); process.exit(1) })
+  main().catch(err => {
+    progressLogger.error(err)
+    process.exitCode = 1
+  })
 }
