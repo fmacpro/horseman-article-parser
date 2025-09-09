@@ -419,30 +419,32 @@ const articleParser = async function (browser, options, socket) {
   } catch {}
 
   // Generic readable-content heuristic wait: paragraphs/headings/body text signals
-  try {
-    const maxMs = Math.min(2500, Math.max(800, tl()))
-    await page.waitForFunction(() => {
-      const scope = document.querySelector('article, main, [role="main"]') || document.body
-      if (!scope) return false
-      const paras = Array.from(scope.querySelectorAll('p'))
-      const heads = scope.querySelector('h1, h2, h3')
-      let longCount = 0
-      let blocksOver80 = 0
-      let totalText = 0
-      for (const p of paras) {
-        const t = (p.textContent || '').replace(/\s+/g, ' ').trim()
-        totalText += t.length
-        if (t.length >= 120) longCount++
-        if (t.length >= 80) blocksOver80++
-        if (longCount >= 2) return true
-      }
-      if (longCount >= 1 && !!heads) return true
-      if (blocksOver80 >= 3) return true
-      if (totalText >= 800) return true
-      return false
-    }, { timeout: maxMs })
-    log('content', 'readable_signal')
-  } catch {}
+  if (!options.skipReadabilityWait) {
+    try {
+      const maxMs = Math.min(2500, Math.max(800, tl()))
+      await page.waitForFunction(() => {
+        const scope = document.querySelector('article, main, [role="main"]') || document.body
+        if (!scope) return false
+        const paras = Array.from(scope.querySelectorAll('p'))
+        const heads = scope.querySelector('h1, h2, h3')
+        let longCount = 0
+        let blocksOver80 = 0
+        let totalText = 0
+        for (const p of paras) {
+          const t = (p.textContent || '').replace(/\s+/g, ' ').trim()
+          totalText += t.length
+          if (t.length >= 120) longCount++
+          if (t.length >= 80) blocksOver80++
+          if (longCount >= 2) return true
+        }
+        if (longCount >= 1 && !!heads) return true
+        if (blocksOver80 >= 3) return true
+        if (totalText >= 800) return true
+        return false
+      }, { timeout: maxMs })
+      log('content', 'readable_signal')
+    } catch {}
+  }
 
   // If AMP fetched, prefer static override for speed and robustness
   try {
