@@ -3,6 +3,7 @@ import path from 'path'
 import { parseArticle } from '../index.js'
 import { applyDomainTweaks, loadTweaksConfig, applyUrlRewrites } from './inc/applyDomainTweaks.js'
 import logger from '../controllers/logger.js'
+import { fileURLToPath } from 'url'
 
 // Lightweight HTTP helpers using global fetch (Node >=18)
 export function defaultHeaders(u) {
@@ -383,6 +384,8 @@ async function main() {
   logger.info(`[sample] wrote host breakdown to ${hostCsv}`)
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+const isCli =
+  process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])
+if (isCli) {
   main().catch(err => { logger.error(err); process.exit(1) })
 }
