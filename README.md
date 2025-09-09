@@ -389,6 +389,8 @@ Parameters
 
 ```bash
 npx cross-env PROGRESS_ONLY=1 node scripts/fetch-curated-urls.js 200
+# or via npm script
+sample:prepare
 ```
 
 Parameters
@@ -401,7 +403,7 @@ Parameters
 npx cross-env PROGRESS_ONLY=1 \
   node scripts/batch-sample-run.js 100 5 scripts/data/urls.txt 20000 true
 # or via npm script (defaults shown in package.json)
-npm run sample:batch -- true
+npm run sample:batch
 ```
 
 Parameters
