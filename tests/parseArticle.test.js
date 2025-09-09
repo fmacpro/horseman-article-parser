@@ -1,20 +1,45 @@
-import { test } from 'node:test'
+import { test, before, after } from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'fs'
 import http from 'node:http'
+import puppeteer from 'puppeteer-extra'
 import { parseArticle } from '../index.js'
 
 // Silent socket to suppress parser status logs during tests
 const quietSocket = { emit: () => {} }
 
-test('parseArticle processes local HTML', async (t) => {
+// Shorten test and parser timeouts to speed up the suite
+const TEST_TIMEOUT = 10000
+const PARSE_TIMEOUT = 5000
+
+// Reuse a single browser instance across tests to avoid repeated startups
+let sharedBrowser
+let originalLaunch
+let originalClose
+
+before(async () => {
+  originalLaunch = puppeteer.launch
+  const boundLaunch = puppeteer.launch.bind(puppeteer)
+  sharedBrowser = await boundLaunch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] })
+  originalClose = sharedBrowser.close.bind(sharedBrowser)
+  // Prevent individual tests from closing the shared browser
+  sharedBrowser.close = async () => {}
+  puppeteer.launch = async () => sharedBrowser
+})
+
+after(async () => {
+  puppeteer.launch = originalLaunch
+  if (originalClose) await originalClose()
+})
+
+test('parseArticle processes local HTML', { timeout: TEST_TIMEOUT }, async (t) => {
   const html = fs.readFileSync('tests/fixtures/integration/sample.html', 'utf8')
   const dataUrl = 'data:text/html;base64,' + Buffer.from(html).toString('base64')
   try {
     const article = await parseArticle({
       url: dataUrl,
       enabled: ['spelling'],
-      timeoutMs: 20000,
+      timeoutMs: PARSE_TIMEOUT,
       puppeteer: { launch: { headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] } }
     }, quietSocket)
     assert.equal(article.title.text, 'Sample Story')
@@ -25,7 +50,7 @@ test('parseArticle processes local HTML', async (t) => {
   }
 })
 
-test('parseArticle uses rules overrides for title and content', async (t) => {
+test('parseArticle uses rules overrides for title and content', { timeout: TEST_TIMEOUT }, async (t) => {
   const html = '<html><head><title>Wrong</title></head><body><article><p>Incorrect</p></article></body></html>'
   const server = http.createServer((req, res) => {
     res.end(html)
@@ -37,7 +62,7 @@ test('parseArticle uses rules overrides for title and content', async (t) => {
   try {
     const baseline = await parseArticle({
       url,
-      timeoutMs: 20000,
+      timeoutMs: PARSE_TIMEOUT,
       puppeteer: { launch: { headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] } }
     }, quietSocket)
     assert.equal(baseline.title.text, 'Wrong')
@@ -50,7 +75,7 @@ test('parseArticle uses rules overrides for title and content', async (t) => {
         title: () => 'Right',
         content: () => '<article><p>Correct</p></article>'
       }],
-      timeoutMs: 20000,
+      timeoutMs: PARSE_TIMEOUT,
       puppeteer: { launch: { headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] } }
     }, quietSocket)
     assert.equal(article.title.text, 'Right')
@@ -62,7 +87,7 @@ test('parseArticle uses rules overrides for title and content', async (t) => {
   }
 })
 
-test('parseArticle respects timeoutMs option', async (t) => {
+test('parseArticle respects timeoutMs option', { timeout: TEST_TIMEOUT }, async (t) => {
   const html = '<html><head><title>Timeout Test</title></head><body><article><p>content</p></article></body></html>'
   const dataUrl = 'data:text/html;base64,' + Buffer.from(html).toString('base64')
   try {
@@ -81,20 +106,20 @@ test('parseArticle respects timeoutMs option', async (t) => {
   }
 })
 
-test('parseArticle can disable JavaScript execution', async (t) => {
+test('parseArticle can disable JavaScript execution', { timeout: TEST_TIMEOUT }, async (t) => {
   const html = '<html><head><title>Original</title><script>document.title="Changed"</script></head><body><article><p>content</p></article></body></html>'
   const dataUrl = 'data:text/html;base64,' + Buffer.from(html).toString('base64')
   try {
     const withJs = await parseArticle({
       url: dataUrl,
-      timeoutMs: 20000,
+      timeoutMs: PARSE_TIMEOUT,
       puppeteer: { launch: { headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] } }
     }, quietSocket)
     assert.equal(withJs.title.text, 'Changed')
 
     const withoutJs = await parseArticle({
       url: dataUrl,
-      timeoutMs: 20000,
+      timeoutMs: PARSE_TIMEOUT,
       puppeteer: { launch: { headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'], javascriptEnabled: false } }
     }, quietSocket)
     assert.equal(withoutJs.title.text, 'Original')
@@ -103,14 +128,14 @@ test('parseArticle can disable JavaScript execution', async (t) => {
   }
 })
 
-test('parseArticle strips selectors listed in striptags', async (t) => {
+test('parseArticle strips selectors listed in striptags', { timeout: TEST_TIMEOUT }, async (t) => {
   const html = '<html><head><title>StripTags Test</title></head><body><article><div class="ad">Ad text</div><p id="remove-me">Should go</p><p>Keep me</p></article></body></html>'
   const dataUrl = 'data:text/html;base64,' + Buffer.from(html).toString('base64')
   try {
     const article = await parseArticle({
       url: dataUrl,
       striptags: ['.ad', '#remove-me'],
-      timeoutMs: 20000,
+      timeoutMs: PARSE_TIMEOUT,
       puppeteer: { launch: { headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] } }
     }, quietSocket)
     assert.equal(article.title.text, 'StripTags Test')
@@ -120,7 +145,7 @@ test('parseArticle strips selectors listed in striptags', async (t) => {
   }
 })
 
-test('parseArticle applies custom Compromise plugins', async (t) => {
+test('parseArticle applies custom Compromise plugins', { timeout: TEST_TIMEOUT }, async (t) => {
   const html = fs.readFileSync('tests/fixtures/integration/rishi-sunak.html', 'utf8')
   const dataUrl = 'data:text/html;base64,' + Buffer.from(html).toString('base64')
 
@@ -136,7 +161,7 @@ test('parseArticle applies custom Compromise plugins', async (t) => {
     const withoutPlugin = await parseArticle({
       url: dataUrl,
       enabled: ['entities'],
-      timeoutMs: 20000,
+      timeoutMs: PARSE_TIMEOUT,
       puppeteer: { launch: { headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] } }
     }, quietSocket)
     const foundWithout = Array.isArray(withoutPlugin.people) && withoutPlugin.people.some(p => /rishi/i.test(p.text))
@@ -146,7 +171,7 @@ test('parseArticle applies custom Compromise plugins', async (t) => {
       url: dataUrl,
       enabled: ['entities'],
       nlp: { plugins: [testPlugin] },
-      timeoutMs: 20000,
+      timeoutMs: PARSE_TIMEOUT,
       puppeteer: { launch: { headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] } }
     }, quietSocket)
     const foundWith = Array.isArray(withPlugin.people) && withPlugin.people.some(p => /rishi sunak/i.test(p.text))
