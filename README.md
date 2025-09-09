@@ -347,44 +347,34 @@ Run quick tests and batches from this repo without writing code.
 
   - merge:csv: Merge CSVs (utility for dataset building).
     - `npm run merge:csv`
-  - curated:urls: Fetch curated URLs from feeds/sitemaps into `scripts/data/urls.txt`.
-    - `npm run curated:urls` or `node scripts/fetch-curated-urls.js <count>`
+  - sample:prepare: Fetch curated URLs from feeds/sitemaps into `scripts/data/urls.txt` (default 200).
+    - `npm run sample:prepare` or `node scripts/fetch-curated-urls.js <count>`
+  - sample:single: Run a single URL parse and write JSON to `scripts/results/single-sample-run-result.json`.
+    - `npm run sample:single -- "https://example.com/article"`
+  - sample:batch: Run the multi-URL sample with progress bar and summaries.
+    - `npm run sample:batch -- <N> <concurrency> <urlsFile> <timeoutMs>`
+    - Example: `npm run sample:batch -- 100 5 scripts/data/urls.txt 20000`
   - batch:crawl: Crawl URLs and dump content-candidate features to CSV.
     - `npm run batch:crawl -- <urlsFile?> <outCsv?>`
-  - sample:prepare: Fetch a smaller curated set (default 200) for quick sampling.
-    - `npm run sample:prepare`
- - sample:single: Run a single URL parse and write JSON to `scripts/results/single-sample-run-result.json`.
-   - `npm run sample:single -- "https://example.com/article"`
- - sample:batch: Run the multi-URL sample with progress bar and summaries.
-   - `npm run sample:batch -- <N> <concurrency> <urlsFile> <timeoutMs>`
-   - Example: `npm run sample:batch -- 100 5 scripts/data/urls.txt 20000`
-- docs: Generate API docs to `APIDOC.md`.
-   - `npm run docs`
+  - train:ranker: Train reranker weights from a candidates CSV.
+    - `npm run train:ranker -- <candidatesCsv>`
+  - docs: Generate API docs to `APIDOC.md`.
+    - `npm run docs`
 
 ### Environment variables
 
-- SAMPLE_PROGRESS_ONLY: `1` to hide per-URL logs, show compact progress for batch sample runs.
-- SAMPLE_TICK_MS: Milliseconds between sample progress updates (e.g., `1000`).
-- UNIQUE_HOSTS: `1` to pick unique hosts (diverse sample set) in batch sample runs.
-- BATCH_PROGRESS_ONLY: `1` to print progress-only lines during `batch:crawl`.
-- BATCH_TICK_MS / BATCH_BAR_WIDTH: Progress cadence and bar width for `batch:crawl`.
-- FEED_CONCURRENCY / FEED_TIMEOUT_MS / FEED_BAR_WIDTH: Tuning for curated feed collection.
+- PROGRESS_ONLY: `1` to hide per-URL logs and show compact progress.
+- UNIQUE_HOSTS: `1` to pick unique hosts (diverse sample set) in batch sample runs (or pass `true/1` as an argument).
+- BATCH_BAR_WIDTH: progress bar width for `batch:crawl`.
+- FEED_CONCURRENCY / FEED_TIMEOUT_MS / FEED_BAR_WIDTH: tuning for curated feed collection.
 
 ### Single URL test
 
 Writes a detailed JSON to `scripts/results/single-sample-run-result.json`.
 
 ```bash
-TEST_TIMEOUT_MS=40000 node scripts/single-sample-run.js "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html"
+npx cross-env TEST_TIMEOUT_MS=40000 node scripts/single-sample-run.js "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html"
 # or via npm script
-npm run sample:single -- "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html"
-```
-
-PowerShell:
-
-```powershell
-$env:TEST_TIMEOUT_MS=40000; node scripts/single-sample-run.js "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html"
-# or
 npm run sample:single -- "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html"
 ```
 
@@ -407,29 +397,17 @@ Parameters
 
 2) Run a batch against unique hosts with a simple progress-only view. Progress and a final summary print to the console; JSON/CSV reports are saved under `scripts/results/`.
 
-Bash/Zsh:
-
 ```bash
-UNIQUE_HOSTS=1 SAMPLE_PROGRESS_ONLY=1 SAMPLE_TICK_MS=1000 \
-  node scripts/batch-sample-run.js 100 5 scripts/data/urls.txt 20000
+npx cross-env PROGRESS_ONLY=1 \
+  node scripts/batch-sample-run.js 100 5 scripts/data/urls.txt 20000 true
 # or via npm script (defaults shown in package.json)
-npm run sample:batch -- 100 5 scripts/data/urls.txt 20000
-```
-
-PowerShell:
-
-```powershell
-$env:UNIQUE_HOSTS=1; $env:SAMPLE_PROGRESS_ONLY=1; $env:SAMPLE_TICK_MS=1000; \
-  node scripts/batch-sample-run.js 100 5 scripts/data/urls.txt 20000
-# or
-npm run sample:batch -- 100 5 scripts/data/urls.txt 20000
+npm run sample:batch -- true
 ```
 
 Parameters
 
-- `UNIQUE_HOSTS`: `1` to ensure each sampled URL has a unique host (optional).
-- `SAMPLE_PROGRESS_ONLY`: `1` to print only progress updates (optional).
-- `SAMPLE_TICK_MS`: interval in milliseconds between progress updates.
+- `PROGRESS_ONLY`: `1` to print only progress updates (optional).
+- `UNIQUE_HOSTS`/`<uniqueHosts>`: `1`/`true` to ensure each sampled URL has a unique host (optional).
 - `<N>`: number of URLs to process.
 - `<concurrency>`: number of concurrent parses.
 - `<urlsFile>`: file containing URLs to parse.
@@ -443,7 +421,7 @@ You can train a simple logistic-regression reranker to improve candidate selecti
 - Single URL (appends candidates):
   - `node scripts/single-sample-run.js`
 - Batch (recommended):
-  - `node scripts/batch-crawl.js scripts/data/urls.txt scripts/data/candidates_with_url.csv 0 200`
+  - `npx cross-env PROGRESS_ONLY=1 node scripts/batch-crawl.js scripts/data/urls.txt scripts/data/candidates_with_url.csv 0 200 1 true`
   - Adjust `start` and `limit` to process in slices (e.g., `200 200`, `400 200`, ...).
   Parameters
 
@@ -451,6 +429,9 @@ You can train a simple logistic-regression reranker to improve candidate selecti
   - `scripts/data/candidates_with_url.csv`: output CSV file for candidate features
   - `0`: start offset (row index) in the URLs file
   - `200`: limit (number of URLs to process in this run)
+  - `1`: concurrency (number of parallel crawlers)
+  - `true`: ensure each URL has a unique host (optional)
+  - `PROGRESS_ONLY`: `1` to show only progress updates (optional)
 - The project dumps candidate features with URL by default (see `scripts/single-sample-run.js`):
   - Header: `url,xpath,css_selector,text_length,punctuation_count,link_density,paragraph_count,has_semantic_container,boilerplate_penalty,direct_paragraph_count,direct_block_count,paragraph_to_block_ratio,average_paragraph_length,dom_depth,heading_children_count,aria_role_main,aria_role_negative,aria_hidden,image_alt_ratio,image_count,training_label,default_selected`
   - Up to `topN` unique-XPath rows per page (default 5)
@@ -486,7 +467,7 @@ You can train a simple logistic-regression reranker to improve candidate selecti
   - `weights.json`: output weights file (JSON)
   Tips
   - `--` passes subsequent args to the underlying script
-  - `> weights.json` redirects stdout to a file (Bash/PowerShell)
+  - `> weights.json` redirects stdout to a file
 
 4) Use the weights
 - `scripts/single-sample-run.js` auto-loads `weights.json` (if present) and enables the reranker:

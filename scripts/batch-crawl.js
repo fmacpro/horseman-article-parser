@@ -20,13 +20,28 @@ export function readUrls(filePath) {
   return text.split(/\r?\n/).map(s => s.trim()).filter(Boolean)
 }
 
-export async function run(urlsFile, outCsv = 'candidates_with_url.csv', start = 0, limit = null, concurrency = 1) {
-  const all = readUrls(urlsFile)
-  const end = limit ? Math.min(all.length, start + Number(limit)) : all.length
+export function uniqueByHost(urls, limit = Infinity) {
+  const out = []
+  const seen = new Set()
+  for (const u of urls) {
+    try {
+      const h = new URL(u).host
+      if (seen.has(h)) continue
+      seen.add(h)
+      out.push(u)
+      if (out.length >= limit) break
+    } catch {}
+  }
+  return out
+}
+export async function run(urlsFile, outCsv = 'candidates_with_url.csv', start = 0, limit = null, concurrency = 1, uniqueHosts = false) {
+  let all = readUrls(urlsFile)
+  if (uniqueHosts) all = uniqueByHost(all)
+  const end = limit ? Math.min(all.length, Number(start) + Number(limit)) : all.length
   const urls = all.slice(Number(start) || 0, end)
 
-  const progressOnly = process.env.BATCH_PROGRESS_ONLY ? (process.env.BATCH_PROGRESS_ONLY !== '0') : true
-  const quiet = true // suppress per-URL logs when using progress bar
+  const progressOnly = process.env.PROGRESS_ONLY ? process.env.PROGRESS_ONLY !== '0' : false
+  const quiet = progressOnly // suppress per-URL logs when using progress bar
   const tweaksConfig = loadTweaksConfig()
   const t0 = Date.now()
   let processed = 0
@@ -127,8 +142,7 @@ export async function run(urlsFile, outCsv = 'candidates_with_url.csv', start = 
   }
 
   let prevPct = -1
-  const tickMs = Number(process.env.BATCH_TICK_MS || 2000)
-  const tick = setInterval(() => {
+  function updateProgress() {
     const pct = urls.length ? Math.round((processed / urls.length) * 100) : 100
     if (pct !== prevPct) {
       const elapsed = Math.round((Date.now() - t0) / 1000)
@@ -137,7 +151,7 @@ export async function run(urlsFile, outCsv = 'candidates_with_url.csv', start = 
       logger.info(`[batch] ${bar} ${pct}% | ${processed}/${urls.length} done | ok:${okCount} err:${errCount} inflight:${inflight} | ${elapsed}s elapsed`)
       prevPct = pct
     }
-  }, tickMs)
+  }
 
   if (Number(concurrency) <= 1) {
     for (const url of urls) {
@@ -145,6 +159,7 @@ export async function run(urlsFile, outCsv = 'candidates_with_url.csv', start = 
       processed++
       if (ok) okCount++
       else errCount++
+      updateProgress()
     }
   } else {
     // concurrent pool
@@ -158,12 +173,11 @@ export async function run(urlsFile, outCsv = 'candidates_with_url.csv', start = 
         processed++
         if (ok) okCount++
         else errCount++
+        updateProgress()
       }
     }
     await Promise.all(Array.from({ length: pool }, runNext))
   }
-
-  clearInterval(tick)
   try {
     const pct = 100
     const bar = makeBar(pct)
@@ -180,5 +194,7 @@ if (isCli) {
   const start = process.argv[4] || 0
   const limit = process.argv[5] || null
   const concurrency = process.argv[6] || process.env.BATCH_CONCURRENCY || 1
-  run(urlsFile, outCsv, start, limit, concurrency).catch(err => { logger.error(err); throw err })
+  const uniqueArg = process.argv[7]
+  const uniqueHosts = uniqueArg != null ? /^(1|true)$/i.test(uniqueArg) : !!process.env.UNIQUE_HOSTS
+  run(urlsFile, outCsv, start, limit, concurrency, uniqueHosts).catch(err => { logger.error(err); throw err })
 }

@@ -188,7 +188,7 @@ export async function collect(count, feeds) {
   // Concurrently fetch per-feed links
   const FEED_CONCURRENCY = Number(process.env.FEED_CONCURRENCY || 6)
   const FEED_TIMEOUT_MS = Number(process.env.FEED_TIMEOUT_MS || 12000)
-  const progressOnly = !!process.env.FEED_PROGRESS_ONLY
+  const progressOnly = process.env.PROGRESS_ONLY ? process.env.PROGRESS_ONLY !== '0' : false
   const progressLogger = createLogger({ quiet: !!process.env.FETCH_QUIET })
   const detailLogger = createLogger({ quiet: !!process.env.FETCH_QUIET || progressOnly })
   const start = Date.now()
@@ -223,14 +223,14 @@ export async function collect(count, feeds) {
         detailLogger.warn(`[feeds] ERR ${i + 1}/${feeds.length} - ${err?.message || err}`)
       } finally {
         processed++
+        updateProgress()
       }
     }
   }
 
   const workers = Array.from({ length: Math.min(FEED_CONCURRENCY, feeds.length) }, () => worker())
   let prevPct = -1
-  const tickMs = Number(process.env.FEED_TICK_MS || 2000)
-  const tick = setInterval(() => {
+  function updateProgress() {
     const pct = feeds.length ? Math.round((processed / feeds.length) * 100) : 100
     if (pct !== prevPct) {
       const elapsed = Math.round((Date.now() - start) / 1000)
@@ -239,9 +239,9 @@ export async function collect(count, feeds) {
       progressLogger.info(`[feeds] ${bar} ${pct}% | ${processed}/${feeds.length} done | ok:${succeeded} err:${failed} inflight:${inflight} | ${elapsed}s elapsed`)
       prevPct = pct
     }
-  }, tickMs)
+  }
   await Promise.all(workers).catch(() => {})
-  clearInterval(tick)
+  updateProgress()
   const elapsed = Math.round((Date.now() - start) / 1000)
   try {
     const pct = 100
