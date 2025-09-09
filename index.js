@@ -549,7 +549,7 @@ const articleParser = async function (browser, options, socket) {
   if (options.enabled.includes('screenshot') && timeLeft() > 300) {
     log('analyze', 'Capturing screenshot')
     try {
-      article.mobile = await page.screenshot({ encoding: 'base64', type: 'jpeg', quality: 60 })
+      article.screenshot = await page.screenshot({ encoding: 'base64', type: 'jpeg', quality: 60 })
     } catch { /* ignore screenshot failures (e.g., page closed on timeout) */ }
   }
 

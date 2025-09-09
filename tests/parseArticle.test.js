@@ -73,8 +73,8 @@ test('parseArticle captures a screenshot when enabled', { timeout: TEST_TIMEOUT 
     t.skip('puppeteer unavailable: ' + err.message)
     return
   }
-  assert.equal(typeof article.mobile, 'string')
-  assert.ok(Buffer.from(article.mobile, 'base64').length > 1000)
+  assert.equal(typeof article.screenshot, 'string')
+  assert.ok(Buffer.from(article.screenshot, 'base64').length > 1000)
 })
 
 test('parseArticle uses rules overrides for title and content', { timeout: TEST_TIMEOUT }, async (t) => {

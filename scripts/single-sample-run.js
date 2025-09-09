@@ -108,7 +108,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
       metadescription: article.meta.description.text,
       url: article.url,
       siteicon: article.siteicon,
-      mobile: article.mobile,
+      screenshot: article.screenshot,
       sentiment: { score: article.sentiment.score, comparative: article.sentiment.comparative },
       keyphrases: article.processed.keyphrases,
       keywords: article.processed.keywords,
