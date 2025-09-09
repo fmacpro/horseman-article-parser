@@ -357,7 +357,7 @@ Run quick tests and batches from this repo without writing code.
    - `npm run sample:single -- "https://example.com/article"`
  - sample:batch: Run the multi-URL sample with progress bar and summaries.
    - `npm run sample:batch -- <N> <concurrency> <urlsFile> <timeoutMs>`
-   - Example: `npm run sample:batch -- 100 8 scripts/data/urls.txt 25000`
+   - Example: `npm run sample:batch -- 100 5 scripts/data/urls.txt 20000`
 - docs: Generate API docs to `APIDOC.md`.
    - `npm run docs`
 
@@ -411,18 +411,18 @@ Bash/Zsh:
 
 ```bash
 UNIQUE_HOSTS=1 SAMPLE_PROGRESS_ONLY=1 SAMPLE_TICK_MS=1000 \
-  node scripts/batch-sample-run.js 100 8 scripts/data/urls.txt 25000
+  node scripts/batch-sample-run.js 100 5 scripts/data/urls.txt 20000
 # or via npm script (defaults shown in package.json)
-npm run sample:batch -- 100 8 scripts/data/urls.txt 25000
+npm run sample:batch -- 100 5 scripts/data/urls.txt 20000
 ```
 
 PowerShell:
 
 ```powershell
 $env:UNIQUE_HOSTS=1; $env:SAMPLE_PROGRESS_ONLY=1; $env:SAMPLE_TICK_MS=1000; \
-  node scripts/batch-sample-run.js 100 8 scripts/data/urls.txt 25000
+  node scripts/batch-sample-run.js 100 5 scripts/data/urls.txt 20000
 # or
-npm run sample:batch -- 100 8 scripts/data/urls.txt 25000
+npm run sample:batch -- 100 5 scripts/data/urls.txt 20000
 ```
 
 Parameters

@@ -243,10 +243,13 @@ export async function runOne(url, tweaks, timeoutMs = 20000, quiet = true) {
 }
 
 async function main() {
-  const N = Number(process.argv[2] || 100)
-  const concurrency = Number(process.argv[3] || 5)
-  const urlsFile = process.argv[4] || path.resolve('scripts/data/urls.txt')
-  const timeoutMs = Number(process.argv[5] || 20000)
+  const defaultUrlsFile = path.resolve('scripts/data/urls.txt')
+  const args = process.argv.slice(2)
+  const [NArg, concurrencyArg, urlsArg, timeoutArg] = args.slice(-4)
+  const N = Number(NArg ?? 100)
+  const concurrency = Number(concurrencyArg ?? 5)
+  const urlsFile = urlsArg ? path.resolve(urlsArg) : defaultUrlsFile
+  const timeoutMs = Number(timeoutArg ?? 20000)
   const quiet = process.env.SAMPLE_VERBOSE ? false : (concurrency > 1)
 
   const tweaks = loadTweaksConfig()
