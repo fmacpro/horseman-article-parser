@@ -2,7 +2,18 @@
 import fs from 'fs'
 import path from 'path'
 import { XMLParser } from 'fast-xml-parser'
+import { ProxyAgent, setGlobalDispatcher } from 'undici'
 import logger, { createLogger } from '../controllers/logger.js'
+
+// Enable proxy support when HTTP(S)_PROXY env vars are present
+const proxy =
+  process.env.HTTPS_PROXY ||
+  process.env.https_proxy ||
+  process.env.HTTP_PROXY ||
+  process.env.http_proxy
+if (proxy) {
+  try { setGlobalDispatcher(new ProxyAgent(proxy)) } catch {}
+}
 
 // Reads newline-delimited feed URLs from a text file.
 // - ignores blank lines and lines starting with '#'
