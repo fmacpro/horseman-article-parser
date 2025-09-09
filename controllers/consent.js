@@ -1,3 +1,5 @@
+import { sleep } from './async.js'
+
 export async function autoDismissConsent (page, consentOptions = {}) {
   try {
     const selectors = Array.isArray(consentOptions.selectors) ? consentOptions.selectors : []
@@ -19,7 +21,7 @@ export async function autoDismissConsent (page, consentOptions = {}) {
             } catch {}
             await el.click({ delay: 20 })
             clicks++
-            await page.waitForTimeout(waitMs)
+            await sleep(waitMs)
           }
         } catch {}
       }
@@ -60,7 +62,7 @@ export async function autoDismissConsent (page, consentOptions = {}) {
           return count
         }, patterns, remaining)
         clicks += Number(did) || 0
-        if (did) await page.waitForTimeout(waitMs)
+        if (did) await sleep(waitMs)
       } catch {}
     }
 
@@ -80,6 +82,6 @@ export async function autoDismissConsent (page, consentOptions = {}) {
     }
 
     try { await page.keyboard.press('Escape') } catch {}
-    if (waitMs) await page.waitForTimeout(100)
+    if (waitMs) await sleep(100)
   } catch {}
 }
