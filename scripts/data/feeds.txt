@@ -1,0 +1,70 @@
+# News
+https://www.theguardian.com/world/rss
+https://www.theguardian.com/business/rss
+https://feeds.bbci.co.uk/news/world/rss.xml
+https://feeds.bbci.co.uk/news/technology/rss.xml
+http://rss.cnn.com/rss/cnn_topstories.rss
+https://www.aljazeera.com/xml/rss/all.xml
+https://www.reuters.com/finance/markets/rss
+https://rss.nytimes.com/services/xml/rss/nyt/World.xml
+https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml
+https://www.washingtonpost.com/arcio/rss/
+https://www.economist.com/sections/business/rss.xml
+https://www.ft.com/world/rss
+https://apnews.com/hub/ap-top-news?utm_source=apnews.com&utm_medium=referral&utm_campaign=rss&output=rss
+
+# Tech media
+https://www.theverge.com/rss/index.xml
+https://www.wired.com/feed/rss
+http://feeds.arstechnica.com/arstechnica/index
+http://feeds.feedburner.com/TechCrunch/
+https://www.engadget.com/rss.xml
+https://www.theregister.com/headlines.atom
+https://feed.infoq.com/
+https://news.ycombinator.com/rss
+
+# Security
+https://krebsonsecurity.com/feed/
+https://feeds.feedburner.com/TheHackersNews
+https://www.bleepingcomputer.com/feed/
+
+# Company / engineering blogs
+https://blog.cloudflare.com/rss/
+https://martinfowler.com/feed.atom
+https://developers.googleblog.com/atom.xml
+https://ai.googleblog.com/atom.xml
+https://openai.com/blog/rss.xml
+https://github.blog/feed/
+https://github.blog/changelog/feed/
+https://engineering.fb.com/feed/
+https://netflixtechblog.com/feed
+https://slack.engineering/feed/
+https://dropbox.tech/feed
+https://shopify.engineering/blog.atom
+https://engineering.atspotify.com/feed/
+https://aws.amazon.com/blogs/aws/feed/
+https://azure.microsoft.com/en-us/blog/feed/
+https://cloud.google.com/blog/topics/developers-practitioners/feed
+
+# Platforms / runtimes
+https://nodejs.org/en/feed/blog.xml
+https://v8.dev/blog.atom
+https://developer.chrome.com/feeds/blog.xml
+https://hacks.mozilla.org/feed/
+https://webkit.org/feed/
+
+# OSS / infra
+https://kubernetes.io/feed.xml
+https://www.cncf.io/feed/
+https://prometheus.io/blog/index.xml
+https://www.postgresql.org/list/announce.rss
+https://www.elastic.co/blog/feed
+https://redis.com/blog/feed/
+
+# Standards / orgs
+https://www.w3.org/blog/news/feed/
+https://whatwg.org/news/feed
+https://datatracker.ietf.org/feed/ietf-latest
+
+# Docs sitemaps (bigger sources)
+https://developer.mozilla.org/sitemaps/en-US/sitemap.xml

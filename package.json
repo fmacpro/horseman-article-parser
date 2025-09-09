@@ -1,12 +1,19 @@
 {
   "name": "horseman-article-parser",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Web Page Inspection Tool. Sentiment Analysis, Keyword Extraction, Named Entity Recognition & Spell Check",
   "type": "module",
   "main": "index.js",
   "scripts": {
     "lint": "node ./node_modules/eslint/bin/eslint.js . --ext .json --ext .js --fix",
-    "test": "node test.js"
+    "test": "node --test",
+    "merge:csv": "node scripts/merge-csv.js",
+    "sample:prepare": "node scripts/fetch-curated-urls.js",
+    "sample:single": "node scripts/single-sample-run.js",
+    "sample:batch": "node scripts/batch-sample-run.js",
+    "batch:crawl": "node scripts/batch-crawl.js",
+    "train:ranker": "node scripts/train-reranker.js",
+    "docs": "jsdoc2md index.js controllers/*.js helpers.js > APIDOC.md"
   },
   "repository": {
     "type": "git",
@@ -18,17 +25,22 @@
     "url": "https://github.com/fmacpro/horseman-article-parser/issues"
   },
   "homepage": "https://github.com/fmacpro/horseman-article-parser#readme",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "dependencies": {
     "absolutify": "^0.1.0",
     "clean-html": "^2.0.1",
     "compromise": "^14.14.4",
     "dictionary-en-gb": "^3.0.0",
+    "fast-xml-parser": "^4.4.1",
     "html-to-text": "^9.0.5",
     "jquery": "^3.6.0",
     "jsdom": "^26.1.0",
     "lighthouse": "^12.8.2",
     "lodash": "^4.17.21",
     "nlcst-to-string": "^4.0.0",
+    "undici": "^7.15.0",
     "puppeteer": "^24.18.0",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
@@ -46,7 +58,8 @@
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-json": "^4.0.1",
     "eslint-plugin-n": "^17.21.3",
-    "eslint-plugin-promise": "^7.2.1"
+    "eslint-plugin-promise": "^7.2.1",
+    "jsdoc-to-markdown": "^8.0.0"
   },
   "overrides": {
     "puppeteer-extra-plugin-user-data-dir": "file:overrides/puppeteer-extra-plugin-user-data-dir"

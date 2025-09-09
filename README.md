@@ -1,20 +1,33 @@
 ﻿# Horseman Article Parser
 
-A web page article parser which returns an object containing the article's formatted text and other attributes including sentiment, keyphrases, people, places, organisations, spelling suggestions, in-article links, meta data & lighthouse audit results.
+Horseman is a focused article scraping module for the open web. It loads pages (dynamic or AMP), detects the main story body, and returns clean, structured content ready for downstream use. Alongside text and title, it includes in-article links, metadata, sentiment, keywords/keyphrases, named entities, optional spelling suggestions, site icon, and Lighthouse signals. It also copes with live blogs, applies simple per-domain tweaks (headers/cookies/goto), and uses Puppeteer + stealth to reduce blocking.
+
+## Table of Contents
+
+- [Prerequisites](#prerequisites)
+- [Install](#install)
+- [Usage](#usage)
+- [Async/Await Example](#asyncawait-example)
+- [Options](#options)
+- [Development](#development)
+- [Dependencies](#dependencies)
+- [Dev Dependencies](#dev-dependencies)
+- [License](#license)
 
 ### Prerequisites
 
-Node.js & NPM
+Node.js >= 18, NPM >= 9.
+For Linux environments, ensure [Chromium dependencies for Puppeteer](https://github.com/puppeteer/puppeteer#requirements) are installed.
 
 ### Install
 
-```
+```bash
 npm install horseman-article-parser --save
 ```
 
 ### Usage
 
-#### parseArticle(options, socket) ⇒ <code>Object</code>
+#### parseArticle(options, socket) ? <code>Object</code>
 
 | Param   | Type                | Description         |
 | ------- | ------------------- | ------------------- |
@@ -23,20 +36,21 @@ npm install horseman-article-parser --save
 
 **Returns**: <code>Object</code> - article parser results object
 
-### Usage Example
+#### Async/Await Example
 
-```
+```js
 import { parseArticle } from 'horseman-article-parser';
 
 const options = {
   url: "https://www.theguardian.com/politics/2018/sep/24/theresa-may-calls-for-immigration-based-on-skills-and-wealth",
   enabled: ['lighthouse', 'screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords']
-}
+};
 
-parseArticle(options)
-  .then(function (article) {
+(async () => {
+  try {
+    const article = await parseArticle(options);
 
-    var response = {
+    const response = {
       title: article.title.text,
       excerpt: article.excerpt,
       metadescription: article.meta.description.text,
@@ -56,14 +70,14 @@ parseArticle(options)
       meta: article.meta,
       links: article.links,
       lighthouse: article.lighthouse
-    }
+    };
 
     console.log(response);
-  })
-  .catch(function (error) {
-    console.log(error.message)
+  } catch (error) {
+    console.log(error.message);
     console.log(error.stack);
-  })
+  }
+})();
 ```
 
 `parseArticle(options, <socket>)` accepts an optional socket for pipeing the response object, status messages and errors to a front end UI.
@@ -74,7 +88,7 @@ See [horseman-article-parser-ui](https://github.com/fmacpro/horseman-article-par
 
 The options below are set by default
 
-```
+```js
 var options = {
   // puppeteer options (https://github.com/GoogleChrome/puppeteer)
   puppeteer: {
@@ -83,6 +97,9 @@ var options = {
       headless: true,
       defaultViewport: null
     },
+    // Optional user agent and headers (some sites require a realistic UA)
+    // userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36',
+    // extraHTTPHeaders: { 'Accept-Language': 'en-US,en;q=0.9' },
     // puppeteer goto options (https://github.com/GoogleChrome/puppeteer/blob/master/docs/api.md#pagegotourl-options)
     goto: {
       waitUntil: 'domcontentloaded'
@@ -106,6 +123,30 @@ var options = {
   },
   // retext-keywords options (https://ghub.io/retext-keywords)
   retextkeywords: { maximum: 10 },
+  // content detection defaults (detector is always enabled)
+  contentDetection: {
+    // minimum characters required for a candidate
+    minLength: 400,
+    // maximum link density allowed for a candidate
+    maxLinkDensity: 0.5,
+    // optional: promote selection to a parent container when
+    // article paragraphs are split across sibling blocks
+    fragment: {
+      // require at least this many sibling parts containing paragraphs
+      minParts: 2,
+      // minimum text length per part
+      minChildChars: 150,
+      // minimum combined text across parts (set higher to be stricter)
+      minCombinedChars: 400,
+      // override parent link-density threshold (default uses max(maxLinkDensity, 0.65))
+      // maxLinkDensity: 0.65
+    },
+    // reranker is disabled by default; enable after training weights
+    // Note: scripts/single-sample-run.js auto-loads weights.json (if present) and enables the reranker
+    reranker: { enabled: false }
+    // optional: dump top-N candidates per page for labeling
+    // debugDump: { path: 'candidates_with_url.csv', topN: 5, addUrl: true }
+  },
   // retext-spell defaults and output tweaks
   retextspell: {
     tweaks: {
@@ -122,7 +163,7 @@ var options = {
 
 At a minimum you should pass a url
 
-```
+```js
 var options = {
   url: "https://www.theguardian.com/politics/2018/sep/24/theresa-may-calls-for-immigration-based-on-skills-and-wealth"
 }
@@ -130,7 +171,7 @@ var options = {
 
 If you want to enable the advanced features you should pass the following
 
-```
+```js
 var options = {
   url: "https://www.theguardian.com/politics/2018/sep/24/theresa-may-calls-for-immigration-based-on-skills-and-wealth",
   enabled: ['lighthouse', 'screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords']
@@ -140,7 +181,7 @@ var options = {
 You may pass rules for returning an articles title & contents. This is useful in a case
 where the parser is unable to return the desired title or content e.g.
 
-```
+```js
 rules: [
   {
     host: 'www.bbc.co.uk',
@@ -164,7 +205,7 @@ rules: [
 
 If you want to pass cookies to puppeteer use the following
 
-```
+```js
 var options = {
   puppeteer: {
     cookies: [{ name: 'cookie1', value: 'val1', domain: '.domain1' },{ name: 'cookie2', value: 'val2', domain: '.domain2' }]
@@ -174,7 +215,7 @@ var options = {
 
 To strip tags before processing use the following
 
-```
+```js
 var options = {
   striptags: ['.something', '#somethingelse']
 }
@@ -182,7 +223,7 @@ var options = {
 
 If you need to dismiss any popups e.g. a privacy popup use the following
 
-```
+```js
 var options = {
   clickelements: ['#button1', '#button2']
 }
@@ -190,7 +231,7 @@ var options = {
 
 there are some additional "complex" options available
 
-```
+```js
 var options = {
 
   // array of html elements to stip before analysis
@@ -203,8 +244,6 @@ var options = {
   // these sources are skipped) e.g. [ 'google', 'facebook' ]
   skippedResources: [],
 
-  // readability options (https://ghub.io/node-readability)
-  readability: {},
 
   // retext spell options (https://ghub.io/retext-spell)
   retextspell: {
@@ -231,12 +270,12 @@ var options = {
 Compromise is the natural language processor that allows `horseman-article-parser` to return
 topics e.g. people, places & organisations. You can now pass custom plugins to compromise to modify or add to the word lists like so:
 
-```
-/** add some names
-let testPlugin = function(Doc, world) {
+```js
+/** add some names */
+const testPlugin = (Doc, world) => {
   world.addWords({
-    'rishi': 'FirstName',
-    'sunak': 'LastName',
+    rishi: 'FirstName',
+    sunak: 'LastName',
   })
 }
 
@@ -257,9 +296,24 @@ const options = {
 }
 ```
 
-This allows us to match - for example - names which are not in the base compromise word lists.
+By tagging new words as `FirstName` and `LastName`, the parser records fallback hints and can still detect the full name even if Compromise doesn't tag it directly. This allows us to match names which are not in the base Compromise word lists.
 
 Check out the compromise plugin [docs](https://observablehq.com/@spencermountain/compromise-plugins) for more info.
+
+### Content Detection
+
+The detector is always enabled and uses a structured-data-first strategy, falling back to heuristic scoring:
+- Structured data: Extracts JSON-LD Article/NewsArticle (`headline`, `articleBody`).
+- Heuristics: Gathers DOM candidates (e.g., `article`, `main`, `[role=main]`, content-like containers) and scores them by text length, punctuation, link density, paragraph count, semantic tags, and boilerplate penalties.
+- Title detection: Chooses from structured `headline`, `og:title`/`twitter:title`, first `<h1>`, or `document.title`, with normalization.
+
+You can optionally tune thresholds under `options.contentDetection`:
+```js
+contentDetection: {
+  minLength: 400,
+  maxLinkDensity: 0.5
+}
+```
 
 ## Development
 
@@ -279,11 +333,204 @@ Lint the project files with:
 npm run lint
 ```
 
-Test the package with:
+Quick single-run (sanity check):
 
 ```
-npm run test
+npm run sample:single -- --url "https://example.com/article"
 ```
+
+## Quick Start (CLI)
+
+Run quick tests and batches from this repo without writing code.
+
+### Commands
+
+  - merge:csv: Merge CSVs (utility for dataset building).
+    - `npm run merge:csv -- scripts/data/merged.csv scripts/data/candidates_with_url.csv`
+  - sample:prepare: Fetch curated URLs from feeds/sitemaps into `scripts/data/urls.txt`.
+    - `npm run sample:prepare -- --count 200 --progress-only`
+  - sample:single: Run a single URL parse and write JSON to `scripts/results/single-sample-run-result.json`.
+    - `npm run sample:single -- --url "https://example.com/article"`
+  - sample:batch: Run the multi-URL sample with progress bar and summaries.
+    - `npm run sample:batch -- --count 100 --concurrency 5 --urls-file scripts/data/urls.txt --timeout 20000 --unique-hosts --progress-only`
+  - batch:crawl: Crawl URLs and dump content-candidate features to CSV.
+    - `npm run batch:crawl -- --urls-file scripts/data/urls.txt --out-file scripts/data/candidates_with_url.csv --start 0 --limit 200 --concurrency 1 --unique-hosts --progress-only`
+  - train:ranker: Train reranker weights from a candidates CSV.
+    - `npm run train:ranker -- <candidatesCsv>`
+  - docs: Generate API docs to `APIDOC.md`.
+    - `npm run docs`
+
+### Common arguments
+
+- `--bar-width`: progress bar width for scripts with progress bars.
+- `--feed-concurrency` / `--feed-timeout`: tuning for curated feed collection.
+
+### Single URL test
+
+Writes a detailed JSON to `scripts/results/single-sample-run-result.json`.
+
+```bash
+npm run sample:single -- --url "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html" --timeout 40000
+# or run directly
+node scripts/single-sample-run.js --url "https://www.cnn.com/business/live-news/fox-news-dominion-trial-04-18-23/index.html" --timeout 40000
+```
+
+Parameters
+
+- `--timeout`: maximum time (ms) for the parse. If omitted, the test uses its default (40000 ms).
+- `--url`: the article page to parse.
+
+### Batch sampler (curated URLs, progress bar)
+
+1) Fetch a fresh set of URLs:
+
+```bash
+npm run sample:prepare -- --count 200 --feed-concurrency 8 --feed-timeout 15000 --bar-width 20 --progress-only
+# or run directly
+node scripts/fetch-curated-urls.js --count 200 --feed-concurrency 8 --feed-timeout 15000 --bar-width 20 --progress-only
+```
+
+Parameters
+
+- `--count`: target number of URLs to collect into `scripts/data/urls.txt`.
+- `--feed-concurrency`: number of feeds to fetch in parallel (optional).
+- `--feed-timeout`: per-feed timeout in ms (optional).
+- `--bar-width`: progress bar width (optional).
+- `--progress-only`: print only progress updates (optional).
+
+2) Run a batch against unique hosts with a simple progress-only view. Progress and a final summary print to the console; JSON/CSV reports are saved under `scripts/results/`.
+
+```bash
+npm run sample:batch -- --count 100 --concurrency 5 --urls-file scripts/data/urls.txt --timeout 20000 --unique-hosts --bar-width 20 --progress-only
+# or run directly
+node scripts/batch-sample-run.js --count 100 --concurrency 5 --urls-file scripts/data/urls.txt --timeout 20000 --unique-hosts --bar-width 20 --progress-only
+```
+
+Parameters
+
+- `--count`: number of URLs to process.
+- `--concurrency`: number of concurrent parses.
+- `--urls-file`: file containing URLs to parse.
+- `--timeout`: maximum time (ms) allowed for each parse.
+- `--unique-hosts`: ensure each sampled URL has a unique host (optional).
+- `--progress-only`: print only progress updates (optional).
+- `--bar-width`: progress bar width (optional).
+
+### Training the Reranker (optional)
+
+You can train a simple logistic-regression reranker to improve candidate selection.
+
+1) Generate candidate features
+- Single URL (appends candidates):
+  - `npm run sample:single -- --url <articleUrl>`
+- Batch (recommended):
+  - `npm run batch:crawl -- --urls-file scripts/data/urls.txt --out-file scripts/data/candidates_with_url.csv --start 0 --limit 200 --concurrency 1 --unique-hosts --progress-only`
+  - Adjust `--start` and `--limit` to process in slices (e.g., `--start 200 --limit 200`, `--start 400 --limit 200`, ...).
+  Parameters
+
+  - `--urls-file`: input list of URLs to crawl
+  - `--out-file`: output CSV file for candidate features
+  - `--start`: start offset (row index) in the URLs file
+  - `--limit`: number of URLs to process in this run
+  - `--concurrency`: number of parallel crawlers
+  - `--unique-hosts`: ensure each URL has a unique host (optional)
+  - `--progress-only`: show only progress updates (optional)
+- The project dumps candidate features with URL by default (see `scripts/single-sample-run.js`):
+  - Header: `url,xpath,css_selector,text_length,punctuation_count,link_density,paragraph_count,has_semantic_container,boilerplate_penalty,direct_paragraph_count,direct_block_count,paragraph_to_block_ratio,average_paragraph_length,dom_depth,heading_children_count,aria_role_main,aria_role_negative,aria_hidden,image_alt_ratio,image_count,training_label,default_selected`
+  - Up to `topN` unique-XPath rows per page (default 5)
+
+2) Label the dataset
+- Open `scripts/data/candidates_with_url.csv` in a spreadsheet/editor.
+- For each URL group, set `label = 1` for the correct article body candidate (leave others as 0).
+- Column meanings (subset):
+  - `url`: source page
+  - `xpath`: Chrome console snippet to select the container (e.g., `$x('...')[0]`)
+  - `css_selector`: Chrome console snippet to select via CSS (e.g., `document.querySelector('...')`)
+  - `text_length`: raw character length
+  - `punctuation_count`: count of punctuation (.,!?,;:)
+  - `link_density`: ratio of link text length to total text (0..1)
+  - `paragraph_count`: count of `<p>` and `<br>` nodes under the container
+  - `has_semantic_container`: 1 if within `article`/`main`/`role=main`/`itemtype*=Article`, else 0
+  - `boilerplate_penalty`: number of boilerplate containers detected (nav/aside/comments/social/newsletter/consent), capped
+  - `direct_paragraph_count`, `direct_block_count`, `paragraph_to_block_ratio`, `average_paragraph_length`, `dom_depth`, `heading_children_count`:
+    direct-children structure features used by heuristics
+  - `aria_role_main`, `aria_role_negative`, `aria_hidden`: accessibility signals
+  - `image_alt_ratio`, `image_count`: image accessibility metrics
+  - `training_label`: 1 for the true article candidate; 0 otherwise
+  - `default_selected`: 1 if this candidate would be chosen by the default heuristic (no custom weights)
+
+3) Train weights and export JSON
+- Via npm (use `--silent` and arg separator):
+  - `npm run --silent train:ranker -- scripts/data/candidates_with_url.csv > weights.json`
+- Or run directly (avoids npm banner output):
+  - `node scripts/train-reranker.js scripts/data/candidates_with_url.csv weights.json`
+  Parameters
+
+  - `scripts/data/candidates_with_url.csv`: labeled candidates CSV (input)
+  - `weights.json`: output weights file (JSON)
+  Tips
+  - `--` passes subsequent args to the underlying script
+  - `> weights.json` redirects stdout to a file
+
+4) Use the weights
+- `scripts/single-sample-run.js` auto-loads `weights.json` (if present) and enables the reranker:
+  - `options.contentDetection.reranker = { enabled: true, weights }`
+
+Notes
+- If no reranker is configured, the detector uses heuristic scoring only.
+- You can merge CSVs from multiple runs: `npm run merge:csv -- scripts/data/merged.csv scripts/data/candidates_with_url.csv`.
+- Tip: placing a `weights.json` in the project root will make `scripts/single-sample-run.js` auto-enable the reranker on the next run.
+
+### Crawl Tweaks (config-driven)
+
+Domain-specific navigation and header tweaks can be configured without changing code.
+
+- Config file: `scripts/crawl-tweaks.json` (override via `--tweaks-file /path/to/config.json`).
+- Two sections:
+  - `rewrites`: URL rewrites applied before crawling (e.g., normalize feed wrappers).
+  - `rules`: per-domain behavior overrides (disable interception, adjust `goto` wait/timeout, add headers, set retries).
+
+Example:
+```js
+{
+  "rewrites": [
+    { "type": "prefix", "from": "https://go.theregister.com/feed/www.theregister.com", "to": "https://www.theregister.com" }
+  ],
+  "rules": [
+    {
+      "match": "www.theregister.com",
+      "type": "exact",
+      "noInterception": true,
+      "goto": { "waitUntil": "domcontentloaded", "timeout": 60000 },
+      "headers": { "Referer": "https://go.theregister.com/" }
+    },
+    {
+      "match": "bleepingcomputer.com",
+      "type": "suffix",
+      "noInterception": true,
+      "goto": { "waitUntil": "domcontentloaded", "timeout": 90000 }
+    },
+    {
+      "match": ".googleblog.com",
+      "type": "suffix",
+      "noInterception": true,
+      "goto": { "waitUntil": "domcontentloaded", "timeout": 90000 },
+      "headers": { "Referer": "https://developers.googleblog.com/" },
+      "retries": 3
+    }
+  ]
+}
+```
+
+Notes:
+- Global defaults remain in code: `goto: { waitUntil: 'networkidle2', timeout: 60000 }` and `retries = 2`.
+- Rule fields:
+  - `match`: host to match (exact or suffix).
+  - `type`: `exact` or `suffix`.
+  - `noInterception`: disable request interception for this domain.
+  - `goto`: override Puppeteer navigation options.
+  - `headers`: merge extra HTTP headers.
+  - `retries`: override retry attempts for this domain.
 
 Update API docs with:
 
@@ -325,6 +572,3 @@ npm run docs
 
 This project is licensed under the GNU GENERAL PUBLIC LICENSE Version 3 - see the [LICENSE](LICENSE) file for details
 
-## Notes
-
-Due to [node-readability](https://github.com/luin/readability) being stale I have imported the relevent functions into this project and refactored it so it doesn't use [request](https://github.com/request/request) and therfor has no vulnrabilities.

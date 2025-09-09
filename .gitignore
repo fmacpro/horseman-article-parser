@@ -61,4 +61,16 @@ typings/
 .env
 
 # test results
-testresults.json
+scripts/results/*
+!scripts/results/.gitkeep
+
+# Script data outputs
+scripts/data/*
+!scripts/data/feeds.txt
+!scripts/data/urls.txt
+
+# Temp test URL files
+tests/tmp_urls_*.txt
+
+# Weights file
+weights.json
