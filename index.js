@@ -59,14 +59,6 @@ export async function parseArticle (options, socket = { emit: (type, status) => 
   } catch (err) {
     logger.warn('timeout heuristic failed', err)
   }
-  // Enforce no-screenshot globally regardless of caller configuration
-  try {
-    if (Array.isArray(options.enabled)) {
-      options.enabled = options.enabled.filter(k => k !== 'screenshot')
-    }
-  } catch (err) {
-    logger.warn('failed to filter enabled features', err)
-  }
 
   const pluginHints = loadNlpPlugins(options)
   options.__pluginHints = pluginHints
