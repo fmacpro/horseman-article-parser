@@ -335,12 +335,15 @@ async function main() {
   const ok = results.filter(r => r && r.ok)
   const skips = results.filter(r => r && !r.ok && r.kind === 'skip')
   const err = results.filter(r => r && !r.ok && r.kind !== 'skip')
-  try {
-    const pct = 100
-    const bar = makeBar(pct)
-    const elapsed = Math.round((now() - t0) / 1000)
-    progressLogger.info(`[progress] ${bar} ${pct}% | ${urls.length}/${urls.length} done | ok:${ok.length} skip:${skips.length} err:${err.length} inflight:0 | ${elapsed}s elapsed`)
-  } catch {}
+  if (prevPct !== 100) {
+    try {
+      const pct = 100
+      const bar = makeBar(pct)
+      const elapsed = Math.round((now() - t0) / 1000)
+      progressLogger.info(`[progress] ${bar} ${pct}% | ${urls.length}/${urls.length} done | ok:${ok.length} skip:${skips.length} err:${err.length} inflight:0 | ${elapsed}s elapsed`)
+      prevPct = pct
+    } catch {}
+  }
   progressLogger.info(`[sample] complete - total: ${results.length} ok: ${ok.length} skip: ${skips.length} err: ${err.length}`)
 
   const outDir = path.resolve('scripts/results')
