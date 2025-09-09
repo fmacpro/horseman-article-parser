@@ -398,8 +398,7 @@ Parameters
 2) Run a batch against unique hosts with a simple progress-only view. Progress and a final summary print to the console; JSON/CSV reports are saved under `scripts/results/`.
 
 ```bash
-npx cross-env PROGRESS_ONLY=1 \
-  node scripts/batch-sample-run.js 100 5 scripts/data/urls.txt 20000 true
+npx cross-env node scripts/batch-sample-run.js 100 5 scripts/data/urls.txt 20000 true
 # or via npm script (defaults shown in package.json)
 npm run sample:batch -- true
 ```
@@ -407,11 +406,11 @@ npm run sample:batch -- true
 Parameters
 
 - `PROGRESS_ONLY`: `1` to print only progress updates (optional).
-- `UNIQUE_HOSTS`/`<uniqueHosts>`: `1`/`true` to ensure each sampled URL has a unique host (optional).
 - `<N>`: number of URLs to process.
 - `<concurrency>`: number of concurrent parses.
 - `<urlsFile>`: file containing URLs to parse.
 - `<timeoutMs>`: maximum time (ms) allowed for each parse.
+- `<uniqueHosts>`: `1`/`true` to ensure each sampled URL has a unique host (optional).
 
 ### Training the Reranker (optional)
 
