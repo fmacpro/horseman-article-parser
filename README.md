@@ -398,7 +398,8 @@ Parameters
 2) Run a batch against unique hosts with a simple progress-only view. Progress and a final summary print to the console; JSON/CSV reports are saved under `scripts/results/`.
 
 ```bash
-npx cross-env node scripts/batch-sample-run.js 100 5 scripts/data/urls.txt 20000 true
+npx cross-env PROGRESS_ONLY=1 \
+  node scripts/batch-sample-run.js 100 5 scripts/data/urls.txt 20000 true
 # or via npm script (defaults shown in package.json)
 npm run sample:batch -- true
 ```
