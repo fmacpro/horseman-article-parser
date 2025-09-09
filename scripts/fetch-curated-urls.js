@@ -185,11 +185,10 @@ export function makeBar(pct) {
   return `[${'#'.repeat(filled)}${'.'.repeat(empty)}]`
 }
 
-export async function collect(count, feeds) {
+export async function collect(count, feeds, { progressOnly = false } = {}) {
   // Concurrently fetch per-feed links
   const FEED_CONCURRENCY = Number(process.env.FEED_CONCURRENCY || 6)
   const FEED_TIMEOUT_MS = Number(process.env.FEED_TIMEOUT_MS || 12000)
-  const progressOnly = process.env.PROGRESS_ONLY ? process.env.PROGRESS_ONLY !== '0' : false
   const progressLogger = createLogger({ quiet: !!process.env.FETCH_QUIET })
   const detailLogger = createLogger({ quiet: !!process.env.FETCH_QUIET || progressOnly })
   const start = Date.now()
@@ -277,13 +276,15 @@ async function main() {
   const { values } = parseArgs({
     options: {
       count: { type: 'string', default: '1000' },
-      'feeds-file': { type: 'string', default: process.env.FEEDS_FILE || path.resolve('scripts/data/feeds.txt') }
+      'feeds-file': { type: 'string', default: process.env.FEEDS_FILE || path.resolve('scripts/data/feeds.txt') },
+      'progress-only': { type: 'boolean', default: false }
     }
   })
   const target = Number(values.count)
   const feedsPath = values['feeds-file']
+  const progressOnly = values['progress-only']
   const feeds = readFeedsFile(feedsPath)
-  const urls = await collect(target, feeds)
+  const urls = await collect(target, feeds, { progressOnly })
   if (urls.length < target) {
     logger.warn(`Collected ${urls.length} URLs (< ${target}). Consider adding or updating feeds in ${feedsPath}`)
   }
