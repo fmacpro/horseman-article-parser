@@ -195,6 +195,7 @@ export async function collect(count, feeds, {
   // Concurrently fetch per-feed links
   const FEED_CONCURRENCY = Number(feedConcurrency)
   const FEED_TIMEOUT_MS = Number(feedTimeoutMs)
+  logger.setQuiet(quiet || progressOnly)
   const progressLogger = createLogger({ quiet })
   const detailLogger = createLogger({ quiet: quiet || progressOnly })
   const start = Date.now()
@@ -297,23 +298,26 @@ async function main() {
   const feedTimeoutMs = Number(values['feed-timeout'])
   const barWidth = Number(values['bar-width'])
   const quiet = values.quiet
+  logger.setQuiet(quiet || progressOnly)
+  const cliLogger = createLogger()
   const feeds = readFeedsFile(feedsPath)
   const urls = await collect(target, feeds, { progressOnly, feedConcurrency, feedTimeoutMs, barWidth, quiet })
   if (urls.length < target) {
-    logger.warn(`Collected ${urls.length} URLs (< ${target}). Consider adding or updating feeds in ${feedsPath}`)
+    cliLogger.warn(`Collected ${urls.length} URLs (< ${target}). Consider adding or updating feeds in ${feedsPath}`)
   }
   const outDir = path.resolve('scripts/data')
   try { fs.mkdirSync(outDir, { recursive: true }) } catch {}
   const outFile = path.join(outDir, 'urls.txt')
   fs.writeFileSync(outFile, urls.join('\n') + '\n', 'utf8')
-  logger.info(`Wrote ${urls.length} curated URLs to ${outFile}`)
+  cliLogger.info(`Wrote ${urls.length} curated URLs to ${outFile}`)
 }
 
 const isCli =
   process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])
 if (isCli) {
   main().catch(err => {
-    logger.error(err)
+    const cliLogger = createLogger()
+    cliLogger.error(err)
     throw err
   })
 }
