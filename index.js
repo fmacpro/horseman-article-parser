@@ -1,7 +1,8 @@
 import puppeteer from 'puppeteer-extra'
 import StealthPlugin from 'puppeteer-extra-plugin-stealth'
 
-if (process.env.NODE_ENV !== 'test') {
+const isTestRun = process.execArgv.includes('--test')
+if (!isTestRun) {
   puppeteer.use(StealthPlugin())
 }
 
