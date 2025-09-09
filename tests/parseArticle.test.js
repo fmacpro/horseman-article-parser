@@ -55,6 +55,28 @@ test('parseArticle processes local HTML', { timeout: TEST_TIMEOUT }, async (t) =
   assert.ok(article.spelling.some(s => s.word.toLowerCase().includes('missspelled')))
 })
 
+test('parseArticle captures a screenshot when enabled', { timeout: TEST_TIMEOUT }, async (t) => {
+  const html = '<html><head><title>Shot</title></head><body><article><p>content</p></article></body></html>'
+  const dataUrl = 'data:text/html;base64,' + Buffer.from(html).toString('base64')
+  let article
+  try {
+    article = await parseArticle({
+      url: dataUrl,
+      enabled: ['screenshot'],
+      timeoutMs: PARSE_TIMEOUT,
+      contentWaitSelectors: ['article'],
+      contentWaitTimeoutMs: 1,
+      skipReadabilityWait: true,
+      puppeteer: { launch: { headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] } }
+    }, quietSocket)
+  } catch (err) {
+    t.skip('puppeteer unavailable: ' + err.message)
+    return
+  }
+  assert.equal(typeof article.screenshot, 'string')
+  assert.ok(Buffer.from(article.screenshot, 'base64').length > 1000)
+})
+
 test('parseArticle uses rules overrides for title and content', { timeout: TEST_TIMEOUT }, async (t) => {
   const longText = 'Incorrect '.repeat(30)
   const html = `<html><head><title>Wrong</title></head><body><article><p>${longText}</p></article></body></html>`

@@ -59,14 +59,6 @@ export async function parseArticle (options, socket = { emit: (type, status) => 
   } catch (err) {
     logger.warn('timeout heuristic failed', err)
   }
-  // Enforce no-screenshot globally regardless of caller configuration
-  try {
-    if (Array.isArray(options.enabled)) {
-      options.enabled = options.enabled.filter(k => k !== 'screenshot')
-    }
-  } catch (err) {
-    logger.warn('failed to filter enabled features', err)
-  }
 
   const pluginHints = loadNlpPlugins(options)
   options.__pluginHints = pluginHints
@@ -557,7 +549,7 @@ const articleParser = async function (browser, options, socket) {
   if (options.enabled.includes('screenshot') && timeLeft() > 300) {
     log('analyze', 'Capturing screenshot')
     try {
-      article.mobile = await page.screenshot({ encoding: 'base64', type: 'jpeg', quality: 60 })
+      article.screenshot = await page.screenshot({ encoding: 'base64', type: 'jpeg', quality: 60 })
     } catch { /* ignore screenshot failures (e.g., page closed on timeout) */ }
   }
 

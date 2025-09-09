@@ -29,7 +29,7 @@ const tweaksFile = values['tweaks-file']
 const options = {
   timeoutMs,
   url: inputUrl || 'https://www.bbc.co.uk/news/articles/cnvryg271ymo?at_medium=RSS&at_campaign=rss',
-  enabled: ['links', 'sentiment', 'entities', 'spelling', 'keywords', 'siteicon'],
+  enabled: ['links', 'sentiment', 'entities', 'spelling', 'keywords', 'siteicon', 'screenshot'],
   // In tests, lightly block heavy resources (keep images)
   blockedResourceTypes: ['media', 'font', 'stylesheet'],
   // Tune content detection thresholds and dump candidate features for training
@@ -108,6 +108,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
       metadescription: article.meta.description.text,
       url: article.url,
       siteicon: article.siteicon,
+      screenshot: article.screenshot,
       sentiment: { score: article.sentiment.score, comparative: article.sentiment.comparative },
       keyphrases: article.processed.keyphrases,
       keywords: article.processed.keywords,
