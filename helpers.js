@@ -47,7 +47,8 @@ export function setDefaultOptions (options = {}) {
         'accept', 'accept all', 'accept and close', 'i accept', 'agree', 'i agree', 'yes i agree', "i'm ok with that", 'i am ok with that', 'ok', 'got it', 'continue', 'continue to site', 'allow all', 'consent', 'manage preferences', "yes i'm happy", 'yes i am happy'
       ],
       waitAfterClickMs: 500,
-      maxClicks: 3
+      maxClicks: 3,
+      observerTimeoutMs: 5000
     },
     contentDetection: {
       // fragmentation heuristic config (used to promote selection

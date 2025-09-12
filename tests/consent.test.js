@@ -138,6 +138,33 @@ test('autoDismissConsent removes overlays added after invocation', async (t) => 
   await browser.close()
 })
 
+test('autoDismissConsent removes overlays added after 2 seconds', async (t) => {
+  let browser
+  try {
+    browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] })
+  } catch (err) {
+    t.skip('puppeteer unavailable: ' + err.message)
+    return
+  }
+  const page = await browser.newPage()
+  await page.setContent('<!doctype html><html><body></body></html>')
+  const { consent } = setDefaultOptions()
+  await autoDismissConsent(page, consent)
+  await page.evaluate(() => {
+    setTimeout(() => {
+      const o = document.createElement('div')
+      o.id = 'very-late-overlay'
+      o.className = 'consent-banner'
+      o.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:#0f0;z-index:10000;'
+      document.body.appendChild(o)
+    }, 2000)
+  })
+  await new Promise(resolve => setTimeout(resolve, 3500))
+  const overlay = await page.$('#very-late-overlay')
+  assert.equal(overlay, null)
+  await browser.close()
+})
+
 test('injectTcfApi sets __tcfapi with provided tcString', async (t) => {
   let browser
   try {
