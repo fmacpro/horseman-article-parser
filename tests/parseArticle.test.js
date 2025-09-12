@@ -116,6 +116,52 @@ test('parseArticle screenshot occurs after consent dismissal', { timeout: TEST_T
   assert.ok(g > r && g > b, `expected green to dominate, got r=${r} g=${g} b=${b}`)
 })
 
+test('parseArticle retries consent dismissal if overlay appears late', { timeout: TEST_TIMEOUT }, async (t) => {
+  const html = `<!doctype html><html><head><title>Late Consent</title></head>
+  <body style="margin:0">
+    <article style="width:100vw;height:100vh;background:green"></article>
+    <script>
+      setTimeout(() => {
+        const overlay = document.createElement('div')
+        overlay.id = 'overlay'
+        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:red;display:flex;align-items:center;justify-content:center;'
+        const btn = document.createElement('button')
+        btn.id = 'accept'
+        btn.textContent = 'accept'
+        btn.addEventListener('click', () => overlay.remove())
+        overlay.appendChild(btn)
+        document.body.appendChild(overlay)
+      }, 500)
+    </script>
+  </body></html>`
+  const server = http.createServer((req, res) => { res.end(html) })
+  await new Promise(resolve => server.listen(0, resolve))
+  const { port } = server.address()
+  const url = `http://127.0.0.1:${port}`
+  let article
+  try {
+    article = await parseArticle({
+      url,
+      enabled: ['screenshot'],
+      timeoutMs: PARSE_TIMEOUT,
+      contentWaitSelectors: ['article'],
+      contentWaitTimeoutMs: 1,
+      skipReadabilityWait: true,
+      puppeteer: { launch: { headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] } }
+    }, quietSocket)
+  } catch (err) {
+    t.skip('puppeteer unavailable: ' + err.message)
+    server.close()
+    return
+  }
+  server.close()
+  const buf = Buffer.from(article.screenshot, 'base64')
+  const { width, height, data } = jpeg.decode(buf)
+  const mid = ((Math.floor(height / 2) * width) + Math.floor(width / 2)) * 4
+  const r = data[mid], g = data[mid + 1], b = data[mid + 2]
+  assert.ok(g > r && g > b, `expected green to dominate, got r=${r} g=${g} b=${b}`)
+})
+
 test('parseArticle uses rules overrides for title and content', { timeout: TEST_TIMEOUT }, async (t) => {
   const longText = 'Incorrect '.repeat(30)
   const html = `<html><head><title>Wrong</title></head><body><article><p>${longText}</p></article></body></html>`

@@ -668,6 +668,10 @@ log('analyze', 'Evaluating meta tags')
   if (options.enabled.includes('screenshot') && timeLeft() > 300) {
     log('analyze', 'Capturing screenshot')
     try {
+      if (!staticHtmlOverride && jsEnabled && options.consent && options.consent.autoDismiss) {
+        try { await autoDismissConsent(page, options.consent) } catch (err) { logger.warn('autoDismissConsent before screenshot failed', err) }
+        try { await page.waitForTimeout(250) } catch {}
+      }
       article.screenshot = await page.screenshot({ encoding: 'base64', type: 'jpeg', quality: 60 })
     } catch { /* ignore screenshot failures (e.g., page closed on timeout) */ }
   }
