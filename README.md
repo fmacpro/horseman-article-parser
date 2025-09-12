@@ -39,11 +39,19 @@ npm install horseman-article-parser --save
 #### Async/Await Example
 
 ```js
-import { parseArticle } from 'horseman-article-parser';
+import { parseArticle } from "horseman-article-parser";
 
 const options = {
   url: "https://www.theguardian.com/politics/2018/sep/24/theresa-may-calls-for-immigration-based-on-skills-and-wealth",
-  enabled: ['lighthouse', 'screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords']
+  enabled: [
+    "lighthouse",
+    "screenshot",
+    "links",
+    "sentiment",
+    "entities",
+    "spelling",
+    "keywords",
+  ],
 };
 
 (async () => {
@@ -55,7 +63,10 @@ const options = {
       excerpt: article.excerpt,
       metadescription: article.meta.description.text,
       url: article.url,
-      sentiment: { score: article.sentiment.score, comparative: article.sentiment.comparative },
+      sentiment: {
+        score: article.sentiment.score,
+        comparative: article.sentiment.comparative,
+      },
       keyphrases: article.processed.keyphrases,
       keywords: article.processed.keywords,
       people: article.people,
@@ -64,12 +75,12 @@ const options = {
       text: {
         raw: article.processed.text.raw,
         formatted: article.processed.text.formatted,
-        html: article.processed.text.html
+        html: article.processed.text.html,
       },
       spelling: article.spelling,
       meta: article.meta,
       links: article.links,
-      lighthouse: article.lighthouse
+      lighthouse: article.lighthouse,
     };
 
     console.log(response);
@@ -90,28 +101,31 @@ The options below are set by default
 
 ```js
 var options = {
+  // Imposes a hard limit on how long the parser will run. When the limit is reached, the browser instance is closed and a timeout error is thrown.
+  // This prevents the parser from hanging indefinitely and ensures long‑running parses are cut off after the specified duration.
+  timeoutMs: 20000,
   // puppeteer options (https://github.com/GoogleChrome/puppeteer)
   puppeteer: {
     // puppeteer launch options (https://github.com/GoogleChrome/puppeteer/blob/master/docs/api.md#puppeteerlaunchoptions)
     launch: {
       headless: true,
-      defaultViewport: null
+      defaultViewport: null,
     },
     // Optional user agent and headers (some sites require a realistic UA)
     // userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36',
     // extraHTTPHeaders: { 'Accept-Language': 'en-US,en;q=0.9' },
     // puppeteer goto options (https://github.com/GoogleChrome/puppeteer/blob/master/docs/api.md#pagegotourl-options)
     goto: {
-      waitUntil: 'domcontentloaded'
+      waitUntil: "domcontentloaded",
     },
     // Ignore content security policy
-    setBypassCSP: true
+    setBypassCSP: true,
   },
   // clean-html options (https://ghub.io/clean-html)
   cleanhtml: {
-    'add-remove-tags': ['blockquote', 'span'],
-    'remove-empty-tags': ['span'],
-    'replace-nbsp': true
+    "add-remove-tags": ["blockquote", "span"],
+    "remove-empty-tags": ["span"],
+    "replace-nbsp": true,
   },
   // html-to-text options (https://ghub.io/html-to-text)
   htmltotext: {
@@ -119,7 +133,7 @@ var options = {
     noLinkBrackets: true,
     ignoreHref: true,
     tables: true,
-    uppercaseHeadings: true
+    uppercaseHeadings: true,
   },
   // retext-keywords options (https://ghub.io/retext-keywords)
   retextkeywords: { maximum: 10 },
@@ -143,7 +157,7 @@ var options = {
     },
     // reranker is disabled by default; enable after training weights
     // Note: scripts/single-sample-run.js auto-loads weights.json (if present) and enables the reranker
-    reranker: { enabled: false }
+    reranker: { enabled: false },
     // optional: dump top-N candidates per page for labeling
     // debugDump: { path: 'candidates_with_url.csv', topN: 5, addUrl: true }
   },
@@ -155,18 +169,18 @@ var options = {
       // positions: only start by default
       includeEndPosition: false,
       // offsets excluded by default
-      includeOffsets: false
-    }
-  }
-}
+      includeOffsets: false,
+    },
+  },
+};
 ```
 
 At a minimum you should pass a url
 
 ```js
 var options = {
-  url: "https://www.theguardian.com/politics/2018/sep/24/theresa-may-calls-for-immigration-based-on-skills-and-wealth"
-}
+  url: "https://www.theguardian.com/politics/2018/sep/24/theresa-may-calls-for-immigration-based-on-skills-and-wealth",
+};
 ```
 
 If you want to enable the advanced features you should pass the following
@@ -174,8 +188,16 @@ If you want to enable the advanced features you should pass the following
 ```js
 var options = {
   url: "https://www.theguardian.com/politics/2018/sep/24/theresa-may-calls-for-immigration-based-on-skills-and-wealth",
-  enabled: ['lighthouse', 'screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords']
-}
+  enabled: [
+    "lighthouse",
+    "screenshot",
+    "links",
+    "sentiment",
+    "entities",
+    "spelling",
+    "keywords",
+  ],
+};
 ```
 
 You may pass rules for returning an articles title & contents. This is useful in a case
@@ -184,23 +206,26 @@ where the parser is unable to return the desired title or content e.g.
 ```js
 rules: [
   {
-    host: 'www.bbc.co.uk',
+    host: "www.bbc.co.uk",
     content: () => {
-      var j = window.$
-      j('article section, article figure, article header').remove()
-      return j('article').html()
-    }
+      var j = window.$;
+      j("article section, article figure, article header").remove();
+      return j("article").html();
+    },
   },
   {
-    host: 'www.youtube.com',
+    host: "www.youtube.com",
     title: () => {
-      return window.ytInitialData.contents.twoColumnWatchNextResults.results.results.contents[0].videoPrimaryInfoRenderer.title.runs[0].text
+      return window.ytInitialData.contents.twoColumnWatchNextResults.results
+        .results.contents[0].videoPrimaryInfoRenderer.title.runs[0].text;
     },
     content: () => {
-      return window.ytInitialData.contents.twoColumnWatchNextResults.results.results.contents[1].videoSecondaryInfoRenderer.description.runs[0].text
-    }
-  }
-]
+      return window.ytInitialData.contents.twoColumnWatchNextResults.results
+        .results.contents[1].videoSecondaryInfoRenderer.description.runs[0]
+        .text;
+    },
+  },
+];
 ```
 
 If you want to pass cookies to puppeteer use the following
@@ -208,25 +233,28 @@ If you want to pass cookies to puppeteer use the following
 ```js
 var options = {
   puppeteer: {
-    cookies: [{ name: 'cookie1', value: 'val1', domain: '.domain1' },{ name: 'cookie2', value: 'val2', domain: '.domain2' }]
-  }
-}
+    cookies: [
+      { name: "cookie1", value: "val1", domain: ".domain1" },
+      { name: "cookie2", value: "val2", domain: ".domain2" },
+    ],
+  },
+};
 ```
 
 To strip tags before processing use the following
 
 ```js
 var options = {
-  striptags: ['.something', '#somethingelse']
-}
+  striptags: [".something", "#somethingelse"],
+};
 ```
 
 If you need to dismiss any popups e.g. a privacy popup use the following
 
 ```js
 var options = {
-  clickelements: ['#button1', '#button2']
-}
+  clickelements: ["#button1", "#button2"],
+};
 ```
 
 there are some additional "complex" options available
@@ -274,26 +302,34 @@ topics e.g. people, places & organisations. You can now pass custom plugins to c
 /** add some names */
 const testPlugin = (Doc, world) => {
   world.addWords({
-    rishi: 'FirstName',
-    sunak: 'LastName',
-  })
-}
+    rishi: "FirstName",
+    sunak: "LastName",
+  });
+};
 
 const options = {
-  url: 'https://www.theguardian.com/commentisfree/2020/jul/08/the-guardian-view-on-rishi-sunak-right-words-right-focus-wrong-policies',
-  enabled: ['lighthouse', 'screenshot', 'links', 'sentiment', 'entities', 'spelling', 'keywords'],
+  url: "https://www.theguardian.com/commentisfree/2020/jul/08/the-guardian-view-on-rishi-sunak-right-words-right-focus-wrong-policies",
+  enabled: [
+    "lighthouse",
+    "screenshot",
+    "links",
+    "sentiment",
+    "entities",
+    "spelling",
+    "keywords",
+  ],
   // Optional: tweak spelling output/filters
   retextspell: {
     tweaks: {
       ignoreUrlLike: true,
       includeEndPosition: true,
-      includeOffsets: true
-    }
+      includeOffsets: true,
+    },
   },
   nlp: {
-    plugins: [testPlugin]
-  }
-}
+    plugins: [testPlugin],
+  },
+};
 ```
 
 By tagging new words as `FirstName` and `LastName`, the parser records fallback hints and can still detect the full name even if Compromise doesn't tag it directly. This allows us to match names which are not in the base Compromise word lists.
@@ -303,6 +339,7 @@ Check out the compromise plugin [docs](https://observablehq.com/@spencermountain
 ### Content Detection
 
 The detector is always enabled and uses a structured-data-first strategy, falling back to heuristic scoring:
+
 - Structured data: Extracts JSON-LD Article/NewsArticle (`headline`, `articleBody`).
 - Heuristics: Gathers DOM candidates (e.g., `article`, `main`, `[role=main]`, content-like containers) and scores them by text length, punctuation, link density, paragraph count, semantic tags, and boilerplate penalties.
 - Fragment promotion: When content is split across sibling blocks, a fragmentation heuristic merges them into a single higher-level candidate.
@@ -311,6 +348,7 @@ The detector is always enabled and uses a structured-data-first strategy, fallin
 - Debug dump (optional): Write top-N candidates to CSV for dataset labeling.
 
 You can tune thresholds and fragmentation frequency under `options.contentDetection`:
+
 ```js
 contentDetection: {
   minLength: 400,
@@ -358,20 +396,20 @@ Run quick tests and batches from this repo without writing code.
 
 ### Commands
 
-  - merge:csv: Merge CSVs (utility for dataset building).
-    - `npm run merge:csv -- scripts/data/merged.csv scripts/data/candidates_with_url.csv`
-  - sample:prepare: Fetch curated URLs from feeds/sitemaps into `scripts/data/urls.txt`.
-    - `npm run sample:prepare -- --count 200 --progress-only`
-  - sample:single: Run a single URL parse and write JSON to `scripts/results/single-sample-run-result.json`.
-    - `npm run sample:single -- --url "https://example.com/article"`
-  - sample:batch: Run the multi-URL sample with progress bar and summaries.
-    - `npm run sample:batch -- --count 100 --concurrency 5 --urls-file scripts/data/urls.txt --timeout 20000 --unique-hosts --progress-only`
-  - batch:crawl: Crawl URLs and dump content-candidate features to CSV.
-    - `npm run batch:crawl -- --urls-file scripts/data/urls.txt --out-file scripts/data/candidates_with_url.csv --start 0 --limit 200 --concurrency 1 --unique-hosts --progress-only`
-  - train:ranker: Train reranker weights from a candidates CSV.
-    - `npm run train:ranker -- <candidatesCsv>`
-  - docs: Generate API docs to `APIDOC.md`.
-    - `npm run docs`
+- merge:csv: Merge CSVs (utility for dataset building).
+  - `npm run merge:csv -- scripts/data/merged.csv scripts/data/candidates_with_url.csv`
+- sample:prepare: Fetch curated URLs from feeds/sitemaps into `scripts/data/urls.txt`.
+  - `npm run sample:prepare -- --count 200 --progress-only`
+- sample:single: Run a single URL parse and write JSON to `scripts/results/single-sample-run-result.json`.
+  - `npm run sample:single -- --url "https://example.com/article"`
+- sample:batch: Run the multi-URL sample with progress bar and summaries.
+  - `npm run sample:batch -- --count 100 --concurrency 5 --urls-file scripts/data/urls.txt --timeout 20000 --unique-hosts --progress-only`
+- batch:crawl: Crawl URLs and dump content-candidate features to CSV.
+  - `npm run batch:crawl -- --urls-file scripts/data/urls.txt --out-file scripts/data/candidates_with_url.csv --start 0 --limit 200 --concurrency 1 --unique-hosts --progress-only`
+- train:ranker: Train reranker weights from a candidates CSV.
+  - `npm run train:ranker -- <candidatesCsv>`
+- docs: Generate API docs to `APIDOC.md`.
+  - `npm run docs`
 
 ### Common arguments
 
@@ -395,7 +433,7 @@ Parameters
 
 ### Batch sampler (curated URLs, progress bar)
 
-1) Fetch a fresh set of URLs:
+1. Fetch a fresh set of URLs:
 
 ```bash
 npm run sample:prepare -- --count 200 --feed-concurrency 8 --feed-timeout 15000 --bar-width 20 --progress-only
@@ -411,7 +449,7 @@ Parameters
 - `--bar-width`: progress bar width (optional).
 - `--progress-only`: print only progress updates (optional).
 
-2) Run a batch against unique hosts with a simple progress-only view. Progress and a final summary print to the console; JSON/CSV reports are saved under `scripts/results/`.
+2. Run a batch against unique hosts with a simple progress-only view. Progress and a final summary print to the console; JSON/CSV reports are saved under `scripts/results/`.
 
 ```bash
 npm run sample:batch -- --count 100 --concurrency 5 --urls-file scripts/data/urls.txt --timeout 20000 --unique-hosts --bar-width 20 --progress-only
@@ -433,13 +471,15 @@ Parameters
 
 You can train a simple logistic-regression reranker to improve candidate selection.
 
-1) Generate candidate features
+1. Generate candidate features
+
 - Single URL (appends candidates):
   - `npm run sample:single -- --url <articleUrl>`
 - Batch (recommended):
+
   - `npm run batch:crawl -- --urls-file scripts/data/urls.txt --out-file scripts/data/candidates_with_url.csv --start 0 --limit 200 --concurrency 1 --unique-hosts --progress-only`
   - Adjust `--start` and `--limit` to process in slices (e.g., `--start 200 --limit 200`, `--start 400 --limit 200`, ...).
-  Parameters
+    Parameters
 
   - `--urls-file`: input list of URLs to crawl
   - `--out-file`: output CSV file for candidate features
@@ -448,11 +488,13 @@ You can train a simple logistic-regression reranker to improve candidate selecti
   - `--concurrency`: number of parallel crawlers
   - `--unique-hosts`: ensure each URL has a unique host (optional)
   - `--progress-only`: show only progress updates (optional)
+
 - The project dumps candidate features with URL by default (see `scripts/single-sample-run.js`):
   - Header: `url,xpath,css_selector,text_length,punctuation_count,link_density,paragraph_count,has_semantic_container,boilerplate_penalty,direct_paragraph_count,direct_block_count,paragraph_to_block_ratio,average_paragraph_length,dom_depth,heading_children_count,aria_role_main,aria_role_negative,aria_hidden,image_alt_ratio,image_count,training_label,default_selected`
   - Up to `topN` unique-XPath rows per page (default 5)
 
-2) Label the dataset
+2. Label the dataset
+
 - Open `scripts/data/candidates_with_url.csv` in a spreadsheet/editor.
 - For each URL group, set `label = 1` for the correct article body candidate (leave others as 0).
 - Column meanings (subset):
@@ -472,24 +514,28 @@ You can train a simple logistic-regression reranker to improve candidate selecti
   - `training_label`: 1 for the true article candidate; 0 otherwise
   - `default_selected`: 1 if this candidate would be chosen by the default heuristic (no custom weights)
 
-3) Train weights and export JSON
+3. Train weights and export JSON
+
 - Via npm (use `--silent` and arg separator):
   - `npm run --silent train:ranker -- scripts/data/candidates_with_url.csv > weights.json`
 - Or run directly (avoids npm banner output):
+
   - `node scripts/train-reranker.js scripts/data/candidates_with_url.csv weights.json`
-  Parameters
+    Parameters
 
   - `scripts/data/candidates_with_url.csv`: labeled candidates CSV (input)
   - `weights.json`: output weights file (JSON)
-  Tips
+    Tips
   - `--` passes subsequent args to the underlying script
   - `> weights.json` redirects stdout to a file
 
-4) Use the weights
+4. Use the weights
+
 - `scripts/single-sample-run.js` auto-loads `weights.json` (if present) and enables the reranker:
   - `options.contentDetection.reranker = { enabled: true, weights }`
 
 Notes
+
 - If no reranker is configured, the detector uses heuristic scoring only.
 - You can merge CSVs from multiple runs: `npm run merge:csv -- scripts/data/merged.csv scripts/data/candidates_with_url.csv`.
 - Tip: placing a `weights.json` in the project root will make `scripts/single-sample-run.js` auto-enable the reranker on the next run.
@@ -504,6 +550,7 @@ Domain-specific navigation and header tweaks can be configured without changing 
   - `rules`: per-domain behavior overrides (disable interception, adjust `goto` wait/timeout, add headers, set retries).
 
 Example:
+
 ```js
 {
   "rewrites": [
@@ -536,6 +583,7 @@ Example:
 ```
 
 Notes:
+
 - Global defaults remain in code: `goto: { waitUntil: 'networkidle2', timeout: 60000 }` and `retries = 2`.
 - Rule fields:
   - `match`: host to match (exact or suffix).
@@ -584,4 +632,3 @@ npm run docs
 ## License
 
 This project is licensed under the GNU GENERAL PUBLIC LICENSE Version 3 - see the [LICENSE](LICENSE) file for details
-
