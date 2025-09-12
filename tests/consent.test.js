@@ -110,6 +110,25 @@ test('autoDismissConsent removes cross-origin consent iframes', async (t) => {
   await browser.close()
 })
 
+test('autoDismissConsent removes small sticky banners', async (t) => {
+  let browser
+  try {
+    browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] })
+  } catch (err) {
+    t.skip('puppeteer unavailable: ' + err.message)
+    return
+  }
+  const page = await browser.newPage()
+  const html = `<!doctype html><html><body style="margin:0;height:2000px;">
+    <div id="banner" style="position:fixed;bottom:0;left:0;width:100vw;height:120px;z-index:10000;background:red;"></div>
+  </body></html>`
+  await page.setContent(html)
+  await autoDismissConsent(page)
+  const banner = await page.$('#banner')
+  assert.equal(banner, null)
+  await browser.close()
+})
+
 test('autoDismissConsent removes overlays added after invocation', async (t) => {
   let browser
   try {

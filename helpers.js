@@ -41,7 +41,9 @@ export function setDefaultOptions (options = {}) {
         '.cc-allow',
         'button.cookie-accept',
         'button#cookie-accept',
-        'button[aria-label="Agree"]'
+        'button[aria-label="Agree"]',
+        'button[id*="bbccookies" i]',
+        'button[title*="yes i\'m happy" i]'
       ],
       textPatterns: [
         'accept', 'accept all', 'accept and close', 'i accept', 'agree', 'i agree', 'yes i agree', "i'm ok with that", 'i am ok with that', 'ok', 'got it', 'continue', 'continue to site', 'allow all', 'consent', 'manage preferences', "yes i'm happy", 'yes i am happy'
