@@ -4,6 +4,7 @@ import fs from 'fs'
 import http from 'node:http'
 import puppeteer from 'puppeteer-extra'
 import { parseArticle } from '../index.js'
+import jpeg from 'jpeg-js'
 
 // Silent socket to suppress parser status logs during tests
 const quietSocket = { emit: () => {} }
@@ -75,6 +76,43 @@ test('parseArticle captures a screenshot when enabled', { timeout: TEST_TIMEOUT 
   }
   assert.equal(typeof article.screenshot, 'string')
   assert.ok(Buffer.from(article.screenshot, 'base64').length > 1000)
+})
+
+test('parseArticle screenshot occurs after consent dismissal', { timeout: TEST_TIMEOUT }, async (t) => {
+  const html = `<!doctype html><html><head><title>Consent</title></head>
+  <body style="margin:0">
+    <div id="overlay" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:red;display:flex;align-items:center;justify-content:center;">
+      <button id="accept">accept</button>
+    </div>
+    <article style="width:100vw;height:100vh;background:green"></article>
+    <script>document.getElementById('accept').addEventListener('click',()=>document.getElementById('overlay').remove())</script>
+  </body></html>`
+  const server = http.createServer((req, res) => { res.end(html) })
+  await new Promise(resolve => server.listen(0, resolve))
+  const { port } = server.address()
+  const url = `http://127.0.0.1:${port}`
+  let article
+  try {
+    article = await parseArticle({
+      url,
+      enabled: ['screenshot'],
+      timeoutMs: PARSE_TIMEOUT,
+      contentWaitSelectors: ['article'],
+      contentWaitTimeoutMs: 1,
+      skipReadabilityWait: true,
+      puppeteer: { launch: { headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] } }
+    }, quietSocket)
+  } catch (err) {
+    t.skip('puppeteer unavailable: ' + err.message)
+    server.close()
+    return
+  }
+  server.close()
+  const buf = Buffer.from(article.screenshot, 'base64')
+  const { width, height, data } = jpeg.decode(buf)
+  const mid = ((Math.floor(height / 2) * width) + Math.floor(width / 2)) * 4
+  const r = data[mid], g = data[mid + 1], b = data[mid + 2]
+  assert.ok(g > r && g > b, `expected green to dominate, got r=${r} g=${g} b=${b}`)
 })
 
 test('parseArticle uses rules overrides for title and content', { timeout: TEST_TIMEOUT }, async (t) => {

@@ -545,14 +545,6 @@ const articleParser = async function (browser, options, socket) {
     try { article.meta.title.text = await page.title() } catch { article.meta.title.text = '' }
   }
 
-  // Take mobile screenshot
-  if (options.enabled.includes('screenshot') && timeLeft() > 300) {
-    log('analyze', 'Capturing screenshot')
-    try {
-      article.screenshot = await page.screenshot({ encoding: 'base64', type: 'jpeg', quality: 60 })
-    } catch { /* ignore screenshot failures (e.g., page closed on timeout) */ }
-  }
-
   // If the page/browser was closed (e.g., due to global timeout), abort gracefully
   try { if (page.isClosed && page.isClosed()) throw new Error('Page closed') } catch {}
   if (timeLeft() <= 0) throw new Error('Timeout budget exceeded')
@@ -671,6 +663,14 @@ log('analyze', 'Evaluating meta tags')
       Object.assign(article.meta, meta2)
     }
   } catch { /* ignore */ }
+
+  // Take mobile screenshot after consent handling
+  if (options.enabled.includes('screenshot') && timeLeft() > 300) {
+    log('analyze', 'Capturing screenshot')
+    try {
+      article.screenshot = await page.screenshot({ encoding: 'base64', type: 'jpeg', quality: 60 })
+    } catch { /* ignore screenshot failures (e.g., page closed on timeout) */ }
+  }
 
   // Save the original HTML of the document (use page.content for robustness)
   if (staticHtmlOverride) {
