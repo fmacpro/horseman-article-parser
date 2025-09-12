@@ -101,7 +101,9 @@ export async function autoDismissConsent (page, consentOptions = {}) {
               const rect = el.getBoundingClientRect()
               const vw = window.innerWidth || document.documentElement.clientWidth
               const vh = window.innerHeight || document.documentElement.clientHeight
-              if (rect.width < vw * 0.3 || rect.height < vh * 0.3) return false
+              const large = rect.width > vw * 0.3 && rect.height > vh * 0.3
+              const banner = rect.width > vw * 0.8 && rect.height > vh * 0.1
+              if (!large && !banner) return false
               const style = window.getComputedStyle(el)
               if (!/(fixed|absolute|sticky)/i.test(style.position)) return false
               return parseInt(style.zIndex || '0', 10) > 999
@@ -109,7 +111,7 @@ export async function autoDismissConsent (page, consentOptions = {}) {
             return false
           }
           const re = /(consent|cookie|privacy|gdpr|overlay|modal|dialog|banner|popup|message)/i
-          const nodes = Array.from(document.querySelectorAll('iframe, div, section, aside'))
+          const nodes = Array.from(document.querySelectorAll('iframe, div, section, aside, header, footer'))
           for (const el of nodes) {
             const id = el.id || ''
             const cls = (el.className && typeof el.className === 'string') ? el.className : ''
@@ -142,6 +144,20 @@ export async function autoDismissConsent (page, consentOptions = {}) {
     try {
       await page.evaluate((observerTimeoutMs) => {
         const re = /(consent|cookie|privacy|gdpr|overlay|modal|dialog|banner|popup|message)/i
+        const isOverlay = (el) => {
+          try {
+            const rect = el.getBoundingClientRect()
+            const vw = window.innerWidth || document.documentElement.clientWidth
+            const vh = window.innerHeight || document.documentElement.clientHeight
+            const large = rect.width > vw * 0.3 && rect.height > vh * 0.3
+            const banner = rect.width > vw * 0.8 && rect.height > vh * 0.1
+            if (!large && !banner) return false
+            const style = window.getComputedStyle(el)
+            if (!/(fixed|absolute|sticky)/i.test(style.position)) return false
+            return parseInt(style.zIndex || '0', 10) > 999
+          } catch {}
+          return false
+        }
         const observer = new window.MutationObserver(muts => {
           for (const m of muts) {
             for (const node of m.addedNodes) {
@@ -149,7 +165,7 @@ export async function autoDismissConsent (page, consentOptions = {}) {
               const id = node.id || ''
               const cls = typeof node.className === 'string' ? node.className : ''
               const role = node.getAttribute ? node.getAttribute('role') : ''
-              if (re.test(id) || re.test(cls) || re.test(role)) {
+              if (re.test(id) || re.test(cls) || re.test(role) || isOverlay(node)) {
                 try { node.remove() } catch {}
               }
             }
