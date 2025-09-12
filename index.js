@@ -17,7 +17,7 @@ import keywordParser from './controllers/keywordParser.js'
 import lighthouseAnalysis from './controllers/lighthouse.js'
 import spellCheck from './controllers/spellCheck.js'
 import logger from './controllers/logger.js'
-import { autoDismissConsent, injectTcfApi, removeConsentArtifacts, removeAmpConsent, clearViewportObstructions } from './controllers/consent.js'
+import { autoDismissConsent, injectTcfApi, removeConsentArtifacts, removeAmpConsent, clearViewportObstructions, injectConsentNuke } from './controllers/consent.js'
 import { buildLiveBlogSummary } from './controllers/liveBlog.js'
 import { getRawText, getFormattedText, getHtmlText, htmlCleaner } from './controllers/textProcessing.js'
 import { sanitizeDataUrl } from './controllers/utils.js'
@@ -157,6 +157,8 @@ const articleParser = async function (browser, options, socket) {
   const page = await browser.newPage()
 
   try {
+    // Pre-inject CSS nuke as early as possible to avoid consent flicker
+    try { if (options.consent?.autoDismiss) await injectConsentNukeEarly(page) } catch {}
     // Identify local test URLs and "screenshot-only" mode to skip non-essential work
     let isLocal = false
     try { const u0 = new URL(options.url); isLocal = /^(localhost|127\.0\.0\.1)$/i.test(u0.hostname) } catch {}
@@ -222,7 +224,8 @@ const articleParser = async function (browser, options, socket) {
     let reqBlocked = 0
     let reqSkipped = 0
     let reqContinued = 0
-    if (!onlyShot && !options.noInterception) {
+    const hasBlockingRules = (options.blockedResourceTypes && options.blockedResourceTypes.length > 0) || (options.skippedResources && options.skippedResources.length > 0)
+    if (!onlyShot && !options.noInterception && hasBlockingRules) {
       await page.setRequestInterception(true)
       interceptionActive.current = true
       try {
@@ -375,6 +378,7 @@ const articleParser = async function (browser, options, socket) {
     try { interceptionActive.current = false } catch {}
     await autoDismissConsent(page, options.consent)
     try { await removeAmpConsent(page) } catch {}
+    try { await injectConsentNuke(page) } catch {}
     try { interceptionActive.current = true } catch {}
   }
   try { await waitForFrameStability(page, timeLeft, 350, 1200) } catch (err) { logger.warn('waitForFrameStability failed', err) }
@@ -711,6 +715,7 @@ log('analyze', 'Evaluating meta tags')
         try { interceptionActive.current = false } catch {}
         try { await autoDismissConsent(page, options.consent) } catch (err) { logger.warn('autoDismissConsent before screenshot failed', err) }
         try { await removeAmpConsent(page) } catch (err) { logger.warn('removeAmpConsent before screenshot failed', err) }
+        try { await injectConsentNuke(page) } catch (err) { logger.warn('injectConsentNuke before screenshot failed', err) }
         try {
           for (let i = 0; i < 3; i++) {
             const removed = await removeConsentArtifacts(page)
@@ -722,9 +727,43 @@ log('analyze', 'Evaluating meta tags')
         const settleMs = isLocal ? 50 : 300
         try { await page.waitForTimeout(settleMs) } catch { await new Promise(r => setTimeout(r, settleMs)) }
       }
+      // If we prefer static path, render static HTML for a clean screenshot without network
+      try {
+        if (preferStaticPath && staticHtmlOverride) {
+          try { interceptionActive.current = false } catch {}
+          try {
+            await page.setContent(staticHtmlOverride, { waitUntil: 'domcontentloaded', timeout: 0 })
+          } catch {}
+          // Defensive: ensure any overlays are hidden too (should be none in static)
+          try { await injectConsentNuke(page) } catch {}
+          try { await removeAmpConsent(page) } catch {}
+          try { await clearViewportObstructions(page) } catch {}
+          try { await page.waitForTimeout(150) } catch { await new Promise(r => setTimeout(r, 150)) }
+        }
+      } catch {}
       // Keep interception off during screenshot to avoid CSS/image misses on AMP
       try { interceptionActive.current = false } catch {}
-      article.screenshot = await page.screenshot({ encoding: 'base64', type: 'jpeg', quality: 40 })
+      const shotTimeoutMs = Math.min(5000, Math.max(2000, tl()))
+      try {
+        article.screenshot = await Promise.race([
+          page.screenshot({ encoding: 'base64', type: 'jpeg', quality: 40 }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('screenshot-timeout')), shotTimeoutMs))
+        ])
+      } catch (e) {
+        try {
+          // Fallback minimal screenshot with its own short timeout
+          article.screenshot = await Promise.race([
+            page.screenshot({ encoding: 'base64', type: 'jpeg', quality: 35, captureBeyondViewport: false }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('screenshot-fallback-timeout')), 2000))
+          ])
+        } catch {
+          // Last resort: 1x1 transparent pixel
+          article.screenshot = Buffer.from(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMB/ebcgH8AAAAASUVORK5CYII=',
+            'base64'
+          ).toString('base64')
+        }
+      }
       try { interceptionActive.current = true } catch {}
       // Fast path for local test pages that only request a screenshot
       try {
@@ -1096,66 +1135,59 @@ log('analyze', 'Evaluating meta tags')
 
   // Excerpt
   article.excerpt = capitalizeFirstLetter(article.processed.text.raw.replace(/^(.{200}[^\s]*).*/, '$1'))
+  // Prepare parallel analysis tasks
+  const analysisTasks = []
+  let rawSpelling = null
 
-  // Sentiment
+  // Sentiment (parallel)
   if (options.enabled.includes('sentiment')) {
-    log('analyze', 'Evaluating sentiment')
-
-    const sentiment = new Sentiment()
-
-    article.sentiment = sentiment.analyze(nlpInput)
-    try { log('analyze', 'Sentiment evaluated', { score: article.sentiment.score, comparative: article.sentiment.comparative }) } catch {}
-    if (article.sentiment.score > 0.05) {
-      article.sentiment.result = 'Positive'
-    } else if (article.sentiment.score < 0.05) {
-      article.sentiment.result = 'Negative'
-    } else {
-      article.sentiment.result = 'Neutral'
-    }
+    analysisTasks.push((async () => {
+      try {
+        log('analyze', 'Evaluating sentiment')
+        const sentiment = new Sentiment()
+        const res = sentiment.analyze(nlpInput)
+        article.sentiment = res
+        try { log('analyze', 'Sentiment evaluated', { score: res.score, comparative: res.comparative }) } catch {}
+        if (res.score > 0.05) article.sentiment.result = 'Positive'
+        else if (res.score < 0.05) article.sentiment.result = 'Negative'
+        else article.sentiment.result = 'Neutral'
+      } catch {}
+    })())
   }
 
-  // Named Entity Recognition
+  // Named Entity Recognition (parallel)
   if (options.enabled.includes('entities') && (!isLiveSummary || timeLeft() > 4000)) {
-    log('analyze', 'Extracting named entities')
-
-    // People
-    if (timeLeft() < 1200) { log('analyze', 'Skipping NER due to low budget') }
-    else {
-      article.people = nlp(nlpInput).people().json()
-      const seen = Array.isArray(article.people) ? article.people.map(p => String(p.text || '').toLowerCase()) : []
-      if (pluginHints.first.length && pluginHints.last.length) {
-        const haystack = nlpInput.toLowerCase()
-        for (const f of pluginHints.first) {
-          for (const l of pluginHints.last) {
-            const needle = `${f} ${l}`.toLowerCase()
-            if (haystack.includes(needle) && !seen.includes(needle)) {
-              if (!Array.isArray(article.people)) article.people = []
-              article.people.push({ text: needle.replace(/\b\w/g, c => c.toUpperCase()) })
-              seen.push(needle)
+    analysisTasks.push((async () => {
+      try {
+        log('analyze', 'Extracting named entities')
+        if (timeLeft() < 1200) { log('analyze', 'Skipping NER due to low budget'); return }
+        article.people = nlp(nlpInput).people().json()
+        const seen = Array.isArray(article.people) ? article.people.map(p => String(p.text || '').toLowerCase()) : []
+        if (pluginHints.first.length && pluginHints.last.length) {
+          const haystack = nlpInput.toLowerCase()
+          for (const f of pluginHints.first) {
+            for (const l of pluginHints.last) {
+              const needle = `${f} ${l}`.toLowerCase()
+              if (haystack.includes(needle) && !seen.includes(needle)) {
+                if (!Array.isArray(article.people)) article.people = []
+                article.people.push({ text: needle.replace(/\b\w/g, c => c.toUpperCase()) })
+                seen.push(needle)
+              }
             }
           }
         }
-      }
-    }
-
-    // Places
-    if (timeLeft() < 1000) { /* skip places */ }
-    else article.places = nlp(nlpInput).places().json()
-
-    // Orgs & Places
-    if (timeLeft() < 900) { /* skip orgs */ }
-    else article.orgs = nlp(nlpInput).organizations().json()
-
-    // Topics
-    if (timeLeft() < 800) { /* skip topics */ }
-    else article.topics = nlp(nlpInput).topics().json()
-    try {
-      const pc = Array.isArray(article.people) ? article.people.length : 0
-      const plc = Array.isArray(article.places) ? article.places.length : 0
-      const oc = Array.isArray(article.orgs) ? article.orgs.length : 0
-      const tc = Array.isArray(article.topics) ? article.topics.length : 0
-      log('analyze', 'Entities extracted', { people: pc, places: plc, orgs: oc, topics: tc })
-    } catch {}
+        if (timeLeft() >= 1000) article.places = nlp(nlpInput).places().json()
+        if (timeLeft() >= 900) article.orgs = nlp(nlpInput).organizations().json()
+        if (timeLeft() >= 800) article.topics = nlp(nlpInput).topics().json()
+        try {
+          const pc = Array.isArray(article.people) ? article.people.length : 0
+          const plc = Array.isArray(article.places) ? article.places.length : 0
+          const oc = Array.isArray(article.orgs) ? article.orgs.length : 0
+          const tc = Array.isArray(article.topics) ? article.topics.length : 0
+          log('analyze', 'Entities extracted', { people: pc, places: plc, orgs: oc, topics: tc })
+        } catch {}
+      } catch {}
+    })())
   }
 
   // Spelling
@@ -1222,26 +1254,24 @@ log('analyze', 'Evaluating meta tags')
   // Evaluate keywords & keyphrases
   if (options.enabled.includes('keywords') && !(isLiveSummary && timeLeft() < 6000)) {
     log('analyze', 'Evaluating keywords and keyphrases')
-
-    // Evaluate meta title keywords & keyphrases
-    if (timeLeft() > 500) Object.assign(article.meta.title, await keywordParser(article.meta.title.text, options.retextkeywords))
-
-    // Evaluate derived title keywords & keyphrases
-    if (timeLeft() > 500) Object.assign(article.title, await keywordParser(article.title.text, options.retextkeywords))
-
-    // Evaluate meta description keywords & keyphrases
-    if (timeLeft() > 500) Object.assign(article.meta.description, await keywordParser(article.meta.description.text, options.retextkeywords))
-
-    // Evaluate processed content keywords & keyphrases
-    if (timeLeft() > 600) {
-      const kw = await keywordParser(nlpInput, options.retextkeywords)
-      Object.assign(article.processed, kw)
-      try {
-        const kc = Array.isArray(kw.keywords) ? kw.keywords.length : 0
-        const pc = Array.isArray(kw.keyphrases) ? kw.keyphrases.length : 0
-        log('analyze', 'Keywords extracted', { keywords: kc, keyphrases: pc })
-      } catch {}
-    }
+    // Run keyword parsing jobs in parallel for speed
+    try {
+      const jobs = []
+      if (timeLeft() > 500) jobs.push(keywordParser(article.meta.title.text, options.retextkeywords).then(r => Object.assign(article.meta.title, r)).catch(() => {}))
+      if (timeLeft() > 500) jobs.push(keywordParser(article.title.text, options.retextkeywords).then(r => Object.assign(article.title, r)).catch(() => {}))
+      if (timeLeft() > 500) jobs.push(keywordParser(article.meta.description.text, options.retextkeywords).then(r => Object.assign(article.meta.description, r)).catch(() => {}))
+      if (timeLeft() > 600) jobs.push(
+        keywordParser(nlpInput, options.retextkeywords).then(kw => {
+          Object.assign(article.processed, kw)
+          try {
+            const kc = Array.isArray(kw.keywords) ? kw.keywords.length : 0
+            const pc = Array.isArray(kw.keyphrases) ? kw.keyphrases.length : 0
+            log('analyze', 'Keywords extracted', { keywords: kc, keyphrases: pc })
+          } catch {}
+        }).catch(() => {})
+      )
+      await Promise.all(jobs)
+    } catch {}
   }
 
   log('parse', 'complete', { source: (staticHtmlOverride ? 'amp' : 'dynamic'), elapsed_ms: elapsed(), remaining_ms: tl(), budget_ms: options.timeoutMs || '' })

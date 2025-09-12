@@ -357,6 +357,63 @@ export async function clearViewportObstructions (page) {
   } catch {}
 }
 
+// Inject a defensive CSS nuke to hide common CMP/consent overlays (non-AMP too).
+export async function injectConsentNuke (page) {
+  try {
+    await page.evaluate(() => {
+      try {
+        if (document.querySelector('style[data-consent-nuke="global"]')) return
+        const style = document.createElement('style')
+        style.setAttribute('data-consent-nuke', 'global')
+        style.textContent = `
+          /* Sourcepoint / generic */
+          iframe[id^="sp_message_iframe"],
+          div[id^="sp_message_container"],
+          [id*="sp_message" i], [class*="sp_message" i],
+          [id*="consent" i], [class*="consent" i],
+          [id*="cookie" i], [class*="cookie" i],
+          .site-message--consent, .site-message--banner,
+          #cmpOverlay, .fc-consent-root,
+          /* AMP overlays when present */
+          amp-consent, amp-user-notification, .i-amphtml-consent-ui,
+          [amp-consent-blocking], .i-amphtml-overlay, .i-amphtml-fixed-layer {
+            display: none !important; visibility: hidden !important; opacity: 0 !important;
+          }
+          html, body { overflow: auto !important; position: static !important; }
+        `
+        document.head.appendChild(style)
+      } catch {}
+    })
+  } catch {}
+}
+
+// Pre-injects the consent CSS nuke at document start to avoid flicker and race conditions
+export async function injectConsentNukeEarly (page) {
+  try {
+    await page.evaluateOnNewDocument(() => {
+      try {
+        const style = document.createElement('style')
+        style.setAttribute('data-consent-nuke', 'global')
+        style.textContent = `
+          iframe[id^="sp_message_iframe"],
+          div[id^="sp_message_container"],
+          [id*="sp_message" i], [class*="sp_message" i],
+          [id*="consent" i], [class*="consent" i],
+          [id*="cookie" i], [class*="cookie" i],
+          .site-message--consent, .site-message--banner,
+          #cmpOverlay, .fc-consent-root,
+          amp-consent, amp-user-notification, .i-amphtml-consent-ui,
+          [amp-consent-blocking], .i-amphtml-overlay, .i-amphtml-fixed-layer {
+            display: none !important; visibility: hidden !important; opacity: 0 !important;
+          }
+          html, body { overflow: auto !important; position: static !important; }
+        `
+        (document.head || document.documentElement).appendChild(style)
+      } catch {}
+    })
+  } catch {}
+}
+
 export async function injectTcfApi (page, consentOptions = {}) {
   try {
     const tcString = typeof consentOptions.tcString === 'string' && consentOptions.tcString

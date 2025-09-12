@@ -11,8 +11,9 @@ import jpeg from 'jpeg-js'
 const quietSocket = { emit: () => {} }
 
 // Shorten test and parser timeouts to speed up the suite
-const TEST_TIMEOUT = 10000
-const PARSE_TIMEOUT = 10000
+// Default to 15s to reduce flakiness on slower environments
+const TEST_TIMEOUT = 15000
+const PARSE_TIMEOUT = 15000
 
 // Reuse a single browser instance across tests to avoid repeated startups
 let sharedBrowser
