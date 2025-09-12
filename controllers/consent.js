@@ -92,21 +92,30 @@ export async function autoDismissConsent (page, consentOptions = {}) {
       } catch {}
     }
 
+    const articleZIndex = await page.evaluate(() => {
+      const sel = 'article, main, [role="main"], .entry-content, .post-body, #postBody, .post-content, .article-content'
+      const el = document.querySelector(sel)
+      if (!el) return 0
+      try {
+        const style = window.getComputedStyle(el)
+        const z = parseInt(style.zIndex || '0', 10)
+        return Number.isFinite(z) ? z : 0
+      } catch {}
+      return 0
+    })
+
     const removeOverlaysIn = async (ctx) => {
       try {
-        return await ctx.evaluate(() => {
+        return await ctx.evaluate((articleZIndex) => {
           let removed = 0
           const isOverlay = (el) => {
             try {
-              const rect = el.getBoundingClientRect()
-              const vw = window.innerWidth || document.documentElement.clientWidth
-              const vh = window.innerHeight || document.documentElement.clientHeight
-              const large = rect.width > vw * 0.3 && rect.height > vh * 0.3
-              const banner = rect.width > vw * 0.8 && rect.height > vh * 0.1
-              if (!large && !banner) return false
               const style = window.getComputedStyle(el)
+              const z = parseInt(style.zIndex || '0', 10)
+              if (!Number.isFinite(z)) return false
+              if (z <= articleZIndex) return false
               if (!/(fixed|absolute|sticky)/i.test(style.position)) return false
-              return parseInt(style.zIndex || '0', 10) > 999
+              return true
             } catch {}
             return false
           }
@@ -121,7 +130,7 @@ export async function autoDismissConsent (page, consentOptions = {}) {
             }
           }
           return removed
-        })
+        }, articleZIndex)
       } catch {}
       return 0
     }
@@ -142,19 +151,16 @@ export async function autoDismissConsent (page, consentOptions = {}) {
 
     // Guard against overlays added after this call
     try {
-      await page.evaluate((observerTimeoutMs) => {
+      await page.evaluate((observerTimeoutMs, articleZIndex) => {
         const re = /(consent|cookie|privacy|gdpr|overlay|modal|dialog|banner|popup|message)/i
         const isOverlay = (el) => {
           try {
-            const rect = el.getBoundingClientRect()
-            const vw = window.innerWidth || document.documentElement.clientWidth
-            const vh = window.innerHeight || document.documentElement.clientHeight
-            const large = rect.width > vw * 0.3 && rect.height > vh * 0.3
-            const banner = rect.width > vw * 0.8 && rect.height > vh * 0.1
-            if (!large && !banner) return false
             const style = window.getComputedStyle(el)
+            const z = parseInt(style.zIndex || '0', 10)
+            if (!Number.isFinite(z)) return false
+            if (z <= articleZIndex) return false
             if (!/(fixed|absolute|sticky)/i.test(style.position)) return false
-            return parseInt(style.zIndex || '0', 10) > 999
+            return true
           } catch {}
           return false
         }
@@ -173,7 +179,7 @@ export async function autoDismissConsent (page, consentOptions = {}) {
         })
         observer.observe(document.documentElement || document.body, { childList: true, subtree: true })
         setTimeout(() => observer.disconnect(), observerTimeoutMs)
-      }, observerTimeoutMs)
+      }, observerTimeoutMs, articleZIndex)
     } catch {}
 
     if (waitMs) await sleep(100)
