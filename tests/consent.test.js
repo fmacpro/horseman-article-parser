@@ -60,6 +60,25 @@ test('autoDismissConsent dismisses overlay without consent keywords', async (t) 
   await browser.close()
 })
 
+test('autoDismissConsent removes cross-origin consent iframes', async (t) => {
+  let browser
+  try {
+    browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] })
+  } catch (err) {
+    t.skip('puppeteer unavailable: ' + err.message)
+    return
+  }
+  const page = await browser.newPage()
+  const html = `<!doctype html><html><body>
+    <iframe id="consent-frame" src="https://example.com" style="position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:10000;"></iframe>
+  </body></html>`
+  await page.setContent(html)
+  await autoDismissConsent(page)
+  const iframe = await page.$('#consent-frame')
+  assert.equal(iframe, null)
+  await browser.close()
+})
+
 test('injectTcfApi sets __tcfapi with provided tcString', async (t) => {
   let browser
   try {

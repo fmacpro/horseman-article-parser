@@ -86,7 +86,37 @@ export async function autoDismissConsent (page, consentOptions = {}) {
       } catch {}
     }
 
+    const removeOverlays = async () => {
+      try {
+        await page.evaluate(() => {
+          const isOverlay = (el) => {
+            try {
+              const rect = el.getBoundingClientRect()
+              const vw = window.innerWidth || document.documentElement.clientWidth
+              const vh = window.innerHeight || document.documentElement.clientHeight
+              if (rect.width < vw * 0.3 || rect.height < vh * 0.3) return false
+              const style = window.getComputedStyle(el)
+              if (!/(fixed|absolute|sticky)/i.test(style.position)) return false
+              return parseInt(style.zIndex || '0', 10) > 999
+            } catch {}
+            return false
+          }
+          const re = /(consent|cookie|privacy|gdpr|overlay|modal|dialog|banner|popup|message)/i
+          const nodes = Array.from(document.querySelectorAll('iframe, div, section, aside'))
+          for (const el of nodes) {
+            const id = el.id || ''
+            const cls = (el.className && typeof el.className === 'string') ? el.className : ''
+            const role = (el.getAttribute && el.getAttribute('role')) || ''
+            if (re.test(id) || re.test(cls) || re.test(role) || isOverlay(el)) {
+              try { el.remove() } catch { try { el.style.setProperty('display', 'none', 'important') } catch {} }
+            }
+          }
+        })
+      } catch {}
+    }
+
     try { await page.keyboard.press('Escape') } catch {}
+    await removeOverlays()
     if (waitMs) await sleep(100)
   } catch {}
 }
