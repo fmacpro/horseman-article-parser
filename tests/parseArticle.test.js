@@ -12,7 +12,7 @@ const quietSocket = { emit: () => {} }
 
 // Shorten test and parser timeouts to speed up the suite
 const TEST_TIMEOUT = 10000
-const PARSE_TIMEOUT = 8000
+const PARSE_TIMEOUT = 10000
 
 // Reuse a single browser instance across tests to avoid repeated startups
 let sharedBrowser

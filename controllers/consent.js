@@ -85,7 +85,10 @@ export async function autoDismissConsent (page, consentOptions = {}) {
 
     if (clicks) {
       try {
-        await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 2000 })
+        await Promise.race([
+          page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 2000 }).catch(() => {}),
+          sleep(Math.min(waitMs, 1000))
+        ])
       } catch {}
     }
 
