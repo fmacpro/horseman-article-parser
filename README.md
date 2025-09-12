@@ -305,13 +305,26 @@ Check out the compromise plugin [docs](https://observablehq.com/@spencermountain
 The detector is always enabled and uses a structured-data-first strategy, falling back to heuristic scoring:
 - Structured data: Extracts JSON-LD Article/NewsArticle (`headline`, `articleBody`).
 - Heuristics: Gathers DOM candidates (e.g., `article`, `main`, `[role=main]`, content-like containers) and scores them by text length, punctuation, link density, paragraph count, semantic tags, and boilerplate penalties.
+- Fragment promotion: When content is split across sibling blocks, a fragmentation heuristic merges them into a single higher-level candidate.
+- ML reranker (optional): If weights are supplied, a lightweight reranker can refine the heuristic ranking.
 - Title detection: Chooses from structured `headline`, `og:title`/`twitter:title`, first `<h1>`, or `document.title`, with normalization.
+- Debug dump (optional): Write top-N candidates to CSV for dataset labeling.
 
-You can optionally tune thresholds under `options.contentDetection`:
+You can tune thresholds and fragmentation frequency under `options.contentDetection`:
 ```js
 contentDetection: {
   minLength: 400,
-  maxLinkDensity: 0.5
+  maxLinkDensity: 0.5,
+  fragment: {
+    // require at least this many sibling parts
+    minParts: 2,
+    // minimum text length per part
+    minChildChars: 150,
+    // minimum combined text across parts
+    minCombinedChars: 400
+  },
+  // enable after training weights
+  reranker: { enabled: false }
 }
 ```
 
