@@ -626,44 +626,6 @@ log('analyze', 'Evaluating meta tags')
   article.meta.description = {}
   article.meta.description.text = metaDescription
 
-  // If we landed on a consent/cookies/ privacy info page, retry once: re-open target URL and auto-dismiss consent
-  try {
-    const looksLikeConsent = (() => {
-      const t = String(article.meta.title?.text || '').toLowerCase()
-      return /(cookie|cookies|consent|privacy|gdpr)/i.test(t)
-    })()
-    if (!staticHtmlOverride && looksLikeConsent && timeLeft() > 1200) {
-      log('consent', 'retry')
-      try { await navigateWithFallback(page, options, options.url, tl, log, interceptionActive) } catch (err) { logger.warn('navigateWithFallback retry failed', err) }
-      if (jsEnabled && options.consent && options.consent.autoDismiss) {
-        try { await autoDismissConsent(page, options.consent) } catch (err) { logger.warn('autoDismissConsent failed', err) }
-        try { await waitForFrameStability(page, timeLeft, 400, 1200) } catch (err) { logger.warn('waitForFrameStability failed', err) }
-      }
-      // If still consent-like, try once with JavaScript disabled to avoid dynamic consent flows
-      let titleNow = ''
-      try { titleNow = await page.title() } catch { titleNow = '' }
-      if (/(cookie|cookies|consent|privacy|gdpr)/i.test(String(titleNow))) {
-        try { await page.setJavaScriptEnabled(false) } catch (err) { logger.warn('setJavaScriptEnabled false failed', err) }
-        try { await navigateWithFallback(page, options, options.url, tl, log, interceptionActive) } catch (err) { logger.warn('navigateWithFallback JS-disabled failed', err) }
-        try { await waitForFrameStability(page, timeLeft, 400, 1200) } catch (err) { logger.warn('waitForFrameStability failed', err) }
-      }
-      // Refresh meta after retry
-      const meta2 = await evalWithRetry(async () => page.evaluate(() => {
-        const out = {}
-        const nodes = document.querySelectorAll('meta')
-        nodes.forEach(el => {
-          const name = el.getAttribute('name')
-          const prop = el.getAttribute('property')
-          const content = el.getAttribute('content')
-          if (name) out[name] = content
-          else if (prop) out[prop] = content
-        })
-        return out
-      }))
-      Object.assign(article.meta, meta2)
-    }
-  } catch { /* ignore */ }
-
   // Take mobile screenshot after consent handling
   if (options.enabled.includes('screenshot') && timeLeft() > 300) {
     log('analyze', 'Capturing screenshot')

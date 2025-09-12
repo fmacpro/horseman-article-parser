@@ -43,7 +43,7 @@ export function setDefaultOptions (options = {}) {
         'button[aria-label="Agree"]'
       ],
       textPatterns: [
-        'accept', 'accept all', 'accept and close', 'i accept', 'agree', 'i agree', 'yes i agree', "i'm ok with that", 'i am ok with that', 'ok', 'got it', 'continue', 'continue to site', 'allow all', 'consent', 'manage preferences'
+        'accept', 'accept all', 'accept and close', 'accept additional cookies', 'i accept', 'agree', 'i agree', 'yes i agree', "i'm ok with that", 'i am ok with that', 'ok', 'got it', 'continue', 'continue to site', 'allow all', 'consent', 'maybe later'
       ],
       waitAfterClickMs: 500,
       maxClicks: 3
