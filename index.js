@@ -177,6 +177,7 @@ const articleParser = async function (browser, options, socket) {
     // Allow static HTML override (e.g., fetched AMP) when dynamic content is obstructed
     let staticHtmlOverride = null
     let staticUrlOverride = null
+    let preferStaticPath = false
     let ampFetchPromise = null
     let contentOverridden = false
 
@@ -478,6 +479,7 @@ const articleParser = async function (browser, options, socket) {
       article.url = staticUrlOverride || article.url
       article.html = staticHtmlOverride
       log('amp', 'switch_static')
+      preferStaticPath = true
     }
   } catch { /* ignore */ }
 
@@ -569,12 +571,16 @@ const articleParser = async function (browser, options, socket) {
   article.host = host
   article.baseurl = protocol + '//' + host
 
-  // Evaluate title (retry once on context loss)
-  try {
-    article.meta.title.text = await page.title()
-  } catch {
-    try { await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 1500 }) } catch {}
-    try { article.meta.title.text = await page.title() } catch { article.meta.title.text = '' }
+  // Evaluate title from live page only when not preferring static path
+  if (!preferStaticPath) {
+    try {
+      article.meta.title.text = await page.title()
+    } catch {
+      try { await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 1500 }) } catch {}
+      try { article.meta.title.text = await page.title() } catch { article.meta.title.text = '' }
+    }
+  } else {
+    article.meta.title.text = ''
   }
 
   // If the page/browser was closed (e.g., due to global timeout), abort gracefully
@@ -582,7 +588,7 @@ const articleParser = async function (browser, options, socket) {
   if (timeLeft() <= 0) throw new Error('Timeout budget exceeded')
 
   // Evaluate site icon url
-  if (!staticHtmlOverride && options.enabled.includes('siteicon') && timeLeft() > 300) {
+  if (!preferStaticPath && !staticHtmlOverride && options.enabled.includes('siteicon') && timeLeft() > 300) {
     log('analyze', 'Evaluating site icon')
     try {
       article.siteicon = await page.evaluate(() => {
