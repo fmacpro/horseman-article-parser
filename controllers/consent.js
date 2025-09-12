@@ -6,6 +6,9 @@ export async function autoDismissConsent (page, consentOptions = {}) {
     const textPatterns = Array.isArray(consentOptions.textPatterns) ? consentOptions.textPatterns : []
     const maxClicks = Number.isFinite(consentOptions.maxClicks) ? consentOptions.maxClicks : 3
     const waitMs = Number.isFinite(consentOptions.waitAfterClickMs) ? consentOptions.waitAfterClickMs : 500
+    const observerTimeoutMs = Number.isFinite(consentOptions.observerTimeoutMs)
+      ? consentOptions.observerTimeoutMs
+      : 5000
 
     const frames = page.frames()
     let clicks = 0
@@ -126,7 +129,7 @@ export async function autoDismissConsent (page, consentOptions = {}) {
     }
 
     try { await page.keyboard.press('Escape') } catch {}
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < 5; i++) {
       const removed = await removeOverlays()
       if (!removed) break
       await sleep(50)
@@ -134,7 +137,7 @@ export async function autoDismissConsent (page, consentOptions = {}) {
 
     // Guard against overlays added after this call
     try {
-      await page.evaluate(() => {
+      await page.evaluate((observerTimeoutMs) => {
         const re = /(consent|cookie|privacy|gdpr|overlay|modal|dialog|banner|popup|message)/i
         const observer = new window.MutationObserver(muts => {
           for (const m of muts) {
@@ -150,8 +153,8 @@ export async function autoDismissConsent (page, consentOptions = {}) {
           }
         })
         observer.observe(document.documentElement || document.body, { childList: true, subtree: true })
-        setTimeout(() => observer.disconnect(), 1000)
-      })
+        setTimeout(() => observer.disconnect(), observerTimeoutMs)
+      }, observerTimeoutMs)
     } catch {}
 
     if (waitMs) await sleep(100)
