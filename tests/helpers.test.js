@@ -5,7 +5,7 @@ import { setDefaultOptions, capitalizeFirstLetter, toTitleCase } from '../helper
 test('setDefaultOptions applies defaults', () => {
   const opts = setDefaultOptions()
   assert.deepEqual(opts.enabled, ['links'])
-  assert.equal(opts.timeoutMs, 20000)
+  assert.equal(opts.timeoutMs, 40000)
   assert.equal(opts.puppeteer.launch.headless, true)
 })
 

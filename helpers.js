@@ -4,7 +4,7 @@ export function setDefaultOptions (options = {}) {
   const defaults = {
     enabled: [],
     // Hard cap for total parse duration (ms)
-    timeoutMs: 20000,
+    timeoutMs: 40000,
     puppeteer: {
       launch: {
         headless: true,
