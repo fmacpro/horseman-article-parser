@@ -129,6 +129,26 @@ test('autoDismissConsent removes small sticky banners', async (t) => {
   await browser.close()
 })
 
+test('autoDismissConsent removes elements with higher z-index than article', async (t) => {
+  let browser
+  try {
+    browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] })
+  } catch (err) {
+    t.skip('puppeteer unavailable: ' + err.message)
+    return
+  }
+  const page = await browser.newPage()
+  const html = `<!doctype html><html><body style="margin:0;height:2000px;">
+    <main id="article" style="position:relative;z-index:1;">content</main>
+    <div id="overlay" style="position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:10;background:red;"></div>
+  </body></html>`
+  await page.setContent(html)
+  await autoDismissConsent(page)
+  const overlay = await page.$('#overlay')
+  assert.equal(overlay, null)
+  await browser.close()
+})
+
 test('autoDismissConsent removes overlays added after invocation', async (t) => {
   let browser
   try {
