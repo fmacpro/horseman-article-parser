@@ -26,12 +26,12 @@ export function buildLiveBlogSummary (document) {
       const hd = text(ttl)
       const pv = text(p)
       const score = (tt ? 1 : 0) + (hd.length > 12 ? 1 : 0) + (pv.length > 60 ? 1 : 0)
-      if (score >= 2) items.push({ time: tt, title: hd, body: pv })
+      if (score >= 2 && pv.length > 40) items.push({ time: tt, title: hd, body: pv })
       if (items.length >= MAX_UPDATES) break
     }
     if (items.length < 5) {
       const liveRoots = Array.from(document.querySelectorAll(
-        '.live, .live-blog, .liveblog, .timeline, .live_updates, .updates, .update, .post, [role="article"]'
+        '.live, .live-blog, .liveblog, .timeline, .live_updates, .updates, .update'
       )).slice(0, 200)
       for (const root of liveRoots) {
         if (!root) continue
@@ -71,7 +71,7 @@ export function buildLiveBlogSummary (document) {
       } catch {}
     }
     const totalBody = items.reduce((acc, it) => acc + (it.body ? it.body.length : 0), 0)
-    const enough = (items.length >= 3) || (items.length >= 2 && totalBody >= 500)
+    const enough = (items.length >= 3 && totalBody >= 200) || (items.length >= 2 && totalBody >= 500)
     if (enough) {
       const used = items.slice(0, 5)
       const html = ['<div class="live-summary">']
