@@ -9,11 +9,31 @@ export const timeLeftFactory = (options) => () => {
 
 export async function waitForFrameStability (page, timeLeft, quietMs = 400, maxMs = 1500) {
   const start = Date.now()
-  const deadline = Math.min(maxMs, timeLeft())
-  await safeAwait(page.waitForFunction(() => document.readyState === 'complete', { timeout: Math.min(1200, Math.max(0, timeLeft())) }), 'readyState wait')
-  while ((Date.now() - (page.__lastNavAt || 0)) < quietMs && (Date.now() - start) < deadline) {
+  const hardDeadline = Math.min(maxMs, Math.max(0, timeLeft()))
+  // Wait for the document to be reasonably ready, but tolerate navigations
+  while ((Date.now() - start) < hardDeadline) {
+    const remaining = hardDeadline - (Date.now() - start)
+    const timeout = Math.min(1000, Math.max(200, remaining))
+    try {
+      await page.waitForFunction(() => document.readyState === 'complete' || document.readyState === 'interactive', { timeout })
+      break
+    } catch (err) {
+      const msg = String(err && err.message || '')
+      // If the frame detached (navigation), loop and try again until deadline
+      if (/detached frame|Execution context was destroyed|Cannot find context/i.test(msg)) {
+        await safeAwait(sleep(60), 'detached-wait')
+        continue
+      }
+      // For other errors, just proceed to quiet period
+      break
+    }
+  }
+  // Then wait for a short quiet window since the last navigation/load
+  while ((Date.now() - start) < hardDeadline) {
+    const sinceNav = Date.now() - (page.__lastNavAt || 0)
+    if (sinceNav >= quietMs) break
     const slice = Math.min(120, Math.max(40, quietMs / 4))
-    await safeAwait(sleep(slice), 'wait')
+    await safeAwait(sleep(slice), 'quiet-wait')
   }
 }
 

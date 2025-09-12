@@ -4,7 +4,7 @@ export function setDefaultOptions (options = {}) {
   const defaults = {
     enabled: [],
     // Hard cap for total parse duration (ms)
-    timeoutMs: 20000,
+    timeoutMs: 40000,
     puppeteer: {
       launch: {
         headless: true,
@@ -28,6 +28,7 @@ export function setDefaultOptions (options = {}) {
         '#onetrust-accept-btn-handler',
         'button#onetrust-accept-btn-handler',
         'button[aria-label="Accept all"]',
+        'button[data-testid="accept-all"]',
         'button[aria-label*="Accept"]',
         'button[title="Accept"]',
         '#sp-cc-accept',
@@ -40,13 +41,20 @@ export function setDefaultOptions (options = {}) {
         '.cc-allow',
         'button.cookie-accept',
         'button#cookie-accept',
-        'button[aria-label="Agree"]'
+        'button[aria-label="Agree"]',
+        'button[id*="bbccookies" i]',
+        'button[title*="yes i\'m happy" i]',
+        // Guardian/Sourcepoint common labels
+        'button[title*="i\'m ok with that" i]',
+        'button[aria-label*="i\'m ok with that" i]',
+        'button[title*="yes, i\'m happy" i]'
       ],
       textPatterns: [
-        'accept', 'accept all', 'accept and close', 'i accept', 'agree', 'i agree', 'yes i agree', "i'm ok with that", 'i am ok with that', 'ok', 'got it', 'continue', 'continue to site', 'allow all', 'consent', 'manage preferences'
+        'accept', 'accept all', 'accept and close', 'i accept', 'agree', 'i agree', 'yes i agree', "i'm ok with that", 'i am ok with that', 'ok', 'got it', 'continue', 'continue to site', 'allow all', 'consent', 'manage preferences', "yes i'm happy", 'yes i am happy'
       ],
       waitAfterClickMs: 500,
-      maxClicks: 3
+      maxClicks: 3,
+      observerTimeoutMs: 5000
     },
     contentDetection: {
       // fragmentation heuristic config (used to promote selection

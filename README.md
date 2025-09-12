@@ -103,7 +103,7 @@ The options below are set by default
 var options = {
   // Imposes a hard limit on how long the parser will run. When the limit is reached, the browser instance is closed and a timeout error is thrown.
   // This prevents the parser from hanging indefinitely and ensures long‑running parses are cut off after the specified duration.
-  timeoutMs: 20000,
+  timeoutMs: 40000,
   // puppeteer options (https://github.com/GoogleChrome/puppeteer)
   puppeteer: {
     // puppeteer launch options (https://github.com/GoogleChrome/puppeteer/blob/master/docs/api.md#puppeteerlaunchoptions)

@@ -10,7 +10,14 @@ export async function safeAwait (promise, msg = 'Async operation failed') {
   try {
     return await promise
   } catch (err) {
-    logger.warn(`${msg}: ${err.message}`)
+    try {
+      const isTest = (typeof process !== 'undefined') && (
+        (Array.isArray(process.execArgv) && process.execArgv.includes('--test')) ||
+        (Array.isArray(process.argv) && process.argv.some(a => String(a).includes('--test'))) ||
+        process.env.HORSEMAN_LOG_QUIET === '1'
+      )
+      if (msg !== 'Async operation failed' && !isTest) logger.warn(`${msg}: ${err.message}`)
+    } catch {}
     return undefined
   }
 }

@@ -20,6 +20,13 @@ test('buildLiveBlogSummary returns ok false when insufficient data', () => {
   assert.equal(res.ok, false)
 })
 
+test('buildLiveBlogSummary ignores time-only lists', () => {
+  const html = `\n  <div>\n    <div><time>1h ago</time><h2>One</h2></div>\n    <div><time>2h ago</time><h2>Two</h2></div>\n    <div><time>3h ago</time><h2>Three</h2></div>\n    <div><time>4h ago</time><h2>Four</h2></div>\n    <div><time>5h ago</time><h2>Five</h2></div>\n  </div>`
+  const { window } = new JSDOM(html)
+  const res = buildLiveBlogSummary(window.document)
+  assert.equal(res.ok, false)
+})
+
 test('buildLiveBlogSummary handles amp-live-list', () => {
   const html = fs.readFileSync('tests/fixtures/liveblog/amp.html', 'utf8')
   const { window } = new JSDOM(html)
