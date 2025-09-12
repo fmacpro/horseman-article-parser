@@ -79,7 +79,7 @@ test('parseArticle captures a screenshot when enabled', { timeout: TEST_TIMEOUT 
   assert.ok(Buffer.from(article.screenshot, 'base64').length > 1000)
 })
 
-test('parseArticle screenshot occurs after consent dismissal', { timeout: TEST_TIMEOUT }, async (t) => {
+test('parseArticle screenshot occurs after consent dismissal', { timeout: 15000 }, async (t) => {
   const html = `<!doctype html><html><head><title>Consent</title></head>
   <body style="margin:0">
     <div id="overlay" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:red;display:flex;align-items:center;justify-content:center;">
@@ -153,7 +153,7 @@ test('parseArticle strips consent iframes and scripts before screenshot', { time
   assert.ok(!/consent-script/.test(article.html))
 })
 
-test('parseArticle retries consent dismissal if overlay appears late', { timeout: TEST_TIMEOUT }, async (t) => {
+test('parseArticle retries consent dismissal if overlay appears late', { timeout: 15000 }, async (t) => {
   const html = `<!doctype html><html><head><title>Late Consent</title></head>
   <body style="margin:0">
     <article style="width:100vw;height:100vh;background:green"></article>

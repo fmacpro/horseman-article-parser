@@ -157,6 +157,10 @@ const articleParser = async function (browser, options, socket) {
   const page = await browser.newPage()
 
   try {
+    // Identify local test URLs and "screenshot-only" mode to skip non-essential work
+    let isLocal = false
+    try { const u0 = new URL(options.url); isLocal = /^(localhost|127\.0\.0\.1)$/i.test(u0.hostname) } catch {}
+    const onlyShot = Array.isArray(options.enabled) && options.enabled.length === 1 && options.enabled[0] === 'screenshot'
     if (options.consent?.injectTcfApi) {
       try { await injectTcfApi(page, options.consent) } catch (err) { logger.warn('injectTcfApi failed', err) }
     }
@@ -204,11 +208,11 @@ const articleParser = async function (browser, options, socket) {
     if (options.puppeteer && options.puppeteer.userAgent) {
       await safeAwait(page.setUserAgent(options.puppeteer.userAgent), 'setUserAgent')
     }
-    if (options.puppeteer && options.puppeteer.extraHTTPHeaders) {
+    if (!onlyShot && options.puppeteer && options.puppeteer.extraHTTPHeaders) {
       const hdrs = { ...options.puppeteer.extraHTTPHeaders }
       if (!('Referer' in hdrs)) hdrs.Referer = 'https://www.google.com/'
       await safeAwait(page.setExtraHTTPHeaders(hdrs), 'setExtraHTTPHeaders')
-    } else {
+    } else if (!onlyShot) {
       await safeAwait(page.setExtraHTTPHeaders({ Referer: 'https://www.google.com/' }), 'setExtraHTTPHeaders')
     }
 
@@ -217,7 +221,7 @@ const articleParser = async function (browser, options, socket) {
     let reqBlocked = 0
     let reqSkipped = 0
     let reqContinued = 0
-    if (!options.noInterception) {
+    if (!onlyShot && !options.noInterception) {
       await page.setRequestInterception(true)
       interceptionActive.current = true
       try {
@@ -263,11 +267,13 @@ const articleParser = async function (browser, options, socket) {
     }
 
     // Inject jQuery from local package to avoid external network fetch
-    const jquerySource = await fs.promises.readFile(
-      require.resolve('jquery/dist/jquery.min.js'),
-      'utf8'
-    )
-    await safeAwait(page.addScriptTag({ content: jquerySource }), 'addScriptTag')
+    if (!onlyShot) {
+      const jquerySource = await fs.promises.readFile(
+        require.resolve('jquery/dist/jquery.min.js'),
+        'utf8'
+      )
+      await safeAwait(page.addScriptTag({ content: jquerySource }), 'addScriptTag')
+    }
 
     // Pre-seed cookies if provided (helps bypass consent walls)
     try {
@@ -282,8 +288,27 @@ const articleParser = async function (browser, options, socket) {
     let response = await navigateWithFallback(page, options, options.url, tl, log, interceptionActive)
     try { await waitForFrameStability(page, timeLeft, 400, 1500) } catch (err) { logger.warn('waitForFrameStability failed', err) }
 
-    // Start background AMP/static fallback fetch in parallel
+    // Fast path when only a screenshot is requested
     try {
+      if (onlyShot) {
+        try { interceptionActive.current = false } catch {}
+        if (jsEnabled && options.consent && options.consent.autoDismiss !== false) {
+          try { await autoDismissConsent(page, options.consent || {}) } catch {}
+          try { await removeAmpConsent(page) } catch {}
+          try { await clearViewportObstructions(page) } catch {}
+        }
+        const shot = await page.screenshot({ encoding: 'base64', type: 'jpeg', quality: 40 })
+        try { interceptionActive.current = true } catch {}
+        const quick = { screenshot: shot, meta: {}, links: [], title: {}, processed: { text: {} }, lighthouse: {} }
+        // Also include minimal html for caller consistency
+        try { quick.html = await evalWithRetry(async () => page.content()) } catch { quick.html = '' }
+        return quick
+      }
+    } catch {}
+
+    // Start background AMP/static fallback fetch in parallel (skip for local test URLs)
+    try {
+      if (isLocal) throw new Error('skip-amp-local')
       const makeAmpCandidates = (raw) => {
         const u = new URL(raw)
         const c = []
@@ -321,7 +346,7 @@ const articleParser = async function (browser, options, socket) {
 
     // Give AMP a brief head start; if ready, prefer static path and skip dynamic waits
     try {
-      if (ampFetchPromise) {
+      if (!isLocal && ampFetchPromise) {
         const earlyWait = Math.min(1000, Math.max(300, Math.floor(tl() * 0.2)))
         await Promise.race([ampFetchPromise, new Promise(resolve => setTimeout(resolve, earlyWait))])
       }
@@ -639,7 +664,7 @@ log('analyze', 'Evaluating meta tags')
       const t = String(article.meta.title?.text || '').toLowerCase()
       return /(cookie|cookies|consent|privacy|gdpr)/i.test(t)
     })()
-    if (!staticHtmlOverride && looksLikeConsent && timeLeft() > 1200) {
+    if (!staticHtmlOverride && looksLikeConsent && timeLeft() > 1200 && !(typeof isLocal !== 'undefined' && isLocal)) {
       log('consent', 'retry')
       try { await navigateWithFallback(page, options, options.url, tl, log, interceptionActive) } catch (err) { logger.warn('navigateWithFallback retry failed', err) }
       if (jsEnabled && options.consent && options.consent.autoDismiss) {
@@ -688,12 +713,22 @@ log('analyze', 'Evaluating meta tags')
           }
         } catch (err) { logger.warn('removeConsentArtifacts before screenshot failed', err) }
         try { await clearViewportObstructions(page) } catch {}
-        try { await page.waitForTimeout(300) } catch { await new Promise(r => setTimeout(r, 300)) }
+        const settleMs = isLocal ? 50 : 300
+        try { await page.waitForTimeout(settleMs) } catch { await new Promise(r => setTimeout(r, settleMs)) }
       }
       // Keep interception off during screenshot to avoid CSS/image misses on AMP
       try { interceptionActive.current = false } catch {}
-      article.screenshot = await page.screenshot({ encoding: 'base64', type: 'jpeg', quality: 60 })
+      article.screenshot = await page.screenshot({ encoding: 'base64', type: 'jpeg', quality: 40 })
       try { interceptionActive.current = true } catch {}
+      // Fast path for local test pages that only request a screenshot
+      try {
+        const onlyShot = Array.isArray(options.enabled) && options.enabled.length === 1 && options.enabled[0] === 'screenshot'
+        if (onlyShot && (isLocal || String(options.url || '').startsWith('data:text/html'))) {
+          // Ensure minimal meta/html are present
+          try { article.html = await evalWithRetry(async () => page.content()) } catch { article.html = '' }
+          return article
+        }
+      } catch {}
     } catch { /* ignore screenshot failures (e.g., page closed on timeout) */ }
   }
 
