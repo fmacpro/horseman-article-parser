@@ -116,6 +116,43 @@ test('parseArticle screenshot occurs after consent dismissal', { timeout: TEST_T
   assert.ok(g > r && g > b, `expected green to dominate, got r=${r} g=${g} b=${b}`)
 })
 
+test('parseArticle strips consent iframes and scripts before screenshot', { timeout: TEST_TIMEOUT }, async (t) => {
+  const html = `<!doctype html><html><head><title>Artifacts</title></head>
+  <body style="margin:0">
+    <iframe id="consent-frame" srcdoc="<body style='margin:0'><div style='position:fixed;top:0;left:0;width:100vw;height:100vh;background:red;'></div></body>" style="position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:10000;"></iframe>
+    <script id="consent-script">console.log('consent')</script>
+    <article style="width:100vw;height:100vh;background:green"></article>
+  </body></html>`
+  const server = http.createServer((req, res) => { res.end(html) })
+  await new Promise(resolve => server.listen(0, resolve))
+  const { port } = server.address()
+  const url = `http://127.0.0.1:${port}`
+  let article
+  try {
+    article = await parseArticle({
+      url,
+      enabled: ['screenshot'],
+      timeoutMs: PARSE_TIMEOUT,
+      contentWaitSelectors: ['article'],
+      contentWaitTimeoutMs: 1,
+      skipReadabilityWait: true,
+      puppeteer: { launch: { headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] } }
+    }, quietSocket)
+  } catch (err) {
+    t.skip('puppeteer unavailable: ' + err.message)
+    server.close()
+    return
+  }
+  server.close()
+  const buf = Buffer.from(article.screenshot, 'base64')
+  const { width, height, data } = jpeg.decode(buf)
+  const mid = ((Math.floor(height / 2) * width) + Math.floor(width / 2)) * 4
+  const r = data[mid], g = data[mid + 1], b = data[mid + 2]
+  assert.ok(g > r && g > b, `expected green to dominate, got r=${r} g=${g} b=${b}`)
+  assert.ok(!/consent-frame/.test(article.html))
+  assert.ok(!/consent-script/.test(article.html))
+})
+
 test('parseArticle retries consent dismissal if overlay appears late', { timeout: TEST_TIMEOUT }, async (t) => {
   const html = `<!doctype html><html><head><title>Late Consent</title></head>
   <body style="margin:0">

@@ -17,7 +17,7 @@ import keywordParser from './controllers/keywordParser.js'
 import lighthouseAnalysis from './controllers/lighthouse.js'
 import spellCheck from './controllers/spellCheck.js'
 import logger from './controllers/logger.js'
-import { autoDismissConsent, injectTcfApi } from './controllers/consent.js'
+import { autoDismissConsent, injectTcfApi, removeConsentArtifacts } from './controllers/consent.js'
 import { buildLiveBlogSummary } from './controllers/liveBlog.js'
 import { getRawText, getFormattedText, getHtmlText, htmlCleaner } from './controllers/textProcessing.js'
 import { sanitizeDataUrl } from './controllers/utils.js'
@@ -673,6 +673,13 @@ log('analyze', 'Evaluating meta tags')
     try {
       if (!staticHtmlOverride && jsEnabled && options.consent && options.consent.autoDismiss) {
         try { await autoDismissConsent(page, options.consent) } catch (err) { logger.warn('autoDismissConsent before screenshot failed', err) }
+        try {
+          for (let i = 0; i < 3; i++) {
+            const removed = await removeConsentArtifacts(page)
+            if (!removed) break
+            await page.waitForTimeout(50)
+          }
+        } catch (err) { logger.warn('removeConsentArtifacts before screenshot failed', err) }
         try { await page.waitForTimeout(500) } catch {}
       }
       article.screenshot = await page.screenshot({ encoding: 'base64', type: 'jpeg', quality: 60 })
