@@ -186,6 +186,37 @@ export async function autoDismissConsent (page, consentOptions = {}) {
   } catch {}
 }
 
+export async function removeConsentArtifacts (page) {
+  try {
+    const removeIn = async (ctx) => {
+      try {
+        return await ctx.evaluate(() => {
+          let removed = 0
+          const re = /(consent|cookie|privacy|gdpr)/i
+          const nodes = Array.from(document.querySelectorAll('iframe, script'))
+          for (const el of nodes) {
+            const src = (el.getAttribute && el.getAttribute('src')) || ''
+            const id = el.id || ''
+            const cls = typeof el.className === 'string' ? el.className : ''
+            if (re.test(src) || re.test(id) || re.test(cls)) {
+              try { el.remove(); removed++ } catch { try { el.style.setProperty('display', 'none', 'important'); removed++ } catch {} }
+            }
+          }
+          return removed
+        })
+      } catch {}
+      return 0
+    }
+
+    let total = 0
+    total += await removeIn(page)
+    for (const f of page.frames()) { total += await removeIn(f) }
+    return total
+  } catch {
+    return 0
+  }
+}
+
 export async function injectTcfApi (page, consentOptions = {}) {
   try {
     const tcString = typeof consentOptions.tcString === 'string' && consentOptions.tcString
