@@ -17,7 +17,7 @@ import keywordParser from './controllers/keywordParser.js'
 import lighthouseAnalysis from './controllers/lighthouse.js'
 import spellCheck from './controllers/spellCheck.js'
 import logger from './controllers/logger.js'
-import { autoDismissConsent } from './controllers/consent.js'
+import { autoDismissConsent, injectTcfApi } from './controllers/consent.js'
 import { buildLiveBlogSummary } from './controllers/liveBlog.js'
 import { getRawText, getFormattedText, getHtmlText, htmlCleaner } from './controllers/textProcessing.js'
 import { sanitizeDataUrl } from './controllers/utils.js'
@@ -157,6 +157,9 @@ const articleParser = async function (browser, options, socket) {
   const page = await browser.newPage()
 
   try {
+    if (options.consent?.injectTcfApi) {
+      try { await injectTcfApi(page, options.consent) } catch (err) { logger.warn('injectTcfApi failed', err) }
+    }
     // Track frame navigations to wait for brief stability before evaluating
     page.__lastNavAt = Date.now()
     try {

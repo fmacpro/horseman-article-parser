@@ -90,3 +90,43 @@ export async function autoDismissConsent (page, consentOptions = {}) {
     if (waitMs) await sleep(100)
   } catch {}
 }
+
+export async function injectTcfApi (page, consentOptions = {}) {
+  try {
+    const tcString = typeof consentOptions.tcString === 'string' && consentOptions.tcString
+      ? consentOptions.tcString
+      : 'CPXxRfAPXxRfAAfKABENB-CgAAAAAAAAAAYgAAAAAAAAAAAAAAAAMAA'
+    const gdprApplies = consentOptions.gdprApplies !== false
+
+    await page.evaluateOnNewDocument((tcString, gdprApplies) => {
+      const tcData = {
+        tcString,
+        tcfPolicyVersion: 2,
+        cmpStatus: 'loaded',
+        eventStatus: 'tcloaded',
+        gdprApplies
+      }
+      const listeners = {}
+      let nextId = 1
+      window.__tcfapi = (cmd, version, callback) => {
+        if (cmd === 'addEventListener') {
+          const id = nextId++
+          listeners[id] = callback
+          callback(tcData, true)
+          return id
+        }
+        if (cmd === 'removeEventListener') {
+          delete listeners[version]
+          callback(true)
+          return
+        }
+        if (cmd === 'getTCData') {
+          callback(tcData, true)
+          return
+        }
+        callback(null, false)
+      }
+      window.__tcfapiLocator = {}
+    }, tcString, gdprApplies)
+  } catch {}
+}
