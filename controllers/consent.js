@@ -40,11 +40,16 @@ export async function autoDismissConsent (page, consentOptions = {}) {
           }
           const isConsentContext = (el) => {
             let n = el
-            const re = /(consent|cookie|privacy|gdpr)/i
+            const re = /(consent|cookie|privacy|gdpr|overlay|modal|dialog|banner|popup|message)/i
             while (n && n.nodeType === 1) {
               const id = n.id || ''
               const cls = (n.className && typeof n.className === 'string') ? n.className : ''
-              if (re.test(id) || re.test(cls)) return true
+              const role = (n.getAttribute && n.getAttribute('role')) || ''
+              if (re.test(id) || re.test(cls) || re.test(role)) return true
+              try {
+                const style = window.getComputedStyle(n)
+                if (/(fixed|absolute|sticky)/i.test(style.position) && parseInt(style.zIndex || '0', 10) > 999) return true
+              } catch {}
               n = n.parentElement
             }
             return false
