@@ -2,6 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import puppeteer from 'puppeteer-extra'
 import { autoDismissConsent, injectTcfApi } from '../controllers/consent.js'
+import { setDefaultOptions } from '../helpers.js'
 
 test('autoDismissConsent handles empty page', async () => {
   const page = {
@@ -20,7 +21,13 @@ test('autoDismissConsent clicks selectors and text patterns', async () => {
   const el = { click: async () => { selectorClicks++ }, evaluate: async () => {} }
   const frame = {
     $: async (sel) => (sel === '.accept' ? el : null),
-    evaluate: async (_fn, _patterns, remaining) => { textClicks += Math.min(1, remaining); return Math.min(1, remaining) }
+    evaluate: async (fn, _patterns, remaining) => {
+      if (typeof remaining === 'number') {
+        textClicks += Math.min(1, remaining)
+        return Math.min(1, remaining)
+      }
+      return 0
+    }
   }
   const page = {
     frames: () => [frame],
@@ -49,12 +56,36 @@ test('autoDismissConsent dismisses overlay without consent keywords', async (t) 
   const page = await browser.newPage()
   const html = `<!doctype html><html><body>
     <div class="message-container gu-overlay" style="position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:10000;display:flex;align-items:center;justify-content:center;background:red;">
-      <button id="accept">Accept all</button>
+      <button id="accept">Accept All</button>
     </div>
     <script>document.getElementById('accept').addEventListener('click',()=>document.querySelector('.message-container').remove())</script>
   </body></html>`
   await page.setContent(html)
   await autoDismissConsent(page, { textPatterns: ['accept all'] })
+  const overlay = await page.$('.message-container')
+  assert.equal(overlay, null)
+  await browser.close()
+})
+
+test('autoDismissConsent clicks "Accept All" buttons by default', async (t) => {
+  let browser
+  try {
+    browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] })
+  } catch (err) {
+    t.skip('puppeteer unavailable: ' + err.message)
+    return
+  }
+  const page = await browser.newPage()
+  const html = `<!doctype html><html><body>
+    <div class="message-container gu-overlay" style="position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:10000;display:flex;align-items:center;justify-content:center;background:red;">
+      <button id="accept">Accept All</button>
+    </div>
+    <script>document.getElementById('accept').addEventListener('click',()=>document.querySelector('.message-container').remove())</script>
+  </body></html>`
+  await page.setContent(html)
+  // use default consent patterns from helpers
+  const { consent } = setDefaultOptions()
+  await autoDismissConsent(page, consent)
   const overlay = await page.$('.message-container')
   assert.equal(overlay, null)
   await browser.close()

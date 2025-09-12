@@ -86,9 +86,10 @@ export async function autoDismissConsent (page, consentOptions = {}) {
       } catch {}
     }
 
-    const removeOverlays = async () => {
+    const removeOverlaysIn = async (ctx) => {
       try {
-        await page.evaluate(() => {
+        return await ctx.evaluate(() => {
+          let removed = 0
           const isOverlay = (el) => {
             try {
               const rect = el.getBoundingClientRect()
@@ -108,15 +109,28 @@ export async function autoDismissConsent (page, consentOptions = {}) {
             const cls = (el.className && typeof el.className === 'string') ? el.className : ''
             const role = (el.getAttribute && el.getAttribute('role')) || ''
             if (re.test(id) || re.test(cls) || re.test(role) || isOverlay(el)) {
-              try { el.remove() } catch { try { el.style.setProperty('display', 'none', 'important') } catch {} }
+              try { el.remove(); removed++ } catch { try { el.style.setProperty('display', 'none', 'important'); removed++ } catch {} }
             }
           }
+          return removed
         })
       } catch {}
+      return 0
+    }
+
+    const removeOverlays = async () => {
+      let total = 0
+      total += await removeOverlaysIn(page)
+      for (const f of page.frames()) { total += await removeOverlaysIn(f) }
+      return total
     }
 
     try { await page.keyboard.press('Escape') } catch {}
-    await removeOverlays()
+    for (let i = 0; i < 2; i++) {
+      const removed = await removeOverlays()
+      if (!removed) break
+      await sleep(50)
+    }
     if (waitMs) await sleep(100)
   } catch {}
 }

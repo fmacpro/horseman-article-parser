@@ -28,6 +28,7 @@ export function setDefaultOptions (options = {}) {
         '#onetrust-accept-btn-handler',
         'button#onetrust-accept-btn-handler',
         'button[aria-label="Accept all"]',
+        'button[data-testid="accept-all"]',
         'button[aria-label*="Accept"]',
         'button[title="Accept"]',
         '#sp-cc-accept',
@@ -43,7 +44,7 @@ export function setDefaultOptions (options = {}) {
         'button[aria-label="Agree"]'
       ],
       textPatterns: [
-        'accept', 'accept all', 'accept and close', 'i accept', 'agree', 'i agree', 'yes i agree', "i'm ok with that", 'i am ok with that', 'ok', 'got it', 'continue', 'continue to site', 'allow all', 'consent', 'manage preferences'
+        'accept', 'accept all', 'accept and close', 'i accept', 'agree', 'i agree', 'yes i agree', "i'm ok with that", 'i am ok with that', 'ok', 'got it', 'continue', 'continue to site', 'allow all', 'consent', 'manage preferences', "yes i'm happy", 'yes i am happy'
       ],
       waitAfterClickMs: 500,
       maxClicks: 3
