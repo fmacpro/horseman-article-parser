@@ -131,6 +131,29 @@ export async function autoDismissConsent (page, consentOptions = {}) {
       if (!removed) break
       await sleep(50)
     }
+
+    // Guard against overlays added after this call
+    try {
+      await page.evaluate(() => {
+        const re = /(consent|cookie|privacy|gdpr|overlay|modal|dialog|banner|popup|message)/i
+        const observer = new window.MutationObserver(muts => {
+          for (const m of muts) {
+            for (const node of m.addedNodes) {
+              if (!(node instanceof window.Element)) continue
+              const id = node.id || ''
+              const cls = typeof node.className === 'string' ? node.className : ''
+              const role = node.getAttribute ? node.getAttribute('role') : ''
+              if (re.test(id) || re.test(cls) || re.test(role)) {
+                try { node.remove() } catch {}
+              }
+            }
+          }
+        })
+        observer.observe(document.documentElement || document.body, { childList: true, subtree: true })
+        setTimeout(() => observer.disconnect(), 1000)
+      })
+    } catch {}
+
     if (waitMs) await sleep(100)
   } catch {}
 }

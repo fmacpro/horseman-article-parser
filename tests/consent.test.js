@@ -110,6 +110,34 @@ test('autoDismissConsent removes cross-origin consent iframes', async (t) => {
   await browser.close()
 })
 
+test('autoDismissConsent removes overlays added after invocation', async (t) => {
+  let browser
+  try {
+    browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] })
+  } catch (err) {
+    t.skip('puppeteer unavailable: ' + err.message)
+    return
+  }
+  const page = await browser.newPage()
+  await page.setContent('<!doctype html><html><body></body></html>')
+  // Start dismissal before overlay exists
+  await autoDismissConsent(page)
+  // Inject overlay shortly after
+  await page.evaluate(() => {
+    setTimeout(() => {
+      const o = document.createElement('div')
+      o.id = 'late-overlay'
+      o.className = 'consent-banner'
+      o.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:#f00;z-index:10000;'
+      document.body.appendChild(o)
+    }, 100)
+  })
+  await new Promise(resolve => setTimeout(resolve, 500))
+  const overlay = await page.$('#late-overlay')
+  assert.equal(overlay, null)
+  await browser.close()
+})
+
 test('injectTcfApi sets __tcfapi with provided tcString', async (t) => {
   let browser
   try {
