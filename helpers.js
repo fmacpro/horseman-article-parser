@@ -43,7 +43,11 @@ export function setDefaultOptions (options = {}) {
         'button#cookie-accept',
         'button[aria-label="Agree"]',
         'button[id*="bbccookies" i]',
-        'button[title*="yes i\'m happy" i]'
+        'button[title*="yes i\'m happy" i]',
+        // Guardian/Sourcepoint common labels
+        'button[title*="i\'m ok with that" i]',
+        'button[aria-label*="i\'m ok with that" i]',
+        'button[title*="yes, i\'m happy" i]'
       ],
       textPatterns: [
         'accept', 'accept all', 'accept and close', 'i accept', 'agree', 'i agree', 'yes i agree', "i'm ok with that", 'i am ok with that', 'ok', 'got it', 'continue', 'continue to site', 'allow all', 'consent', 'manage preferences', "yes i'm happy", 'yes i am happy'

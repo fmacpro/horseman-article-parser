@@ -10,7 +10,6 @@ export async function autoDismissConsent (page, consentOptions = {}) {
       ? consentOptions.observerTimeoutMs
       : 5000
 
-    const frames = page.frames()
     let clicks = 0
 
     const clickSelectorsIn = async (ctx) => {
@@ -74,13 +73,35 @@ export async function autoDismissConsent (page, consentOptions = {}) {
       } catch {}
     }
 
+    // Perform an initial pass across current frames
     await clickSelectorsIn(page)
-    for (const f of frames) {
+    for (const f of page.frames()) {
       if (clicks < maxClicks) await clickSelectorsIn(f)
     }
-
-    for (const f of frames) {
+    for (const f of page.frames()) {
       if (clicks < maxClicks) await clickByTextIn(f)
+    }
+
+    // Guardian/sourcepoint CMP often injects late-loading iframes.
+    // Poll briefly to catch and click newly added consent UIs.
+    const pollUntil = Date.now() + Math.min(2000, observerTimeoutMs)
+    while (Date.now() < pollUntil && clicks < maxClicks) {
+      // Prefer frames that look like CMP/Sourcepoint/Guardian consent
+      const frames = page.frames()
+      const cmpFrames = frames.filter(f => {
+        try {
+          const url = String(f.url() || '')
+          return /(sourcepoint|privacy|consent|sp_message|guardian)/i.test(url)
+        } catch (_) { return false }
+      })
+      const order = cmpFrames.length ? cmpFrames : frames
+      for (const f of order) {
+        if (clicks >= maxClicks) break
+        await clickSelectorsIn(f)
+        await clickByTextIn(f)
+      }
+      if (clicks >= maxClicks) break
+      await sleep(150)
     }
 
     if (clicks) {
@@ -119,7 +140,7 @@ export async function autoDismissConsent (page, consentOptions = {}) {
             } catch {}
             return false
           }
-          const re = /(consent|cookie|privacy|gdpr|overlay|modal|dialog|banner|popup|message)/i
+          const re = /(consent|cookie|privacy|gdpr|overlay|modal|dialog|banner|popup|message|gu-cmp|site-message|sp_message)/i
           const nodes = Array.from(document.querySelectorAll('iframe, div, section, aside, header, footer'))
           for (const el of nodes) {
             const id = el.id || ''
@@ -128,6 +149,23 @@ export async function autoDismissConsent (page, consentOptions = {}) {
             if (re.test(id) || re.test(cls) || re.test(role) || isOverlay(el)) {
               try { el.remove(); removed++ } catch { try { el.style.setProperty('display', 'none', 'important'); removed++ } catch {} }
             }
+          }
+
+          // Extra targeted cleanup for Guardian/Sourcepoint markup
+          const hardSelectors = [
+            'iframe[id^="sp_message_iframe"]',
+            'div[id^="sp_message_container"]',
+            '#sp_message_container_*, .sp_message_container',
+            '.site-message--consent',
+            '.site-message--banner',
+            '#cmpOverlay',
+            '#sp-cc, .fc-consent-root'
+          ]
+          for (const qs of hardSelectors) {
+            try {
+              const els = document.querySelectorAll(qs)
+              els.forEach(e => { try { e.remove(); removed++ } catch { try { e.style.setProperty('display','none','important'); removed++ } catch {} } })
+            } catch {}
           }
           return removed
         }, articleZIndex)
@@ -215,6 +253,108 @@ export async function removeConsentArtifacts (page) {
   } catch {
     return 0
   }
+}
+
+export async function removeAmpConsent (page) {
+  try {
+    const removeIn = async (ctx) => {
+      try {
+        return await ctx.evaluate(() => {
+          let removed = 0
+          const hard = [
+            'amp-consent',
+            'amp-user-notification',
+            '.i-amphtml-consent-ui',
+            '[amp-consent-blocking]',
+            '.i-amphtml-overlay',
+            '.i-amphtml-fixed-layer',
+            '.i-amphtml-built i-amphtml-consent-ui',
+            'iframe[id^="sp_message_iframe"]',
+            'div[id^="sp_message_container"]'
+          ]
+          for (const qs of hard) {
+            try {
+              document.querySelectorAll(qs).forEach(el => { try { el.remove(); removed++ } catch { try { el.style.setProperty('display','none','important'); removed++ } catch {} } })
+            } catch {}
+          }
+          // Add defensive CSS to hide remaining consent containers
+          try {
+            const style = document.createElement('style')
+            style.setAttribute('data-consent-nuke', '1')
+            style.textContent = `
+              amp-consent, amp-user-notification, .i-amphtml-consent-ui,
+              [amp-consent-blocking], .i-amphtml-overlay, .i-amphtml-fixed-layer,
+              [class*="consent" i], [id*="consent" i], [class*="cookie" i], [id*="cookie" i],
+              [class*="site-message" i], [id*="site-message" i],
+              [class*="sp_message" i], [id*="sp_message" i],
+              #cmpOverlay, .fc-consent-root {
+                display: none !important; visibility: hidden !important; opacity: 0 !important;
+              }
+              html, body { overflow: auto !important; position: static !important; }
+            `
+            document.head.appendChild(style)
+          } catch {}
+          // Reset scroll locks commonly applied by AMP overlays
+          try { document.documentElement.style.removeProperty('overflow') } catch {}
+          try { document.body.style.removeProperty('overflow') } catch {}
+          try { document.body.style.removeProperty('position') } catch {}
+          try { document.body.style.removeProperty('top') } catch {}
+          return removed
+        })
+      } catch {}
+      return 0
+    }
+    let total = 0
+    total += await removeIn(page)
+    for (const f of page.frames()) { total += await removeIn(f) }
+    return total
+  } catch {
+    return 0
+  }
+}
+
+// As a last resort, strip any element covering the viewport center/top.
+export async function clearViewportObstructions (page) {
+  try {
+    // Try multiple points: center and near top (to catch sticky headers/banners)
+    const points = [
+      { xFactor: 0.5, yFactor: 0.2 },
+      { xFactor: 0.5, yFactor: 0.5 },
+      { xFactor: 0.5, yFactor: 0.8 }
+    ]
+    for (const pt of points) {
+      try {
+        await page.evaluate(({ xFactor, yFactor }) => {
+          const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0)
+          const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0)
+          const x = Math.floor(vw * xFactor)
+          const y = Math.floor(vh * yFactor)
+          let el = document.elementFromPoint(x, y)
+          const limit = 10
+          const re = /(consent|cookie|privacy|gdpr|overlay|modal|dialog|banner|popup|message|gu-cmp|site-message|sp_message)/i
+          let steps = 0
+          while (el && steps < limit) {
+            const tag = (el.tagName || '').toLowerCase()
+            if (tag === 'html' || tag === 'body') break
+            const cls = typeof el.className === 'string' ? el.className : ''
+            const id = el.id || ''
+            try {
+              const style = window.getComputedStyle(el)
+              const isCover = /fixed|sticky|absolute/.test(style.position)
+                && parseInt(style.zIndex || '0', 10) >= 100
+                && (style.opacity === '' || parseFloat(style.opacity) > 0.01)
+              if (re.test(id) || re.test(cls) || isCover) {
+                try { el.remove() } catch { try { el.style.setProperty('display','none','important') } catch {} }
+              }
+            } catch {}
+            el = el.parentElement
+            steps++
+          }
+          try { document.body.style.removeProperty('overflow') } catch {}
+        }, pt)
+      } catch {}
+    }
+  } catch {}
 }
 
 export async function injectTcfApi (page, consentOptions = {}) {

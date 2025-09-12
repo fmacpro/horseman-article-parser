@@ -17,7 +17,7 @@ import keywordParser from './controllers/keywordParser.js'
 import lighthouseAnalysis from './controllers/lighthouse.js'
 import spellCheck from './controllers/spellCheck.js'
 import logger from './controllers/logger.js'
-import { autoDismissConsent, injectTcfApi, removeConsentArtifacts } from './controllers/consent.js'
+import { autoDismissConsent, injectTcfApi, removeConsentArtifacts, removeAmpConsent, clearViewportObstructions } from './controllers/consent.js'
 import { buildLiveBlogSummary } from './controllers/liveBlog.js'
 import { getRawText, getFormattedText, getHtmlText, htmlCleaner } from './controllers/textProcessing.js'
 import { sanitizeDataUrl } from './controllers/utils.js'
@@ -153,7 +153,7 @@ const articleParser = async function (browser, options, socket) {
   }
   const t0 = Date.now()
   const elapsed = () => Date.now() - t0
-  log('parse', 'start', { url: options.url, timeout_ms: options.timeoutMs || '' })
+  log('parse', 'start x', { url: options.url, timeout_ms: options.timeoutMs || '' })
   const page = await browser.newPage()
 
   try {
@@ -344,8 +344,12 @@ const articleParser = async function (browser, options, socket) {
   }
 
   // Attempt to auto-dismiss common consent popups/overlays across all frames
-  if (!staticHtmlOverride && jsEnabled && options.consent && options.consent.autoDismiss) {
+  // Do this even if a staticHtmlOverride exists, because the screenshot is taken from the live page.
+  if (jsEnabled && options.consent && options.consent.autoDismiss) {
+    try { interceptionActive.current = false } catch {}
     await autoDismissConsent(page, options.consent)
+    try { await removeAmpConsent(page) } catch {}
+    try { interceptionActive.current = true } catch {}
   }
   try { await waitForFrameStability(page, timeLeft, 350, 1200) } catch (err) { logger.warn('waitForFrameStability failed', err) }
 
@@ -671,18 +675,25 @@ log('analyze', 'Evaluating meta tags')
   if (options.enabled.includes('screenshot') && timeLeft() > 300) {
     log('analyze', 'Capturing screenshot')
     try {
-      if (!staticHtmlOverride && jsEnabled && options.consent && options.consent.autoDismiss) {
+      // Perform a final consent cleanup pass irrespective of staticHtmlOverride
+      if (jsEnabled && options.consent && options.consent.autoDismiss) {
+        try { interceptionActive.current = false } catch {}
         try { await autoDismissConsent(page, options.consent) } catch (err) { logger.warn('autoDismissConsent before screenshot failed', err) }
+        try { await removeAmpConsent(page) } catch (err) { logger.warn('removeAmpConsent before screenshot failed', err) }
         try {
           for (let i = 0; i < 3; i++) {
             const removed = await removeConsentArtifacts(page)
             if (!removed) break
-            await page.waitForTimeout(50)
+            try { await page.waitForTimeout(50) } catch { await new Promise(r => setTimeout(r, 50)) }
           }
         } catch (err) { logger.warn('removeConsentArtifacts before screenshot failed', err) }
-        try { await page.waitForTimeout(500) } catch {}
+        try { await clearViewportObstructions(page) } catch {}
+        try { await page.waitForTimeout(300) } catch { await new Promise(r => setTimeout(r, 300)) }
       }
+      // Keep interception off during screenshot to avoid CSS/image misses on AMP
+      try { interceptionActive.current = false } catch {}
       article.screenshot = await page.screenshot({ encoding: 'base64', type: 'jpeg', quality: 60 })
+      try { interceptionActive.current = true } catch {}
     } catch { /* ignore screenshot failures (e.g., page closed on timeout) */ }
   }
 

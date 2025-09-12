@@ -74,3 +74,6 @@ tests/tmp_urls_*.txt
 
 # Weights file
 weights.json
+
+.vscode/
+overrides/debug/
