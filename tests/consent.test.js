@@ -1,5 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import puppeteer from 'puppeteer-extra'
 import { autoDismissConsent } from '../controllers/consent.js'
 
 test('autoDismissConsent handles empty page', async () => {
@@ -35,4 +36,26 @@ test('autoDismissConsent clicks selectors and text patterns', async () => {
   assert.equal(selectorClicks, 1)
   assert.equal(textClicks, 1)
   assert.equal(navigated, true)
+})
+
+test('autoDismissConsent dismisses overlay without consent keywords', async (t) => {
+  let browser
+  try {
+    browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] })
+  } catch (err) {
+    t.skip('puppeteer unavailable: ' + err.message)
+    return
+  }
+  const page = await browser.newPage()
+  const html = `<!doctype html><html><body>
+    <div class="message-container gu-overlay" style="position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:10000;display:flex;align-items:center;justify-content:center;background:red;">
+      <button id="accept">Accept all</button>
+    </div>
+    <script>document.getElementById('accept').addEventListener('click',()=>document.querySelector('.message-container').remove())</script>
+  </body></html>`
+  await page.setContent(html)
+  await autoDismissConsent(page, { textPatterns: ['accept all'] })
+  const overlay = await page.$('.message-container')
+  assert.equal(overlay, null)
+  await browser.close()
 })

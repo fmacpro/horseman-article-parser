@@ -4,6 +4,7 @@ import fs from 'fs'
 import http from 'node:http'
 import puppeteer from 'puppeteer-extra'
 import { parseArticle } from '../index.js'
+// eslint-disable-next-line n/no-unpublished-import
 import jpeg from 'jpeg-js'
 
 // Silent socket to suppress parser status logs during tests
