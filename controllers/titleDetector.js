@@ -12,7 +12,9 @@ function normalizeTitle(title) {
   if (!title) return null
   let t = String(title).replace(/(\r\n|\n|\r)/gm, ' ').replace(/\s+/g, ' ').trim()
   // remove common site suffixes after delimiters
-  t = t.replace(/\s*[|\-–:·»]\s*[^|\-–:·»]{2,}\s*$/u, () => '')
+  t = t
+    .replace(/\s*[|–:·»]\s*[^|–:·»-]{2,}\s*$/u, '')
+    .replace(/\s+-\s+[^|–:·»-]{2,}\s*$/u, '')
   return t.trim() || null
 }
 
