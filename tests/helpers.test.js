@@ -62,3 +62,8 @@ test("stripPossessive removes trailing 's from last word", () => {
 test("stripPossessive leaves non-final possessives", () => {
   assert.equal(stripPossessive("America's economy"), "America's economy")
 })
+
+test("stripPossessive handles trailing punctuation", () => {
+  assert.equal(stripPossessive("New Zealand's,"), 'New Zealand')
+  assert.equal(stripPossessive("France's."), 'France')
+})
