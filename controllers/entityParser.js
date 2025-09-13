@@ -29,11 +29,11 @@ export default function entityParser (nlpInput, pluginHints = { first: [], last:
     return null
   }
 
-  const dedupeEntities = (arr) => {
+  const dedupeEntities = (arr, stripAll = false) => {
     const out = []
     const seen = new Set()
     for (const s of arr) {
-      const str = stripPossessive(String(s || '').trim())
+      const str = stripPossessive(String(s || '').trim(), stripAll)
       if (!str) continue
       const key = normalizeEntity(str)
       if (!seen.has(key)) {
@@ -45,7 +45,7 @@ export default function entityParser (nlpInput, pluginHints = { first: [], last:
   }
 
   const result = {}
-  result.people = dedupeEntities(nlp(nlpInput).people().json().map(entityToString))
+  result.people = dedupeEntities(nlp(nlpInput).people().json().map(entityToString), true)
   const seen = new Set(result.people.map(p => normalizeEntity(p)))
   if (pluginHints.first.length && pluginHints.last.length) {
     const haystack = normalizeEntity(nlpInput)
@@ -60,7 +60,7 @@ export default function entityParser (nlpInput, pluginHints = { first: [], last:
       }
     }
   }
-  result.people = dedupeEntities(result.people)
+  result.people = dedupeEntities(result.people, true)
   if (timeLeft() >= 1000) result.places = dedupeEntities(nlp(nlpInput).places().json().map(entityToString))
   if (timeLeft() >= 900) result.orgs = dedupeEntities(nlp(nlpInput).organizations().json().map(entityToString))
   if (timeLeft() >= 800) result.topics = dedupeEntities(nlp(nlpInput).topics().json().map(entityToString))
