@@ -26,3 +26,9 @@ test('detectTitle strips site suffix with vertical bar', () => {
   const { window } = new JSDOM(html)
   assert.equal(detectTitle(window.document), 'Story')
 })
+
+test('detectTitle preserves hyphenated words', () => {
+  const html = `<head><title>Far-right London rally - Example.com</title></head><body></body>`
+  const { window } = new JSDOM(html)
+  assert.equal(detectTitle(window.document), 'Far-right London rally')
+})
