@@ -56,10 +56,10 @@ test('parseArticle processes local HTML', { timeout: TEST_TIMEOUT }, async (t) =
   assert.equal(article.title.text, 'Sample Story')
   assert.ok(article.links.some(l => /example\.com/.test(l.href)))
   assert.ok(article.spelling.some(s => s.word.toLowerCase().includes('missspelled')))
-  assert.equal(typeof article.summary.text, 'string')
-  assert.ok(article.summary.text.length > 0)
-  assert.ok(Array.isArray(article.summary.sentences))
-  assert.ok(article.summary.sentences.length > 0)
+  assert.equal(typeof article.processed.text.summary, 'string')
+  assert.ok(article.processed.text.summary.length > 0)
+  assert.ok(Array.isArray(article.processed.text.sentences))
+  assert.ok(article.processed.text.sentences.length > 0)
 })
 
 test('parseArticle captures a screenshot when enabled', { timeout: TEST_TIMEOUT }, async (t) => {

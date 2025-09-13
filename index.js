@@ -1141,7 +1141,9 @@ log('analyze', 'Evaluating meta tags')
   // Excerpt
   article.excerpt = capitalizeFirstLetter(article.processed.text.raw.replace(/^(.{200}[^\s]*).*/, '$1'))
   if (options.enabled.includes('summary')) {
-    article.summary = buildSummary(article.processed.text.raw)
+    const { text: summaryText, sentences } = buildSummary(article.processed.text.raw)
+    article.processed.text.summary = summaryText
+    article.processed.text.sentences = sentences
   }
   const cleanNlpInput = stripPunctuation(nlpInput)
   // Prepare parallel analysis tasks

@@ -49,7 +49,6 @@
     "retext-pos": "^5.0.0",
     "retext-spell": "^6.1.0",
     "sentiment": "^5.0.1",
-    "textrank": "^1.0.5",
     "undici": "^7.15.0"
   },
   "devDependencies": {
