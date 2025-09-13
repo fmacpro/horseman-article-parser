@@ -12,7 +12,7 @@ export default async function checkReadability (text) {
   const characters = trimmed.length
   const words = trimmed.split(/\s+/).filter(Boolean).length
   const sentences = trimmed.split(/[.!?]+/).filter(s => s.trim().length > 0).length
-  const paragraphs = trimmed.split(/\n{2,}/).filter(p => p.trim().length > 0).length
+  const paragraphs = trimmed.split(/\r?\n+/).filter(p => p.trim().length > 0).length
   const readingTime = Math.round((words / 200) * 60)
   return { readingTime, characters, words, sentences, paragraphs }
 }

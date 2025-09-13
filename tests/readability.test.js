@@ -11,3 +11,9 @@ test('checkReadability returns basic counts', async () => {
   assert.equal(res.sentences, 3)
   assert.equal(res.paragraphs, 2)
 })
+
+test('checkReadability counts single newline paragraphs', async () => {
+  const text = 'First paragraph.\nSecond paragraph.'
+  const res = await checkReadability(text)
+  assert.equal(res.paragraphs, 2)
+})
