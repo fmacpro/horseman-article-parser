@@ -26,6 +26,14 @@ test("entityParser removes trailing possessive 's", () => {
   assert(!res.orgs?.some(o => /'s$/i.test(o)))
 })
 
+test("entityParser strips possessive for multi-word people", () => {
+  const input = "Mr Trump's visit impressed Mrs May's supporters"
+  const res = entityParser(input, { first: [], last: [] }, () => 2000)
+  assert(res.people.includes('Mr Trump'))
+  assert(res.people.includes('Mrs May'))
+  assert(!res.people.some(p => /'s$/i.test(p)))
+})
+
 test("entityParser keeps possessive for multi-word entities", () => {
   const input = "The United States's economy continues to grow"
   const res = entityParser(input, { first: [], last: [] }, () => 2000)

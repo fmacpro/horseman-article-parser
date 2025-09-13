@@ -77,9 +77,9 @@ export function capitalizeFirstLetter (string) {
   return string.charAt(0).toUpperCase() + string.slice(1)
 }
 
-export function stripPossessive (s) {
+export function stripPossessive (s, allWords = false) {
   const str = String(s).trim()
-  if (str.split(/\s+/).length > 1) return str
+  if (!allWords && str.split(/\s+/).length > 1) return str
   return str.replace(/[’']s$/i, '')
 }
 
