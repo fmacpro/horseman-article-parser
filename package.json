@@ -40,7 +40,6 @@
     "lighthouse": "^12.8.2",
     "lodash": "^4.17.21",
     "nlcst-to-string": "^4.0.0",
-    "undici": "^7.15.0",
     "puppeteer": "^24.18.0",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
@@ -49,7 +48,9 @@
     "retext-keywords": "^8.0.2",
     "retext-pos": "^5.0.0",
     "retext-spell": "^6.1.0",
-    "sentiment": "^5.0.1"
+    "sentiment": "^5.0.1",
+    "textrank": "^1.0.5",
+    "undici": "^7.15.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
@@ -59,8 +60,8 @@
     "eslint-plugin-json": "^4.0.1",
     "eslint-plugin-n": "^17.21.3",
     "eslint-plugin-promise": "^7.2.1",
-    "jsdoc-to-markdown": "^8.0.0",
-    "jpeg-js": "^0.4.4"
+    "jpeg-js": "^0.4.4",
+    "jsdoc-to-markdown": "^8.0.0"
   },
   "overrides": {
     "puppeteer-extra-plugin-user-data-dir": "file:overrides/puppeteer-extra-plugin-user-data-dir"
