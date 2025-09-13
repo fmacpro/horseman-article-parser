@@ -1,5 +1,5 @@
 import nlp from 'compromise'
-import { capitalizeFirstLetter } from '../helpers.js'
+import { capitalizeFirstLetter, stripPossessive } from '../helpers.js'
 
 export function normalizeEntity (w) {
   if (typeof w !== 'string') return ''
@@ -11,11 +11,6 @@ export function normalizeEntity (w) {
 }
 
 export default function entityParser (nlpInput, pluginHints = { first: [], last: [] }, timeLeft = () => Infinity) {
-  const stripPossessive = (s) => {
-    const str = String(s).trim()
-    if (str.split(/\s+/).length > 1) return str
-    return str.replace(/[’']s$/i, '')
-  }
   const entityToString = (e) => {
     if (Array.isArray(e?.terms) && e.terms.length) {
       const parts = []
