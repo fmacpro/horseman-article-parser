@@ -11,8 +11,8 @@ export default async function spellCheck (text, options) {
   input = input.replace(/\b[\w-]+(?:\.[\w-]+)+(?:\/\S*)?/gi, ' ')
   // remove alphanumeric tokens like 123abc
   input = input.replace(/[0-9]{1,}[a-zA-Z]{1,}/gi, ' ')
-  // collapse whitespace
-  input = input.replace(/\s+/g, ' ').trim()
+  // collapse spaces but preserve line breaks for accurate line numbers
+  input = input.replace(/\r\n/g, '\n').replace(/[ \t]+/g, ' ')
 
   if (typeof options === 'undefined') {
     options = { dictionary }

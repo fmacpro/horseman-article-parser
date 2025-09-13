@@ -16,3 +16,10 @@ test('spellCheck respects options and filters URLs', async () => {
   assert.ok(res[0].offsetStart !== undefined)
   assert.ok(res[0].offsetEnd !== undefined)
 })
+
+test('spellCheck preserves line breaks for accurate line numbers', async () => {
+  const text = 'First line\nSecond lnie with error\nThird line'
+  const res = await spellCheck(text)
+  const miss = res.find(r => r.word && r.word.toLowerCase() === 'lnie')
+  assert.equal(miss.line, 2)
+})
