@@ -47,3 +47,9 @@ test('stripPunctuation removes punctuation without inserting spaces', () => {
   const result = stripPunctuation(input)
   assert.equal(result, 'onetwothreefourfivesix')
 })
+
+test("stripPunctuation retains apostrophes", () => {
+  const input = "Alice's adventures in Bob’s world!"
+  const result = stripPunctuation(input)
+  assert.equal(result, "Alice's adventures in Bob’s world")
+})
