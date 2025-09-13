@@ -1141,7 +1141,15 @@ log('analyze', 'Evaluating meta tags')
   article.excerpt = capitalizeFirstLetter(article.processed.text.raw.replace(/^(.{200}[^\s]*).*/, '$1'))
   // Prepare parallel analysis tasks
   const analysisTasks = []
-  let rawSpelling = null
+
+  const normalizeEntity = (w) => {
+    if (typeof w !== 'string') return ''
+    return w
+      .replace(/[’']/g, '')
+      .replace(/[^A-Za-z0-9]+/g, ' ')
+      .trim()
+      .toLowerCase()
+  }
 
   // Sentiment (parallel)
   if (options.enabled.includes('sentiment')) {
@@ -1165,24 +1173,49 @@ log('analyze', 'Evaluating meta tags')
       try {
         log('analyze', 'Extracting named entities')
         if (timeLeft() < 1200) { log('analyze', 'Skipping NER due to low budget'); return }
-        article.people = nlp(nlpInput).people().json()
-        const seen = Array.isArray(article.people) ? article.people.map(p => String(p.text || '').toLowerCase()) : []
+
+        const entityToString = (e) => {
+          if (Array.isArray(e?.terms) && e.terms.length) {
+            return e.terms.map(t => String(t.text || '').trim()).filter(Boolean).join(' ').trim()
+          }
+          if (typeof e?.text === 'string') return e.text.trim()
+          return null
+        }
+
+        const dedupeEntities = (arr) => {
+          const out = []
+          const seen = new Set()
+          for (const s of arr) {
+            const str = String(s || '').trim()
+            if (!str) continue
+            const key = normalizeEntity(str)
+            if (!seen.has(key)) {
+              seen.add(key)
+              out.push(str)
+            }
+          }
+          return out
+        }
+
+        article.people = dedupeEntities(nlp(nlpInput).people().json().map(entityToString))
+        const seen = new Set(article.people.map(p => normalizeEntity(p)))
         if (pluginHints.first.length && pluginHints.last.length) {
-          const haystack = nlpInput.toLowerCase()
+          const haystack = normalizeEntity(nlpInput)
           for (const f of pluginHints.first) {
             for (const l of pluginHints.last) {
-              const needle = `${f} ${l}`.toLowerCase()
-              if (haystack.includes(needle) && !seen.includes(needle)) {
-                if (!Array.isArray(article.people)) article.people = []
-                article.people.push({ text: needle.replace(/\b\w/g, c => c.toUpperCase()) })
-                seen.push(needle)
+              const raw = `${f} ${l}`
+              const key = normalizeEntity(raw)
+              if (haystack.includes(key) && !seen.has(key)) {
+                article.people.push(raw.replace(/\b\w/g, c => c.toUpperCase()))
+                seen.add(key)
               }
             }
           }
         }
-        if (timeLeft() >= 1000) article.places = nlp(nlpInput).places().json()
-        if (timeLeft() >= 900) article.orgs = nlp(nlpInput).organizations().json()
-        if (timeLeft() >= 800) article.topics = nlp(nlpInput).topics().json()
+        article.people = dedupeEntities(article.people)
+        if (timeLeft() >= 1000) article.places = dedupeEntities(nlp(nlpInput).places().json().map(entityToString))
+        if (timeLeft() >= 900) article.orgs = dedupeEntities(nlp(nlpInput).organizations().json().map(entityToString))
+        if (timeLeft() >= 800) article.topics = dedupeEntities(nlp(nlpInput).topics().json().map(entityToString))
         try {
           const pc = Array.isArray(article.people) ? article.people.length : 0
           const plc = Array.isArray(article.places) ? article.places.length : 0
@@ -1207,23 +1240,15 @@ log('analyze', 'Evaluating meta tags')
     }
 
     // Filter spelling results using known entities (people, orgs, places)
-    const normalize = (w) => {
-      if (typeof w !== 'string') return ''
-      return w
-        .replace(/[’']/g, '') // remove apostrophes
-        .replace(/[^A-Za-z0-9]+/g, ' ') // non-alphanumerics to space
-        .trim()
-        .toLowerCase()
-    }
-
-    const splitWords = (s) => normalize(s).split(/\s+/).filter(Boolean)
+    const splitWords = (s) => normalizeEntity(s).split(/\s+/).filter(Boolean)
 
     const collectEntityWords = (arr) => {
       const out = []
       if (!Array.isArray(arr)) return out
       for (const e of arr) {
-        if (e && typeof e.text === 'string') out.push(...splitWords(e.text))
-        if (Array.isArray(e.terms)) {
+        const val = typeof e === 'string' ? e : (typeof e?.text === 'string' ? e.text : '')
+        if (val) out.push(...splitWords(val))
+        if (Array.isArray(e?.terms)) {
           for (const t of e.terms) {
             if (t && typeof t.text === 'string') out.push(...splitWords(t.text))
           }
