@@ -11,6 +11,7 @@ export function normalizeEntity (w) {
 }
 
 export default function entityParser (nlpInput, pluginHints = { first: [], last: [] }, timeLeft = () => Infinity) {
+  const doc = nlp(nlpInput)
   const entityToString = (e) => {
     if (Array.isArray(e?.terms) && e.terms.length) {
       const parts = []
@@ -47,7 +48,23 @@ export default function entityParser (nlpInput, pluginHints = { first: [], last:
   }
 
   const result = {}
-  result.people = dedupeEntities(nlp(nlpInput).people().json().map(entityToString), true)
+  // use compromise's richer person parsing to split name parts
+  doc.people().parse()
+  result.people = dedupeEntities(
+    doc.people().json().map(p => {
+      const text = entityToString(p)
+      if (p.person && (p.person.honorific || p.person.firstName || p.person.middleName || p.person.lastName)) {
+        const parts = [p.person.honorific, p.person.firstName, p.person.middleName, p.person.lastName]
+          .filter(Boolean)
+          .map(capitalizeFirstLetter)
+        const joined = parts.join(' ')
+        // preserve hyphenated names using original text
+        return /-/.test(p.text) ? text : joined
+      }
+      return text
+    }),
+    true
+  )
   const seen = new Set(result.people.map(p => normalizeEntity(p)))
   if (pluginHints.first.length && pluginHints.last.length) {
     const haystack = normalizeEntity(nlpInput)
@@ -63,8 +80,8 @@ export default function entityParser (nlpInput, pluginHints = { first: [], last:
     }
   }
   result.people = dedupeEntities(result.people, true)
-  if (timeLeft() >= 1000) result.places = dedupeEntities(nlp(nlpInput).places().json().map(entityToString))
-  if (timeLeft() >= 900) result.orgs = dedupeEntities(nlp(nlpInput).organizations().json().map(entityToString))
-  if (timeLeft() >= 800) result.topics = dedupeEntities(nlp(nlpInput).topics().json().map(entityToString))
+  if (timeLeft() >= 1000) result.places = dedupeEntities(doc.places().json().map(entityToString))
+  if (timeLeft() >= 900) result.orgs = dedupeEntities(doc.organizations().json().map(entityToString))
+  if (timeLeft() >= 800) result.topics = dedupeEntities(doc.topics().json().map(entityToString))
   return result
 }
