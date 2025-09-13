@@ -28,6 +28,7 @@ import entityParser, { normalizeEntity } from './controllers/entityParser.js'
 import { fetch as undiciFetch } from 'undici'
 import detectLanguage from './controllers/language.js'
 import nlp from 'compromise'
+import checkReadability from './controllers/readability.js'
 
 const require = createRequire(import.meta.url)
 
@@ -1176,6 +1177,16 @@ log('analyze', 'Evaluating meta tags')
   const cleanNlpInput = stripPunctuation(nlpInput)
   // Prepare parallel analysis tasks
   const analysisTasks = []
+
+
+  // Readability
+  if (options.enabled.includes('readability')) {
+    try {
+      log('analyze', 'Evaluating readability')
+      article.readability = await checkReadability(article.processed.text.raw)
+      try { log('analyze', 'Readability evaluated', { hard: Array.isArray(article.readability.scores) ? article.readability.scores.length : 0, reading_time: article.readability.readingTime }) } catch {}
+    } catch {}
+  }
 
   // Sentiment (parallel)
   if (options.enabled.includes('sentiment')) {

@@ -1,6 +1,6 @@
 ﻿# Horseman Article Parser
 
-Horseman is a focused article scraping module for the open web. It loads pages (dynamic or AMP), detects the main story body, and returns clean, structured content ready for downstream use. Alongside text and title, it includes in-article links, metadata, sentiment, keywords/keyphrases, named entities, optional summaries, optional spelling suggestions, site icon, and Lighthouse signals. It also copes with live blogs, applies simple per-domain tweaks (headers/cookies/goto), and uses Puppeteer + stealth to reduce blocking. The parser now detects the article language and exposes ISO codes, with best-effort support for non-English content (features may fall back to English dictionaries when specific resources are missing).
+Horseman is a focused article scraping module for the open web. It loads pages (dynamic or AMP), detects the main story body, and returns clean, structured content ready for downstream use. Alongside text and title, it includes in-article links, metadata, sentiment, keywords/keyphrases, named entities, optional summaries, optional spelling suggestions, readability metrics, site icon, and Lighthouse signals. It also copes with live blogs, applies simple per-domain tweaks (headers/cookies/goto), and uses Puppeteer + stealth to reduce blocking. The parser now detects the article language and exposes ISO codes, with best-effort support for non-English content (features may fall back to English dictionaries when specific resources are missing).
 
 ## Table of Contents
 
@@ -52,6 +52,7 @@ const options = {
     "spelling",
     "keywords",
     "summary",
+    "readability",
   ],
 };
 
@@ -74,6 +75,7 @@ const options = {
       orgs: article.orgs,
       places: article.places,
       language: article.language,
+      readability: article.readability,
       text: {
         raw: article.processed.text.raw,
         formatted: article.processed.text.formatted,
@@ -201,11 +203,14 @@ var options = {
     "spelling",
     "keywords",
     "summary",
+    "readability",
   ],
 };
 ```
 Add "summary" to `options.enabled` to generate a short summary of the article text. The result
 includes `text.summary` and a `text.sentences` array containing the first five sentences.
+
+Add "readability" to `options.enabled` to evaluate readability and estimate reading time. The result is available as `article.readability` with `scores` and `readingTime` (seconds).
 
 You may pass rules for returning an articles title & contents. This is useful in a case
 where the parser is unable to return the desired title or content e.g.
@@ -325,6 +330,7 @@ const options = {
     "spelling",
     "keywords",
     "summary",
+    "readability",
   ],
   // Optional: tweak spelling output/filters
   retextspell: {
