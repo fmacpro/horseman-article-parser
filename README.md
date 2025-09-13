@@ -1,6 +1,6 @@
 ﻿# Horseman Article Parser
 
-Horseman is a focused article scraping module for the open web. It loads pages (dynamic or AMP), detects the main story body, and returns clean, structured content ready for downstream use. Alongside text and title, it includes in-article links, metadata, sentiment, keywords/keyphrases, named entities, optional spelling suggestions, site icon, and Lighthouse signals. It also copes with live blogs, applies simple per-domain tweaks (headers/cookies/goto), and uses Puppeteer + stealth to reduce blocking.
+Horseman is a focused article scraping module for the open web. It loads pages (dynamic or AMP), detects the main story body, and returns clean, structured content ready for downstream use. Alongside text and title, it includes in-article links, metadata, sentiment, keywords/keyphrases, named entities, optional summaries, optional spelling suggestions, site icon, and Lighthouse signals. It also copes with live blogs, applies simple per-domain tweaks (headers/cookies/goto), and uses Puppeteer + stealth to reduce blocking.
 
 ## Table of Contents
 
@@ -51,6 +51,7 @@ const options = {
     "entities",
     "spelling",
     "keywords",
+    "summary",
   ],
 };
 
@@ -61,6 +62,7 @@ const options = {
     const response = {
       title: article.title.text,
       excerpt: article.excerpt,
+      summary: article.summary,
       metadescription: article.meta.description.text,
       url: article.url,
       sentiment: {
@@ -196,9 +198,11 @@ var options = {
     "entities",
     "spelling",
     "keywords",
+    "summary",
   ],
 };
 ```
+Add "summary" to `options.enabled` to generate a short summary of the article text.
 
 You may pass rules for returning an articles title & contents. This is useful in a case
 where the parser is unable to return the desired title or content e.g.
@@ -317,6 +321,7 @@ const options = {
     "entities",
     "spelling",
     "keywords",
+    "summary",
   ],
   // Optional: tweak spelling output/filters
   retextspell: {

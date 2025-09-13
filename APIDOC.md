@@ -27,7 +27,7 @@
 main article parser module export function
 
 **Kind**: global function  
-**Returns**: <code>Object</code> - article parser results object  
+**Returns**: <code>Object</code> - article parser results object. Includes `summary` when `options.enabled` contains `'summary'`.
 
 | Param | Type | Description |
 | --- | --- | --- |

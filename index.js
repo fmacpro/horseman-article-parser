@@ -18,6 +18,7 @@ import spellCheck from './controllers/spellCheck.js'
 import logger from './controllers/logger.js'
 import { autoDismissConsent, injectTcfApi, removeConsentArtifacts, removeAmpConsent, clearViewportObstructions, injectConsentNuke, injectConsentNukeEarly } from './controllers/consent.js'
 import { buildLiveBlogSummary } from './controllers/liveBlog.js'
+import { buildSummary } from './controllers/summary.js'
 import { getRawText, getFormattedText, getHtmlText, htmlCleaner } from './controllers/textProcessing.js'
 import { sanitizeDataUrl } from './controllers/utils.js'
 import { safeAwait, sleep } from './controllers/async.js'
@@ -1139,6 +1140,9 @@ log('analyze', 'Evaluating meta tags')
 
   // Excerpt
   article.excerpt = capitalizeFirstLetter(article.processed.text.raw.replace(/^(.{200}[^\s]*).*/, '$1'))
+  if (options.enabled.includes('summary')) {
+    article.summary = buildSummary(article.processed.text.raw)
+  }
   const cleanNlpInput = stripPunctuation(nlpInput)
   // Prepare parallel analysis tasks
   const analysisTasks = []
