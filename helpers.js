@@ -96,7 +96,7 @@ export function stripPossessive (s, allWords = false) {
 
 export function stripPunctuation (s) {
   return String(s || '')
-    .replace(/[^\p{L}\p{N}\s'’]+/gu, '')
+    .replace(/[^\p{L}\p{N}\s'’-]+/gu, '')
     .replace(/\s+/g, ' ')
     .trim()
 }

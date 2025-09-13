@@ -5,7 +5,7 @@ export function normalizeEntity (w) {
   if (typeof w !== 'string') return ''
   return w
     .replace(/[’']/g, '')
-    .replace(/[^A-Za-z0-9]+/g, ' ')
+    .replace(/[^A-Za-z0-9-]+/g, ' ')
     .trim()
     .toLowerCase()
 }
@@ -14,16 +14,18 @@ export default function entityParser (nlpInput, pluginHints = { first: [], last:
   const entityToString = (e) => {
     if (Array.isArray(e?.terms) && e.terms.length) {
       const parts = []
-      for (const term of e.terms) {
+      for (let i = 0; i < e.terms.length; i++) {
+        const term = e.terms[i]
         let text = String(term.text || '').trim()
         if (!text) continue
         if (/^[’']s$/i.test(text) && parts.length) {
           parts[parts.length - 1] += "'s"
         } else {
-          parts.push(text)
+          const isHyphen = typeof term.post === 'string' && term.post.trim() === '-' && i < e.terms.length - 1
+          parts.push(isHyphen ? text + '-' : text)
         }
       }
-      return parts.join(' ').trim()
+      return parts.join(' ').replace(/- /g, '-').trim()
     }
     if (typeof e?.text === 'string') return e.text.trim()
     return null

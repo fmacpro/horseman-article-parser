@@ -23,3 +23,8 @@ test('spellCheck preserves line breaks for accurate line numbers', async () => {
   const miss = res.find(r => r.word && r.word.toLowerCase() === 'lnie')
   assert.equal(miss.line, 2)
 })
+
+test('spellCheck retains hyphenated words', async () => {
+  const res = await spellCheck('mispelled-wurd should be flagged')
+  assert.ok(res.some(r => r.word === 'mispelled-wurd'))
+})
