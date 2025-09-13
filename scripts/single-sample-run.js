@@ -1,5 +1,4 @@
 import { parseArticle } from '../index.js'
-import { applyDomainTweaks, loadTweaksConfig, applyUrlRewrites } from './inc/applyDomainTweaks.js'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import fs from 'fs'
@@ -21,17 +20,14 @@ const testPlugin = function (Doc, world) {
 
 // Allow passing a URL via CLI: `node scripts/single-sample-run.js --url <url> --timeout <ms>`
 // With npm: `npm run sample:single -- --url <url> --timeout <ms>`
-const { values } = parseArgs({ options: { url: { type: 'string' }, timeout: { type: 'string' }, 'tweaks-file': { type: 'string' } } })
+const { values } = parseArgs({ options: { url: { type: 'string' }, timeout: { type: 'string' } } })
 const inputUrl = values.url || null
 const timeoutMs = Number(values.timeout || 40000)
-const tweaksFile = values['tweaks-file']
 
 const options = {
   timeoutMs,
   url: inputUrl || 'https://www.bbc.co.uk/news/articles/cnvryg271ymo?at_medium=RSS&at_campaign=rss',
   enabled: ['links', 'sentiment', 'entities', 'spelling', 'keywords', 'siteicon', 'screenshot'],
-  // In tests, lightly block heavy resources (keep images)
-  blockedResourceTypes: ['media', 'font', 'stylesheet'],
   // Tune content detection thresholds and dump candidate features for training
   contentDetection: {
     minLength: 400,
@@ -77,20 +73,6 @@ try {
   }
 } catch {
   // no weights.json provided
-}
-
-// Apply crawl tweaks (rewrites, headers, goto, consent clicks, interception) from scripts/crawl-tweaks.json
-try {
-  const tweaks = loadTweaksConfig(tweaksFile)
-  if (tweaks) {
-    // Apply URL rewrites first
-    const rewritten = applyUrlRewrites(options.url, tweaks)
-    if (rewritten) options.url = rewritten
-    // Apply per-domain option tweaks
-    applyDomainTweaks(options.url, options, tweaks, { retries: 0 })
-  }
-} catch {
-  // ignore tweak loading errors
 }
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))

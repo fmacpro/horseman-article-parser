@@ -358,8 +358,8 @@ test('parseArticle applies custom Compromise plugins', { timeout: TEST_TIMEOUT }
     t.skip('puppeteer unavailable: ' + err.message)
     return
   }
-  const foundWithout = Array.isArray(withoutPlugin.people) && withoutPlugin.people.some(p => /rishi/i.test(p.text))
+  const foundWithout = Array.isArray(withoutPlugin.people) && withoutPlugin.people.some(p => /rishi/i.test(p))
   assert.equal(foundWithout, false)
-  const foundWith = Array.isArray(withPlugin.people) && withPlugin.people.some(p => /rishi sunak/i.test(p.text))
+  const foundWith = Array.isArray(withPlugin.people) && withPlugin.people.includes('Rishi sunak')
   assert.equal(foundWith, true)
 })

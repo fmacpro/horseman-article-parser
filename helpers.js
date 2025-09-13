@@ -77,6 +77,30 @@ export function capitalizeFirstLetter (string) {
   return string.charAt(0).toUpperCase() + string.slice(1)
 }
 
+export function stripPossessive (s, allWords = false) {
+  const str = String(s).trim()
+  if (!str) return str
+  const words = str.split(/\s+/)
+  const stripWord = (w) =>
+    w
+      .replace(/[’']s\b/i, '')
+      .replace(/[^\p{L}\p{N}]+$/u, '')
+  words[words.length - 1] = stripWord(words[words.length - 1])
+  if (allWords && words.length > 1) {
+    for (let i = 0; i < words.length - 1; i++) {
+      words[i] = stripWord(words[i])
+    }
+  }
+  return words.join(' ')
+}
+
+export function stripPunctuation (s) {
+  return String(s || '')
+    .replace(/[^\p{L}\p{N}\s'’]+/gu, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 export function toTitleCase (str) {
   return str.replace(/\w\S*/g, function (txt) {
     return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()

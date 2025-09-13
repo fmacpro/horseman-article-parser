@@ -92,7 +92,7 @@ export async function autoDismissConsent (page, consentOptions = {}) {
         try {
           const url = String(f.url() || '')
           return /(sourcepoint|privacy|consent|sp_message|guardian)/i.test(url)
-        } catch (_) { return false }
+        } catch { return false }
       })
       const order = cmpFrames.length ? cmpFrames : frames
       for (const f of order) {
@@ -407,7 +407,7 @@ export async function injectConsentNukeEarly (page) {
             display: none !important; visibility: hidden !important; opacity: 0 !important;
           }
           html, body { overflow: auto !important; position: static !important; }
-        `
+        `;
         (document.head || document.documentElement).appendChild(style)
       } catch {}
     })

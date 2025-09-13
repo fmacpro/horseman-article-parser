@@ -5,25 +5,25 @@ puppeteer.use(StealthPlugin())
 
 import fs from 'fs'
 import Sentiment from 'sentiment'
-import nlp from 'compromise'
 import absolutify from 'absolutify'
 import { JSDOM, VirtualConsole } from 'jsdom'
 import { extractStructuredData } from './controllers/structuredData.js'
 import { detectContent } from './controllers/contentDetector.js'
 import jquery from 'jquery'
 import { createRequire } from 'module'
-import { setDefaultOptions, capitalizeFirstLetter } from './helpers.js'
+import { setDefaultOptions, capitalizeFirstLetter, stripPunctuation } from './helpers.js'
 import keywordParser from './controllers/keywordParser.js'
 import lighthouseAnalysis from './controllers/lighthouse.js'
 import spellCheck from './controllers/spellCheck.js'
 import logger from './controllers/logger.js'
-import { autoDismissConsent, injectTcfApi, removeConsentArtifacts, removeAmpConsent, clearViewportObstructions, injectConsentNuke } from './controllers/consent.js'
+import { autoDismissConsent, injectTcfApi, removeConsentArtifacts, removeAmpConsent, clearViewportObstructions, injectConsentNuke, injectConsentNukeEarly } from './controllers/consent.js'
 import { buildLiveBlogSummary } from './controllers/liveBlog.js'
 import { getRawText, getFormattedText, getHtmlText, htmlCleaner } from './controllers/textProcessing.js'
 import { sanitizeDataUrl } from './controllers/utils.js'
 import { safeAwait, sleep } from './controllers/async.js'
 import { timeLeftFactory, waitForFrameStability, navigateWithFallback } from './controllers/navigation.js'
 import { loadNlpPlugins } from './controllers/nlpPlugins.js'
+import entityParser, { normalizeEntity } from './controllers/entityParser.js'
 import { fetch as undiciFetch } from 'undici'
 
 const require = createRequire(import.meta.url)
@@ -155,7 +155,11 @@ const articleParser = async function (browser, options, socket) {
   const elapsed = () => Date.now() - t0
   log('parse', 'start x', { url: options.url, timeout_ms: options.timeoutMs || '' })
   const page = await browser.newPage()
-
+  await page.setViewport({
+    width: 570,
+    height: 1400,
+    deviceScaleFactor: 1,
+  });
   try {
     // Pre-inject CSS nuke as early as possible to avoid consent flicker
     try { if (options.consent?.autoDismiss) await injectConsentNukeEarly(page) } catch {}
@@ -720,12 +724,12 @@ log('analyze', 'Evaluating meta tags')
           for (let i = 0; i < 3; i++) {
             const removed = await removeConsentArtifacts(page)
             if (!removed) break
-            try { await page.waitForTimeout(50) } catch { await new Promise(r => setTimeout(r, 50)) }
+            try { await page.waitForTimeout(50) } catch { await new Promise(resolve => setTimeout(resolve, 50)) }
           }
         } catch (err) { logger.warn('removeConsentArtifacts before screenshot failed', err) }
         try { await clearViewportObstructions(page) } catch {}
         const settleMs = isLocal ? 50 : 300
-        try { await page.waitForTimeout(settleMs) } catch { await new Promise(r => setTimeout(r, settleMs)) }
+        try { await page.waitForTimeout(settleMs) } catch { await new Promise(resolve => setTimeout(resolve, settleMs)) }
       }
       // If we prefer static path, render static HTML for a clean screenshot without network
       try {
@@ -738,7 +742,7 @@ log('analyze', 'Evaluating meta tags')
           try { await injectConsentNuke(page) } catch {}
           try { await removeAmpConsent(page) } catch {}
           try { await clearViewportObstructions(page) } catch {}
-          try { await page.waitForTimeout(150) } catch { await new Promise(r => setTimeout(r, 150)) }
+          try { await page.waitForTimeout(150) } catch { await new Promise(resolve => setTimeout(resolve, 150)) }
         }
       } catch {}
       // Keep interception off during screenshot to avoid CSS/image misses on AMP
@@ -747,14 +751,14 @@ log('analyze', 'Evaluating meta tags')
       try {
         article.screenshot = await Promise.race([
           page.screenshot({ encoding: 'base64', type: 'jpeg', quality: 40 }),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('screenshot-timeout')), shotTimeoutMs))
+          new Promise((_resolve, reject) => setTimeout(() => reject(new Error('screenshot-timeout')), shotTimeoutMs))
         ])
-      } catch (e) {
+      } catch {
         try {
           // Fallback minimal screenshot with its own short timeout
           article.screenshot = await Promise.race([
             page.screenshot({ encoding: 'base64', type: 'jpeg', quality: 35, captureBeyondViewport: false }),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('screenshot-fallback-timeout')), 2000))
+            new Promise((_resolve, reject) => setTimeout(() => reject(new Error('screenshot-fallback-timeout')), 2000))
           ])
         } catch {
           // Last resort: 1x1 transparent pixel
@@ -1135,9 +1139,9 @@ log('analyze', 'Evaluating meta tags')
 
   // Excerpt
   article.excerpt = capitalizeFirstLetter(article.processed.text.raw.replace(/^(.{200}[^\s]*).*/, '$1'))
+  const cleanNlpInput = stripPunctuation(nlpInput)
   // Prepare parallel analysis tasks
   const analysisTasks = []
-  let rawSpelling = null
 
   // Sentiment (parallel)
   if (options.enabled.includes('sentiment')) {
@@ -1161,24 +1165,8 @@ log('analyze', 'Evaluating meta tags')
       try {
         log('analyze', 'Extracting named entities')
         if (timeLeft() < 1200) { log('analyze', 'Skipping NER due to low budget'); return }
-        article.people = nlp(nlpInput).people().json()
-        const seen = Array.isArray(article.people) ? article.people.map(p => String(p.text || '').toLowerCase()) : []
-        if (pluginHints.first.length && pluginHints.last.length) {
-          const haystack = nlpInput.toLowerCase()
-          for (const f of pluginHints.first) {
-            for (const l of pluginHints.last) {
-              const needle = `${f} ${l}`.toLowerCase()
-              if (haystack.includes(needle) && !seen.includes(needle)) {
-                if (!Array.isArray(article.people)) article.people = []
-                article.people.push({ text: needle.replace(/\b\w/g, c => c.toUpperCase()) })
-                seen.push(needle)
-              }
-            }
-          }
-        }
-        if (timeLeft() >= 1000) article.places = nlp(nlpInput).places().json()
-        if (timeLeft() >= 900) article.orgs = nlp(nlpInput).organizations().json()
-        if (timeLeft() >= 800) article.topics = nlp(nlpInput).topics().json()
+        const entities = entityParser(cleanNlpInput, pluginHints, timeLeft)
+        Object.assign(article, entities)
         try {
           const pc = Array.isArray(article.people) ? article.people.length : 0
           const plc = Array.isArray(article.places) ? article.places.length : 0
@@ -1203,23 +1191,15 @@ log('analyze', 'Evaluating meta tags')
     }
 
     // Filter spelling results using known entities (people, orgs, places)
-    const normalize = (w) => {
-      if (typeof w !== 'string') return ''
-      return w
-        .replace(/[’']/g, '') // remove apostrophes
-        .replace(/[^A-Za-z0-9]+/g, ' ') // non-alphanumerics to space
-        .trim()
-        .toLowerCase()
-    }
-
-    const splitWords = (s) => normalize(s).split(/\s+/).filter(Boolean)
+    const splitWords = (s) => normalizeEntity(s).split(/\s+/).filter(Boolean)
 
     const collectEntityWords = (arr) => {
       const out = []
       if (!Array.isArray(arr)) return out
       for (const e of arr) {
-        if (e && typeof e.text === 'string') out.push(...splitWords(e.text))
-        if (Array.isArray(e.terms)) {
+        const val = typeof e === 'string' ? e : (typeof e?.text === 'string' ? e.text : '')
+        if (val) out.push(...splitWords(val))
+        if (Array.isArray(e?.terms)) {
           for (const t of e.terms) {
             if (t && typeof t.text === 'string') out.push(...splitWords(t.text))
           }
@@ -1261,14 +1241,15 @@ log('analyze', 'Evaluating meta tags')
       if (timeLeft() > 500) jobs.push(keywordParser(article.title.text, options.retextkeywords).then(r => Object.assign(article.title, r)).catch(() => {}))
       if (timeLeft() > 500) jobs.push(keywordParser(article.meta.description.text, options.retextkeywords).then(r => Object.assign(article.meta.description, r)).catch(() => {}))
       if (timeLeft() > 600) jobs.push(
-        keywordParser(nlpInput, options.retextkeywords).then(kw => {
-          Object.assign(article.processed, kw)
-          try {
-            const kc = Array.isArray(kw.keywords) ? kw.keywords.length : 0
-            const pc = Array.isArray(kw.keyphrases) ? kw.keyphrases.length : 0
-            log('analyze', 'Keywords extracted', { keywords: kc, keyphrases: pc })
-          } catch {}
-        }).catch(() => {})
+          keywordParser(cleanNlpInput, options.retextkeywords).then(kw => {
+            Object.assign(article.processed, kw)
+            try {
+              const kc = Array.isArray(kw.keywords) ? kw.keywords.length : 0
+              const pc = Array.isArray(kw.keyphrases) ? kw.keyphrases.length : 0
+              log('analyze', 'Keywords extracted', { keywords: kc, keyphrases: pc })
+            } catch {}
+            return kw
+          }).catch(() => {})
       )
       await Promise.all(jobs)
     } catch {}

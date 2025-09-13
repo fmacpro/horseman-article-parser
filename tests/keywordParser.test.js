@@ -17,3 +17,16 @@ test('keywordParser ranks real article text', async () => {
   assert.ok(res.keywords[0].score >= res.keywords[1].score)
   assert.match(res.keyphrases[0].keyphrase, /JavaScript/)
 })
+
+test('keywordParser capitalizes keywords and keyphrases', async () => {
+  const res = await keywordParser('javascript is great. javascript makes the web work.')
+  assert.equal(res.keywords[0].keyword[0], res.keywords[0].keyword[0].toUpperCase())
+  assert.equal(res.keyphrases[0].keyphrase[0], res.keyphrases[0].keyphrase[0].toUpperCase())
+})
+
+test('keywordParser strips trailing possessive from keywords and keyphrases', async () => {
+  const res = await keywordParser("Kremlin's economy is Kremlin's")
+  assert.equal(res.keywords[0].keyword, 'Kremlin')
+  assert.ok(res.keyphrases.some(p => p.keyphrase === 'Kremlin'))
+  assert.ok(res.keyphrases.some(p => p.keyphrase === "Kremlin's economy"))
+})
