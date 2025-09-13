@@ -2,11 +2,16 @@ import { retext } from 'retext'
 import { toString as nlcstToString } from 'nlcst-to-string'
 import pos from 'retext-pos'
 import keywords from 'retext-keywords'
+import language from 'retext-language'
 import _ from 'lodash'
 import { capitalizeFirstLetter, stripPossessive } from '../helpers.js'
 
 export default async function keywordParser (html, options = { maximum: 10 }) {
-  const file = await retext().use(pos).use(keywords, options).process(html)
+  const { lang, ...rest } = options || {}
+  const processor = retext()
+  if (lang) processor.use(language, { language: lang })
+  processor.use(pos).use(keywords, rest)
+  const file = await processor.process(html)
 
   const keywordsArr = file.data.keywords.map(keyword => ({
     keyword: capitalizeFirstLetter(stripPossessive(nlcstToString(keyword.matches[0].node))),
