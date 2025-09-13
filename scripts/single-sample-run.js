@@ -87,8 +87,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
       bodySelector: article.bodySelector,
       bodyXPath: article.bodyXPath,
       excerpt: article.excerpt,
-      summary: article.summary.text,
-      sentences: article.summary.sentences,
       metadescription: article.meta.description.text,
       url: article.url,
       siteicon: article.siteicon,
@@ -102,7 +100,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
       text: {
         raw: article.processed.text.raw,
         formatted: article.processed.text.formatted,
-        html: article.processed.text.html
+        html: article.processed.text.html,
+        summary: article.processed.text.summary,
+        sentences: article.processed.text.sentences
       },
       spelling: article.spelling,
       meta: article.meta,

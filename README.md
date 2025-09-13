@@ -62,8 +62,6 @@ const options = {
     const response = {
       title: article.title.text,
       excerpt: article.excerpt,
-      summary: article.summary.text,
-      sentences: article.summary.sentences,
       metadescription: article.meta.description.text,
       url: article.url,
       sentiment: {
@@ -79,6 +77,8 @@ const options = {
         raw: article.processed.text.raw,
         formatted: article.processed.text.formatted,
         html: article.processed.text.html,
+        summary: article.processed.text.summary,
+        sentences: article.processed.text.sentences,
       },
       spelling: article.spelling,
       meta: article.meta,
@@ -204,7 +204,7 @@ var options = {
 };
 ```
 Add "summary" to `options.enabled` to generate a short summary of the article text. The result
-includes `summary.text` and a `summary.sentences` array containing the top-ranked sentences.
+includes `text.summary` and a `text.sentences` array containing the first five sentences.
 
 You may pass rules for returning an articles title & contents. This is useful in a case
 where the parser is unable to return the desired title or content e.g.
