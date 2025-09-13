@@ -155,7 +155,11 @@ const articleParser = async function (browser, options, socket) {
   const elapsed = () => Date.now() - t0
   log('parse', 'start x', { url: options.url, timeout_ms: options.timeoutMs || '' })
   const page = await browser.newPage()
-
+  await page.setViewport({
+    width: 570,
+    height: 1400,
+    deviceScaleFactor: 1,
+  });
   try {
     // Pre-inject CSS nuke as early as possible to avoid consent flicker
     try { if (options.consent?.autoDismiss) await injectConsentNukeEarly(page) } catch {}
