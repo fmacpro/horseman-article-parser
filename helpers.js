@@ -83,6 +83,13 @@ export function stripPossessive (s, allWords = false) {
   return str.replace(/[’']s$/i, '')
 }
 
+export function stripPunctuation (s) {
+  return String(s || '')
+    .replace(/[\p{P}\p{S}]+/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 export function toTitleCase (str) {
   return str.replace(/\w\S*/g, function (txt) {
     return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
