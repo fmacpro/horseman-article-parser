@@ -85,7 +85,7 @@ export function stripPossessive (s, allWords = false) {
 
 export function stripPunctuation (s) {
   return String(s || '')
-    .replace(/[\p{P}\p{S}]+/gu, ' ')
+    .replace(/[\p{P}\p{S}]+/gu, '')
     .replace(/\s+/g, ' ')
     .trim()
 }

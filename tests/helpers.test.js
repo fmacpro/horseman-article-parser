@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { setDefaultOptions, capitalizeFirstLetter, toTitleCase } from '../helpers.js'
+import { setDefaultOptions, capitalizeFirstLetter, toTitleCase, stripPunctuation } from '../helpers.js'
 
 test('setDefaultOptions applies defaults', () => {
   const opts = setDefaultOptions()
@@ -40,4 +40,10 @@ test('capitalizeFirstLetter capitalizes only first character', () => {
 
 test('toTitleCase converts words to title case', () => {
   assert.equal(toTitleCase('hello world'), 'Hello World')
+})
+
+test('stripPunctuation removes punctuation without inserting spaces', () => {
+  const input = 'one.two,three!four?five-six'
+  const result = stripPunctuation(input)
+  assert.equal(result, 'onetwothreefourfivesix')
 })
