@@ -42,10 +42,10 @@ test('toTitleCase converts words to title case', () => {
   assert.equal(toTitleCase('hello world'), 'Hello World')
 })
 
-test('stripPunctuation removes punctuation without inserting spaces', () => {
+test('stripPunctuation removes punctuation without inserting spaces and keeps hyphens', () => {
   const input = 'one.two,three!four?five-six'
   const result = stripPunctuation(input)
-  assert.equal(result, 'onetwothreefourfivesix')
+  assert.equal(result, 'onetwothreefourfive-six')
 })
 
 test("stripPunctuation retains apostrophes", () => {

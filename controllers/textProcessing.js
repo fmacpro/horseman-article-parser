@@ -13,7 +13,7 @@ export function getRawText (html) {
     unorderedListItemPrefix: ''
   }
   let rawText = htmlToText(html, options)
-  rawText = nlp(rawText).normalize().out('text')
+  rawText = nlp(rawText).out('text')
   const containsUrlLike = (s) => {
     if (!s) return false
     const str = String(s)
