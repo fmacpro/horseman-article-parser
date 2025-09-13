@@ -16,7 +16,7 @@ import keywordParser from './controllers/keywordParser.js'
 import lighthouseAnalysis from './controllers/lighthouse.js'
 import spellCheck from './controllers/spellCheck.js'
 import logger from './controllers/logger.js'
-import { autoDismissConsent, injectTcfApi, removeConsentArtifacts, removeAmpConsent, clearViewportObstructions, injectConsentNuke } from './controllers/consent.js'
+import { autoDismissConsent, injectTcfApi, removeConsentArtifacts, removeAmpConsent, clearViewportObstructions, injectConsentNuke, injectConsentNukeEarly } from './controllers/consent.js'
 import { buildLiveBlogSummary } from './controllers/liveBlog.js'
 import { getRawText, getFormattedText, getHtmlText, htmlCleaner } from './controllers/textProcessing.js'
 import { sanitizeDataUrl } from './controllers/utils.js'
@@ -724,12 +724,12 @@ log('analyze', 'Evaluating meta tags')
           for (let i = 0; i < 3; i++) {
             const removed = await removeConsentArtifacts(page)
             if (!removed) break
-            try { await page.waitForTimeout(50) } catch { await new Promise(r => setTimeout(r, 50)) }
+            try { await page.waitForTimeout(50) } catch { await new Promise(resolve => setTimeout(resolve, 50)) }
           }
         } catch (err) { logger.warn('removeConsentArtifacts before screenshot failed', err) }
         try { await clearViewportObstructions(page) } catch {}
         const settleMs = isLocal ? 50 : 300
-        try { await page.waitForTimeout(settleMs) } catch { await new Promise(r => setTimeout(r, settleMs)) }
+        try { await page.waitForTimeout(settleMs) } catch { await new Promise(resolve => setTimeout(resolve, settleMs)) }
       }
       // If we prefer static path, render static HTML for a clean screenshot without network
       try {
@@ -742,7 +742,7 @@ log('analyze', 'Evaluating meta tags')
           try { await injectConsentNuke(page) } catch {}
           try { await removeAmpConsent(page) } catch {}
           try { await clearViewportObstructions(page) } catch {}
-          try { await page.waitForTimeout(150) } catch { await new Promise(r => setTimeout(r, 150)) }
+          try { await page.waitForTimeout(150) } catch { await new Promise(resolve => setTimeout(resolve, 150)) }
         }
       } catch {}
       // Keep interception off during screenshot to avoid CSS/image misses on AMP
@@ -751,14 +751,14 @@ log('analyze', 'Evaluating meta tags')
       try {
         article.screenshot = await Promise.race([
           page.screenshot({ encoding: 'base64', type: 'jpeg', quality: 40 }),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('screenshot-timeout')), shotTimeoutMs))
+          new Promise((_resolve, reject) => setTimeout(() => reject(new Error('screenshot-timeout')), shotTimeoutMs))
         ])
-      } catch (e) {
+      } catch {
         try {
           // Fallback minimal screenshot with its own short timeout
           article.screenshot = await Promise.race([
             page.screenshot({ encoding: 'base64', type: 'jpeg', quality: 35, captureBeyondViewport: false }),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('screenshot-fallback-timeout')), 2000))
+            new Promise((_resolve, reject) => setTimeout(() => reject(new Error('screenshot-fallback-timeout')), 2000))
           ])
         } catch {
           // Last resort: 1x1 transparent pixel
@@ -1240,14 +1240,15 @@ log('analyze', 'Evaluating meta tags')
       if (timeLeft() > 500) jobs.push(keywordParser(article.title.text, options.retextkeywords).then(r => Object.assign(article.title, r)).catch(() => {}))
       if (timeLeft() > 500) jobs.push(keywordParser(article.meta.description.text, options.retextkeywords).then(r => Object.assign(article.meta.description, r)).catch(() => {}))
       if (timeLeft() > 600) jobs.push(
-        keywordParser(nlpInput, options.retextkeywords).then(kw => {
-          Object.assign(article.processed, kw)
-          try {
-            const kc = Array.isArray(kw.keywords) ? kw.keywords.length : 0
-            const pc = Array.isArray(kw.keyphrases) ? kw.keyphrases.length : 0
-            log('analyze', 'Keywords extracted', { keywords: kc, keyphrases: pc })
-          } catch {}
-        }).catch(() => {})
+          keywordParser(nlpInput, options.retextkeywords).then(kw => {
+            Object.assign(article.processed, kw)
+            try {
+              const kc = Array.isArray(kw.keywords) ? kw.keywords.length : 0
+              const pc = Array.isArray(kw.keyphrases) ? kw.keyphrases.length : 0
+              log('analyze', 'Keywords extracted', { keywords: kc, keyphrases: pc })
+            } catch {}
+            return kw
+          }).catch(() => {})
       )
       await Promise.all(jobs)
     } catch {}

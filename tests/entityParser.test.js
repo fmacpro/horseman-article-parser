@@ -14,3 +14,21 @@ test('entityParser capitalizes extracted entities', () => {
     }
   }
 })
+
+test("entityParser removes trailing possessive 's", () => {
+  const input = "Angela's phone was found in Paris's museum run by Google's team"
+  const res = entityParser(input, { first: [], last: [] }, () => 2000)
+  assert.deepEqual(res.people, ['Angela'])
+  assert.deepEqual(res.places, ['Paris'])
+  assert.deepEqual(res.orgs, ['Google'])
+  assert(!res.people.some(p => /'s$/i.test(p)))
+  assert(!res.places?.some(p => /'s$/i.test(p)))
+  assert(!res.orgs?.some(o => /'s$/i.test(o)))
+})
+
+test("entityParser keeps possessive for multi-word entities", () => {
+  const input = "The United States's economy continues to grow"
+  const res = entityParser(input, { first: [], last: [] }, () => 2000)
+  assert(res.places.includes("United States's"))
+  assert(res.topics.includes("United States's"))
+})

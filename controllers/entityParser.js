@@ -11,9 +11,24 @@ export function normalizeEntity (w) {
 }
 
 export default function entityParser (nlpInput, pluginHints = { first: [], last: [] }, timeLeft = () => Infinity) {
+  const stripPossessive = (s) => {
+    const str = String(s).trim()
+    if (str.split(/\s+/).length > 1) return str
+    return str.replace(/[’']s$/i, '')
+  }
   const entityToString = (e) => {
     if (Array.isArray(e?.terms) && e.terms.length) {
-      return e.terms.map(t => String(t.text || '').trim()).filter(Boolean).join(' ').trim()
+      const parts = []
+      for (const term of e.terms) {
+        let text = String(term.text || '').trim()
+        if (!text) continue
+        if (/^[’']s$/i.test(text) && parts.length) {
+          parts[parts.length - 1] += "'s"
+        } else {
+          parts.push(text)
+        }
+      }
+      return parts.join(' ').trim()
     }
     if (typeof e?.text === 'string') return e.text.trim()
     return null
@@ -23,7 +38,7 @@ export default function entityParser (nlpInput, pluginHints = { first: [], last:
     const out = []
     const seen = new Set()
     for (const s of arr) {
-      const str = String(s || '').trim()
+      const str = stripPossessive(String(s || '').trim())
       if (!str) continue
       const key = normalizeEntity(str)
       if (!seen.has(key)) {
