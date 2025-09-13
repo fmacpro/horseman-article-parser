@@ -11,7 +11,7 @@ import { extractStructuredData } from './controllers/structuredData.js'
 import { detectContent } from './controllers/contentDetector.js'
 import jquery from 'jquery'
 import { createRequire } from 'module'
-import { setDefaultOptions, capitalizeFirstLetter } from './helpers.js'
+import { setDefaultOptions, capitalizeFirstLetter, stripPunctuation } from './helpers.js'
 import keywordParser from './controllers/keywordParser.js'
 import lighthouseAnalysis from './controllers/lighthouse.js'
 import spellCheck from './controllers/spellCheck.js'
@@ -1139,6 +1139,7 @@ log('analyze', 'Evaluating meta tags')
 
   // Excerpt
   article.excerpt = capitalizeFirstLetter(article.processed.text.raw.replace(/^(.{200}[^\s]*).*/, '$1'))
+  const cleanNlpInput = stripPunctuation(nlpInput)
   // Prepare parallel analysis tasks
   const analysisTasks = []
 
@@ -1164,7 +1165,7 @@ log('analyze', 'Evaluating meta tags')
       try {
         log('analyze', 'Extracting named entities')
         if (timeLeft() < 1200) { log('analyze', 'Skipping NER due to low budget'); return }
-        const entities = entityParser(nlpInput, pluginHints, timeLeft)
+        const entities = entityParser(cleanNlpInput, pluginHints, timeLeft)
         Object.assign(article, entities)
         try {
           const pc = Array.isArray(article.people) ? article.people.length : 0
@@ -1240,7 +1241,7 @@ log('analyze', 'Evaluating meta tags')
       if (timeLeft() > 500) jobs.push(keywordParser(article.title.text, options.retextkeywords).then(r => Object.assign(article.title, r)).catch(() => {}))
       if (timeLeft() > 500) jobs.push(keywordParser(article.meta.description.text, options.retextkeywords).then(r => Object.assign(article.meta.description, r)).catch(() => {}))
       if (timeLeft() > 600) jobs.push(
-          keywordParser(nlpInput, options.retextkeywords).then(kw => {
+          keywordParser(cleanNlpInput, options.retextkeywords).then(kw => {
             Object.assign(article.processed, kw)
             try {
               const kc = Array.isArray(kw.keywords) ? kw.keywords.length : 0
