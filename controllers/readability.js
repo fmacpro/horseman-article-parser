@@ -1,29 +1,18 @@
-import { retext } from 'retext'
-import readability from 'retext-readability'
-
 /**
- * Evaluate readability of text and estimate reading time.
- * Returns an array of readability warnings with algorithm counts
- * and an estimated reading time in seconds (assuming ~200 wpm).
+ * Evaluate basic readability statistics and estimate reading time.
+ * Returns an estimated reading time in seconds (assuming ~200 wpm) and
+ * basic document statistics (characters, words, sentences, paragraphs).
  *
  * @param {string} text raw text input
- * @returns {{scores: Array<{sentence: string, algorithms: number, total: number}>, readingTime: number}}
+ * @returns {{readingTime: number, characters: number, words: number, sentences: number, paragraphs: number}}
  */
 export default async function checkReadability (text) {
-  if (!text || typeof text !== 'string') return { scores: [], readingTime: 0 }
-  const file = await retext().use(readability).process(text)
-  const words = text.trim().split(/\s+/).filter(Boolean).length
+  if (!text || typeof text !== 'string') return { readingTime: 0, characters: 0, words: 0, sentences: 0, paragraphs: 0 }
+  const trimmed = text.trim()
+  const characters = trimmed.length
+  const words = trimmed.split(/\s+/).filter(Boolean).length
+  const sentences = trimmed.split(/[.!?]+/).filter(s => s.trim().length > 0).length
+  const paragraphs = trimmed.split(/\n{2,}/).filter(p => p.trim().length > 0).length
   const readingTime = Math.round((words / 200) * 60)
-  const scores = file.messages.map(m => {
-    const reason = String(m.reason || '')
-    const match = reason.match(/according to (\d+) out of (\d+) algorithms/) || reason.match(/according to all (\d+) algorithms/)
-    let algorithms = 0
-    let total = 0
-    if (match) {
-      if (match[2]) { algorithms = Number(match[1]); total = Number(match[2]) }
-      else { algorithms = Number(match[1]); total = Number(match[1]) }
-    }
-    return { sentence: m.actual, algorithms, total }
-  })
-  return { scores, readingTime }
+  return { readingTime, characters, words, sentences, paragraphs }
 }
