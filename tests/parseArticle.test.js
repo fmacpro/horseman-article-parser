@@ -42,7 +42,7 @@ test('parseArticle processes local HTML', { timeout: TEST_TIMEOUT }, async (t) =
   try {
     article = await parseArticle({
       url: dataUrl,
-      enabled: ['spelling'],
+      enabled: ['spelling', 'summary'],
       timeoutMs: PARSE_TIMEOUT,
       contentWaitSelectors: ['article'],
       contentWaitTimeoutMs: 1,
@@ -56,6 +56,8 @@ test('parseArticle processes local HTML', { timeout: TEST_TIMEOUT }, async (t) =
   assert.equal(article.title.text, 'Sample Story')
   assert.ok(article.links.some(l => /example\.com/.test(l.href)))
   assert.ok(article.spelling.some(s => s.word.toLowerCase().includes('missspelled')))
+  assert.equal(typeof article.summary, 'string')
+  assert.ok(article.summary.length > 0)
 })
 
 test('parseArticle captures a screenshot when enabled', { timeout: TEST_TIMEOUT }, async (t) => {
