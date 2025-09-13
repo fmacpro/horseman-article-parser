@@ -1184,7 +1184,7 @@ log('analyze', 'Evaluating meta tags')
     try {
       log('analyze', 'Evaluating readability')
       article.readability = await checkReadability(article.processed.text.raw)
-      try { log('analyze', 'Readability evaluated', { hard: Array.isArray(article.readability.scores) ? article.readability.scores.length : 0, reading_time: article.readability.readingTime }) } catch {}
+      try { log('analyze', 'Readability evaluated', { reading_time: article.readability.readingTime }) } catch {}
     } catch {}
   }
 
