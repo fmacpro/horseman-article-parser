@@ -26,6 +26,8 @@ import { timeLeftFactory, waitForFrameStability, navigateWithFallback } from './
 import { loadNlpPlugins } from './controllers/nlpPlugins.js'
 import entityParser, { normalizeEntity } from './controllers/entityParser.js'
 import { fetch as undiciFetch } from 'undici'
+import detectLanguage from './controllers/language.js'
+import nlp from 'compromise'
 
 const require = createRequire(import.meta.url)
 
@@ -1135,8 +1137,34 @@ log('analyze', 'Evaluating meta tags')
           nlpInput = article.processed.text.raw.length > capForNlp ? article.processed.text.raw.slice(0, capForNlp) : article.processed.text.raw
         } catch {}
       }
-    }
+  }
   } catch {}
+
+  // Detect language from raw text and configure NLP pipelines
+  article.language = await detectLanguage(article.processed.text.raw || '')
+  try { log('analyze', 'Language detected', article.language) } catch {}
+  // Adjust compromise pipeline based on language (best effort)
+  try {
+    if (article.language.iso6391 && article.language.iso6391 !== 'en') {
+      const plugin = await import(`compromise/${article.language.iso6391}.js`).catch(() => null)
+      if (plugin) { nlp.plugin(plugin.default || plugin) }
+    }
+  } catch (err) { logger.warn('nlp plugin load failed', err) }
+  // Configure retext pipelines
+  const langCode = article.language.iso6391 || 'en'
+  options.retextkeywords = Object.assign({ lang: langCode }, options.retextkeywords)
+  options.retextspell = options.retextspell || {}
+  if (!options.retextspell.dictionary) {
+    try {
+      const dict = await import(`dictionary-${langCode}`)
+      options.retextspell.dictionary = dict.default || dict
+    } catch {
+      try {
+        const dict = await import('dictionary-en-gb')
+        options.retextspell.dictionary = dict.default || dict
+      } catch {}
+    }
+  }
 
   // Excerpt
   article.excerpt = capitalizeFirstLetter(article.processed.text.raw.replace(/^(.{200}[^\s]*).*/, '$1'))

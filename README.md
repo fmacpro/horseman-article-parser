@@ -1,6 +1,6 @@
 ﻿# Horseman Article Parser
 
-Horseman is a focused article scraping module for the open web. It loads pages (dynamic or AMP), detects the main story body, and returns clean, structured content ready for downstream use. Alongside text and title, it includes in-article links, metadata, sentiment, keywords/keyphrases, named entities, optional summaries, optional spelling suggestions, site icon, and Lighthouse signals. It also copes with live blogs, applies simple per-domain tweaks (headers/cookies/goto), and uses Puppeteer + stealth to reduce blocking.
+Horseman is a focused article scraping module for the open web. It loads pages (dynamic or AMP), detects the main story body, and returns clean, structured content ready for downstream use. Alongside text and title, it includes in-article links, metadata, sentiment, keywords/keyphrases, named entities, optional summaries, optional spelling suggestions, site icon, and Lighthouse signals. It also copes with live blogs, applies simple per-domain tweaks (headers/cookies/goto), and uses Puppeteer + stealth to reduce blocking. The parser now detects the article language and exposes ISO codes, with best-effort support for non-English content (features may fall back to English dictionaries when specific resources are missing).
 
 ## Table of Contents
 
@@ -73,6 +73,7 @@ const options = {
       people: article.people,
       orgs: article.orgs,
       places: article.places,
+      language: article.language,
       text: {
         raw: article.processed.text.raw,
         formatted: article.processed.text.formatted,
@@ -373,6 +374,10 @@ contentDetection: {
 }
 ```
 
+### Language Detection
+
+Horseman automatically detects the article language and exposes ISO codes via `article.language` in the result. Downstream steps such as keyword extraction or spelling use these codes to select language-specific resources when available. Dictionaries for English, French, and Spanish are bundled; other languages fall back to English if a matching dictionary or NLP plugin is not found.
+
 ## Development
 
 Please feel free to fork the repo or open pull requests to the development branch. I've used [eslint](https://eslint.org/) for linting.
@@ -565,6 +570,8 @@ npm run docs
 - [retext-pos](https://github.com/retextjs/retext-pos): Plugin to add part-of-speech (POS) tags
 - [retext-keywords](https://ghub.io/retext-keywords): Keyword extraction with Retext
 - [retext-spell](https://ghub.io/retext-spell): Spelling checker for retext
+- [retext-language](https://ghub.io/retext-language): Language detection for retext
+- [franc](https://ghub.io/franc): Fast language detection from text
 - [sentiment](https://ghub.io/sentiment): AFINN-based sentiment analysis for Node.js
 - [jquery](https://ghub.io/jquery): JavaScript library for DOM operations
 - [jsdom](https://ghub.io/jsdom): A JavaScript implementation of many web standards
