@@ -81,10 +81,14 @@ export function stripPossessive (s, allWords = false) {
   const str = String(s).trim()
   if (!str) return str
   const words = str.split(/\s+/)
-  words[words.length - 1] = words[words.length - 1].replace(/[’']s$/i, '')
+  const stripWord = (w) =>
+    w
+      .replace(/[’']s\b/i, '')
+      .replace(/[^\p{L}\p{N}]+$/u, '')
+  words[words.length - 1] = stripWord(words[words.length - 1])
   if (allWords && words.length > 1) {
     for (let i = 0; i < words.length - 1; i++) {
-      words[i] = words[i].replace(/[’']s$/i, '')
+      words[i] = stripWord(words[i])
     }
   }
   return words.join(' ')

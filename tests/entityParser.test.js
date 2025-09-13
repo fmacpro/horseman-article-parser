@@ -42,3 +42,10 @@ test("entityParser strips possessive for multi-word entities", () => {
   assert(!res.places.some(p => /'s$/i.test(p)))
   assert(!res.topics.some(t => /'s$/i.test(t)))
 })
+
+test("entityParser handles possessive places with trailing punctuation", () => {
+  const input = "He returned from New Zealand's."
+  const res = entityParser(input, { first: [], last: [] }, () => 2000)
+  assert(res.places.includes('New Zealand'))
+  assert(!res.places.some(p => /['’]s/i.test(p)))
+})
