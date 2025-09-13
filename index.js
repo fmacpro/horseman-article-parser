@@ -1183,7 +1183,7 @@ log('analyze', 'Evaluating meta tags')
   if (options.enabled.includes('readability')) {
     try {
       log('analyze', 'Evaluating readability')
-      article.readability = await checkReadability(article.processed.text.raw)
+      article.readability = await checkReadability(article.processed.text.formatted)
       try { log('analyze', 'Readability evaluated', { reading_time: article.readability.readingTime }) } catch {}
     } catch {}
   }
