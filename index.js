@@ -5,7 +5,6 @@ puppeteer.use(StealthPlugin())
 
 import fs from 'fs'
 import Sentiment from 'sentiment'
-import nlp from 'compromise'
 import absolutify from 'absolutify'
 import { JSDOM, VirtualConsole } from 'jsdom'
 import { extractStructuredData } from './controllers/structuredData.js'
@@ -24,6 +23,7 @@ import { sanitizeDataUrl } from './controllers/utils.js'
 import { safeAwait, sleep } from './controllers/async.js'
 import { timeLeftFactory, waitForFrameStability, navigateWithFallback } from './controllers/navigation.js'
 import { loadNlpPlugins } from './controllers/nlpPlugins.js'
+import entityParser, { normalizeEntity } from './controllers/entityParser.js'
 import { fetch as undiciFetch } from 'undici'
 
 const require = createRequire(import.meta.url)
@@ -1142,15 +1142,6 @@ log('analyze', 'Evaluating meta tags')
   // Prepare parallel analysis tasks
   const analysisTasks = []
 
-  const normalizeEntity = (w) => {
-    if (typeof w !== 'string') return ''
-    return w
-      .replace(/[’']/g, '')
-      .replace(/[^A-Za-z0-9]+/g, ' ')
-      .trim()
-      .toLowerCase()
-  }
-
   // Sentiment (parallel)
   if (options.enabled.includes('sentiment')) {
     analysisTasks.push((async () => {
@@ -1173,49 +1164,8 @@ log('analyze', 'Evaluating meta tags')
       try {
         log('analyze', 'Extracting named entities')
         if (timeLeft() < 1200) { log('analyze', 'Skipping NER due to low budget'); return }
-
-        const entityToString = (e) => {
-          if (Array.isArray(e?.terms) && e.terms.length) {
-            return e.terms.map(t => String(t.text || '').trim()).filter(Boolean).join(' ').trim()
-          }
-          if (typeof e?.text === 'string') return e.text.trim()
-          return null
-        }
-
-        const dedupeEntities = (arr) => {
-          const out = []
-          const seen = new Set()
-          for (const s of arr) {
-            const str = String(s || '').trim()
-            if (!str) continue
-            const key = normalizeEntity(str)
-            if (!seen.has(key)) {
-              seen.add(key)
-              out.push(str)
-            }
-          }
-          return out
-        }
-
-        article.people = dedupeEntities(nlp(nlpInput).people().json().map(entityToString))
-        const seen = new Set(article.people.map(p => normalizeEntity(p)))
-        if (pluginHints.first.length && pluginHints.last.length) {
-          const haystack = normalizeEntity(nlpInput)
-          for (const f of pluginHints.first) {
-            for (const l of pluginHints.last) {
-              const raw = `${f} ${l}`
-              const key = normalizeEntity(raw)
-              if (haystack.includes(key) && !seen.has(key)) {
-                article.people.push(raw.replace(/\b\w/g, c => c.toUpperCase()))
-                seen.add(key)
-              }
-            }
-          }
-        }
-        article.people = dedupeEntities(article.people)
-        if (timeLeft() >= 1000) article.places = dedupeEntities(nlp(nlpInput).places().json().map(entityToString))
-        if (timeLeft() >= 900) article.orgs = dedupeEntities(nlp(nlpInput).organizations().json().map(entityToString))
-        if (timeLeft() >= 800) article.topics = dedupeEntities(nlp(nlpInput).topics().json().map(entityToString))
+        const entities = entityParser(nlpInput, pluginHints, timeLeft)
+        Object.assign(article, entities)
         try {
           const pc = Array.isArray(article.people) ? article.people.length : 0
           const plc = Array.isArray(article.places) ? article.places.length : 0

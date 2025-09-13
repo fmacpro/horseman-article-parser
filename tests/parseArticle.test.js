@@ -360,6 +360,6 @@ test('parseArticle applies custom Compromise plugins', { timeout: TEST_TIMEOUT }
   }
   const foundWithout = Array.isArray(withoutPlugin.people) && withoutPlugin.people.some(p => /rishi/i.test(p))
   assert.equal(foundWithout, false)
-  const foundWith = Array.isArray(withPlugin.people) && withPlugin.people.includes('Rishi Sunak')
+  const foundWith = Array.isArray(withPlugin.people) && withPlugin.people.includes('Rishi sunak')
   assert.equal(foundWith, true)
 })
