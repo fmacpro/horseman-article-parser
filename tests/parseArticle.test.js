@@ -42,7 +42,7 @@ test('parseArticle processes local HTML', { timeout: TEST_TIMEOUT }, async (t) =
   try {
     article = await parseArticle({
       url: dataUrl,
-      enabled: ['spelling', 'summary'],
+      enabled: ['spelling', 'summary', 'readability'],
       timeoutMs: PARSE_TIMEOUT,
       contentWaitSelectors: ['article'],
       contentWaitTimeoutMs: 1,
@@ -60,6 +60,7 @@ test('parseArticle processes local HTML', { timeout: TEST_TIMEOUT }, async (t) =
   assert.ok(article.processed.text.summary.length > 0)
   assert.ok(Array.isArray(article.processed.text.sentences))
   assert.ok(article.processed.text.sentences.length > 0)
+  assert.ok(article.readability.paragraphs > 1)
 })
 
 test('parseArticle captures a screenshot when enabled', { timeout: TEST_TIMEOUT }, async (t) => {
