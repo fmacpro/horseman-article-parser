@@ -79,8 +79,15 @@ export function capitalizeFirstLetter (string) {
 
 export function stripPossessive (s, allWords = false) {
   const str = String(s).trim()
-  if (!allWords && str.split(/\s+/).length > 1) return str
-  return str.replace(/[’']s$/i, '')
+  if (!str) return str
+  const words = str.split(/\s+/)
+  words[words.length - 1] = words[words.length - 1].replace(/[’']s$/i, '')
+  if (allWords && words.length > 1) {
+    for (let i = 0; i < words.length - 1; i++) {
+      words[i] = words[i].replace(/[’']s$/i, '')
+    }
+  }
+  return words.join(' ')
 }
 
 export function stripPunctuation (s) {

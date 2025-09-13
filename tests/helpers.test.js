@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { setDefaultOptions, capitalizeFirstLetter, toTitleCase, stripPunctuation } from '../helpers.js'
+import { setDefaultOptions, capitalizeFirstLetter, toTitleCase, stripPunctuation, stripPossessive } from '../helpers.js'
 
 test('setDefaultOptions applies defaults', () => {
   const opts = setDefaultOptions()
@@ -52,4 +52,13 @@ test("stripPunctuation retains apostrophes", () => {
   const input = "Alice's adventures in Bob’s world!"
   const result = stripPunctuation(input)
   assert.equal(result, "Alice's adventures in Bob’s world")
+})
+
+test("stripPossessive removes trailing 's from last word", () => {
+  assert.equal(stripPossessive("South Africa's"), 'South Africa')
+  assert.equal(stripPossessive("America's"), 'America')
+})
+
+test("stripPossessive leaves non-final possessives", () => {
+  assert.equal(stripPossessive("America's economy"), "America's economy")
 })

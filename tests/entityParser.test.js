@@ -34,9 +34,11 @@ test("entityParser strips possessive for multi-word people", () => {
   assert(!res.people.some(p => /'s$/i.test(p)))
 })
 
-test("entityParser keeps possessive for multi-word entities", () => {
+test("entityParser strips possessive for multi-word entities", () => {
   const input = "The United States's economy continues to grow"
   const res = entityParser(input, { first: [], last: [] }, () => 2000)
-  assert(res.places.includes("United States's"))
-  assert(res.topics.includes("United States's"))
+  assert(res.places.includes('United States'))
+  assert(res.topics.includes('United States'))
+  assert(!res.places.some(p => /'s$/i.test(p)))
+  assert(!res.topics.some(t => /'s$/i.test(t)))
 })
