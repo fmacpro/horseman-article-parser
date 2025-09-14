@@ -27,7 +27,9 @@
 main article parser module export function
 
 **Kind**: global function  
-**Returns**: <code>Object</code> - article parser results object  
+**Returns**: <code>Object</code> - article parser results object. Includes `text.summary` and
+`text.sentences` when `options.enabled` contains `'summary'`. Also exposes
+`language` with ISO-639-1 and ISO-639-3 codes when detection succeeds. Includes `readability` with estimated reading time and basic text statistics when `options.enabled` contains 'readability'.
 
 | Param | Type | Description |
 | --- | --- | --- |

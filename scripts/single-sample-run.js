@@ -27,7 +27,7 @@ const timeoutMs = Number(values.timeout || 40000)
 const options = {
   timeoutMs,
   url: inputUrl || 'https://www.bbc.co.uk/news/articles/cnvryg271ymo?at_medium=RSS&at_campaign=rss',
-  enabled: ['links', 'sentiment', 'entities', 'spelling', 'keywords', 'siteicon', 'screenshot'],
+  enabled: ['links', 'sentiment', 'entities', 'spelling', 'keywords', 'siteicon', 'screenshot', 'summary', 'readability'],
   // Tune content detection thresholds and dump candidate features for training
   contentDetection: {
     minLength: 400,
@@ -92,6 +92,13 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
       siteicon: article.siteicon,
       screenshot: article.screenshot,
       sentiment: { score: article.sentiment.score, comparative: article.sentiment.comparative },
+      readability: {
+        readingTime: article.readability.readingTime,
+        characters: article.readability.characters,
+        words: article.readability.words,
+        sentences: article.readability.sentences,
+        paragraphs: article.readability.paragraphs
+      },
       keyphrases: article.processed.keyphrases,
       keywords: article.processed.keywords,
       people: article.people,
@@ -100,7 +107,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
       text: {
         raw: article.processed.text.raw,
         formatted: article.processed.text.formatted,
-        html: article.processed.text.html
+        html: article.processed.text.html,
+        summary: article.processed.text.summary,
+        sentences: article.processed.text.sentences
       },
       spelling: article.spelling,
       meta: article.meta,

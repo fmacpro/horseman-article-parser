@@ -18,6 +18,7 @@ import spellCheck from './controllers/spellCheck.js'
 import logger from './controllers/logger.js'
 import { autoDismissConsent, injectTcfApi, removeConsentArtifacts, removeAmpConsent, clearViewportObstructions, injectConsentNuke, injectConsentNukeEarly } from './controllers/consent.js'
 import { buildLiveBlogSummary } from './controllers/liveBlog.js'
+import { buildSummary } from './controllers/summary.js'
 import { getRawText, getFormattedText, getHtmlText, htmlCleaner } from './controllers/textProcessing.js'
 import { sanitizeDataUrl } from './controllers/utils.js'
 import { safeAwait, sleep } from './controllers/async.js'
@@ -25,6 +26,9 @@ import { timeLeftFactory, waitForFrameStability, navigateWithFallback } from './
 import { loadNlpPlugins } from './controllers/nlpPlugins.js'
 import entityParser, { normalizeEntity } from './controllers/entityParser.js'
 import { fetch as undiciFetch } from 'undici'
+import detectLanguage from './controllers/language.js'
+import nlp from 'compromise'
+import checkReadability from './controllers/readability.js'
 
 const require = createRequire(import.meta.url)
 
@@ -1134,14 +1138,55 @@ log('analyze', 'Evaluating meta tags')
           nlpInput = article.processed.text.raw.length > capForNlp ? article.processed.text.raw.slice(0, capForNlp) : article.processed.text.raw
         } catch {}
       }
-    }
+  }
   } catch {}
+
+  // Detect language from raw text and configure NLP pipelines
+  article.language = await detectLanguage(article.processed.text.raw || '')
+  try { log('analyze', 'Language detected', article.language) } catch {}
+  // Adjust compromise pipeline based on language (best effort)
+  try {
+    if (article.language.iso6391 && article.language.iso6391 !== 'en') {
+      const plugin = await import(`compromise/${article.language.iso6391}.js`).catch(() => null)
+      if (plugin) { nlp.plugin(plugin.default || plugin) }
+    }
+  } catch (err) { logger.warn('nlp plugin load failed', err) }
+  // Configure retext pipelines
+  const langCode = article.language.iso6391 || 'en'
+  options.retextkeywords = Object.assign({ lang: langCode }, options.retextkeywords)
+  options.retextspell = options.retextspell || {}
+  if (!options.retextspell.dictionary) {
+    try {
+      const dict = await import(`dictionary-${langCode}`)
+      options.retextspell.dictionary = dict.default || dict
+    } catch {
+      try {
+        const dict = await import('dictionary-en-gb')
+        options.retextspell.dictionary = dict.default || dict
+      } catch {}
+    }
+  }
 
   // Excerpt
   article.excerpt = capitalizeFirstLetter(article.processed.text.raw.replace(/^(.{200}[^\s]*).*/, '$1'))
+  if (options.enabled.includes('summary')) {
+    const { text: summaryText, sentences } = buildSummary(article.processed.text.raw)
+    article.processed.text.summary = summaryText
+    article.processed.text.sentences = sentences
+  }
   const cleanNlpInput = stripPunctuation(nlpInput)
   // Prepare parallel analysis tasks
   const analysisTasks = []
+
+
+  // Readability
+  if (options.enabled.includes('readability')) {
+    try {
+      log('analyze', 'Evaluating readability')
+      article.readability = await checkReadability(article.processed.text.formatted)
+      try { log('analyze', 'Readability evaluated', { reading_time: article.readability.readingTime }) } catch {}
+    } catch {}
+  }
 
   // Sentiment (parallel)
   if (options.enabled.includes('sentiment')) {

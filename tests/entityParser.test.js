@@ -49,3 +49,9 @@ test("entityParser handles possessive places with trailing punctuation", () => {
   assert(res.places.includes('New Zealand'))
   assert(!res.places.some(p => /['’]s/i.test(p)))
 })
+
+test('entityParser preserves hyphenated names', () => {
+  const input = 'Jean-Luc Picard met Jean-Luc Picard'
+  const res = entityParser(input, { first: [], last: [] }, () => 2000)
+  assert(res.people.includes('Jean-Luc Picard'))
+})

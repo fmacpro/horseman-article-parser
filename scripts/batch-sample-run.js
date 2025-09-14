@@ -118,7 +118,7 @@ export function buildOptions(url, timeoutMs, base = {}) {
   return {
     url,
     timeoutMs,
-    enabled: ['links','sentiment','entities','spelling','keywords','siteicon'],
+    enabled: ['links','sentiment','entities','spelling','keywords','siteicon','readability'],
     blockedResourceTypes: base.blockedResourceTypes || ['media','font','stylesheet'],
     noInterception: !!base.noInterception,
     puppeteer: {
@@ -195,7 +195,7 @@ export async function runOne(url, tweaks, timeoutMs = 20000, quiet = true) {
     const words = raw ? raw.trim().split(/\s+/).filter(Boolean).length : 0
     const links = Array.isArray(a1?.links) ? a1.links.length : 0
     const source = /\bamp(=1|\.[a-z]+)?$/i.test(String(a1?.url || '')) ? 'amp' : 'dynamic'
-    if (size > 0) return { ok: true, url, finalUrl: a1?.url || rewritten, dt, size, words, links, source, attempt: 'base' }
+    if (size > 0) return { ok: true, url, finalUrl: a1?.url || rewritten, dt, size, words, links, source, readability: a1?.readability, attempt: 'base' }
     attempts.push({ step: 'base', size })
     lastErr = new Error('no_content')
   } catch (e1) { lastErr = e1; attempts.push({ step: 'base', error: String(e1?.message || e1) }) }
@@ -209,7 +209,7 @@ export async function runOne(url, tweaks, timeoutMs = 20000, quiet = true) {
     const words = raw ? raw.trim().split(/\s+/).filter(Boolean).length : 0
     const links = Array.isArray(a2?.links) ? a2.links.length : 0
     const source = /\bamp(=1|\.[a-z]+)?$/i.test(String(a2?.url || '')) ? 'amp' : 'dynamic'
-    if (size > 0) return { ok: true, url, finalUrl: a2?.url || rewritten, dt, size, words, links, source, attempt: 'no-intercept' }
+    if (size > 0) return { ok: true, url, finalUrl: a2?.url || rewritten, dt, size, words, links, source, readability: a2?.readability, attempt: 'no-intercept' }
     attempts.push({ step: 'no-intercept', size })
     lastErr = new Error('no_content')
   } catch (e2) { lastErr = e2; attempts.push({ step: 'no-intercept', error: String(e2?.message || e2) }) }
@@ -223,7 +223,7 @@ export async function runOne(url, tweaks, timeoutMs = 20000, quiet = true) {
     const words = raw ? raw.trim().split(/\s+/).filter(Boolean).length : 0
     const links = Array.isArray(a3?.links) ? a3.links.length : 0
     const source = /\bamp(=1|\.[a-z]+)?$/i.test(String(a3?.url || '')) ? 'amp' : 'dynamic'
-    if (size > 0) return { ok: true, url, finalUrl: a3?.url || rewritten, dt, size, words, links, source, attempt: 'no-js' }
+    if (size > 0) return { ok: true, url, finalUrl: a3?.url || rewritten, dt, size, words, links, source, readability: a3?.readability, attempt: 'no-js' }
     attempts.push({ step: 'no-js', size })
     lastErr = new Error('no_content')
   } catch (e3) { lastErr = e3; attempts.push({ step: 'no-js', error: String(e3?.message || e3) }) }
@@ -239,7 +239,7 @@ export async function runOne(url, tweaks, timeoutMs = 20000, quiet = true) {
       const size = raw.length
       const words = raw ? raw.trim().split(/\s+/).filter(Boolean).length : 0
       const links = Array.isArray(a4?.links) ? a4.links.length : 0
-      if (size > 0) return { ok: true, url, finalUrl: a4?.url || amp, dt, size, words, links, source: 'amp', attempt: 'amp-direct' }
+      if (size > 0) return { ok: true, url, finalUrl: a4?.url || amp, dt, size, words, links, source: 'amp', readability: a4?.readability, attempt: 'amp-direct' }
       attempts.push({ step: 'amp-direct', size })
       lastErr = new Error('no_content')
     } catch (e4) { lastErr = e4; attempts.push({ step: 'amp-direct', error: String(e4?.message || e4) }) }
