@@ -19,7 +19,7 @@ import logger from './controllers/logger.js'
 import { autoDismissConsent, injectTcfApi, removeConsentArtifacts, removeAmpConsent, clearViewportObstructions, injectConsentNuke, injectConsentNukeEarly } from './controllers/consent.js'
 import { buildLiveBlogSummary } from './controllers/liveBlog.js'
 import { buildSummary } from './controllers/summary.js'
-import { getRawText, getFormattedText, getHtmlText, htmlCleaner, stripNonArticleElements } from './controllers/textProcessing.js'
+import { getRawText, getFormattedText, getHtmlText, htmlCleaner, stripNonArticleElements, sanitizeArticleContent } from './controllers/textProcessing.js'
 import { sanitizeDataUrl } from './controllers/utils.js'
 import { safeAwait, sleep } from './controllers/async.js'
 import { timeLeftFactory, waitForFrameStability, navigateWithFallback } from './controllers/navigation.js'
@@ -940,6 +940,13 @@ log('analyze', 'Evaluating meta tags')
 
     }
 
+  }
+
+  // Sanitize article body before absolutifying links
+  try {
+    content = sanitizeArticleContent(content)
+  } catch {
+    // ignore sanitization failures and fall back to original content
   }
 
   // Turn relative links into absolute links & assign processed html

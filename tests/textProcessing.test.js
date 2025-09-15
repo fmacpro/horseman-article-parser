@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'fs'
-import { getRawText, getFormattedText, getHtmlText, htmlCleaner, stripNonArticleElements } from '../controllers/textProcessing.js'
+import { getRawText, getFormattedText, getHtmlText, htmlCleaner, stripNonArticleElements, sanitizeArticleContent } from '../controllers/textProcessing.js'
 
 test('getRawText strips URLs', () => {
   const html = '<p>Visit <a href="http://example.com">http://example.com</a></p>'
@@ -83,4 +83,38 @@ test('stripNonArticleElements drops recirculation link lists', () => {
   assert.ok(sanitized.includes('Main body continues'))
   assert.ok(!sanitized.includes('Story One'))
   assert.ok(!sanitized.includes('Story Two'))
+})
+
+test('sanitizeArticleContent unwraps linked figures and removes captions', () => {
+  const html = `
+    <article>
+      <figure class="wp-caption">
+        <a href="/gallery"><picture><img src="/image.jpg" alt="desc" /></picture></a>
+        <figcaption>Image caption text</figcaption>
+      </figure>
+      <p>Paragraph after image.</p>
+    </article>
+  `
+  const sanitized = sanitizeArticleContent(html)
+  assert.ok(/<img[^>]*src="\/image\.jpg"/.test(sanitized))
+  assert.ok(!/<a\b/i.test(sanitized))
+  assert.ok(!sanitized.includes('figcaption'))
+  assert.ok(!sanitized.includes('Image caption text'))
+  assert.ok(/<img[^>]*>\s*<p>Paragraph after image\./.test(sanitized))
+})
+
+test('sanitizeArticleContent removes CTA containers but keeps tabular data', () => {
+  const html = `
+    <div class="newsletter-signup">
+      <p>Subscribe now for updates</p>
+    </div>
+    <table>
+      <tr><th>Item</th><th>Value</th></tr>
+      <tr><td>Foo</td><td>42</td></tr>
+    </table>
+  `
+  const sanitized = sanitizeArticleContent(html)
+  assert.ok(!sanitized.includes('Subscribe now for updates'))
+  assert.ok(sanitized.includes('<table'))
+  assert.ok(sanitized.includes('<td>Foo</td>'))
 })
