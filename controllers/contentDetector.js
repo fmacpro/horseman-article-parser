@@ -296,42 +296,21 @@ function findBestPreferredDescendant(root, options = {}) {
   return (valid || heavy) ? best : null
 }
 
-// Heuristic: If content paragraphs are split across multiple sibling containers within
-// a higher-level container (e.g., ARTICLE), prefer that parent container to avoid fragmenting
-// the article body selection.
-function findFragmentedAncestor(node, options = {}, document) {
-  if (!node || !document) return null
-  const minLen = (options.contentDetection && options.contentDetection.minLength) || 400
-  const maxLD = (options.contentDetection && options.contentDetection.maxLinkDensity) || 0.5
-  const fragCfg = (options.contentDetection && options.contentDetection.fragment) || {}
-  const cfgMinParts = Number.isFinite(fragCfg.minParts) ? fragCfg.minParts : 2
-  const cfgMinChildChars = Number.isFinite(fragCfg.minChildChars) ? fragCfg.minChildChars : 150
-  const cfgMinCombinedChars = Number.isFinite(fragCfg.minCombinedChars) ? fragCfg.minCombinedChars : Math.max(minLen, 400)
-  const cfgMaxLD = (fragCfg.maxLinkDensity != null && Number.isFinite(fragCfg.maxLinkDensity))
-    ? fragCfg.maxLinkDensity
-    : Math.max(maxLD, 0.65)
-  const CONTAINERS = new Set(['ARTICLE','SECTION','MAIN'])
-  let cur = node
-  while (cur && cur.parentElement) {
-    if (CONTAINERS.has(cur.tagName)) {
-      const children = Array.from(cur.children || [])
-      const parts = children.filter(c => {
-        try { return paragraphCount(c) >= 1 && getText(c).length >= cfgMinChildChars } catch { return false }
-      })
-      const totalText = getText(cur).length
-      const partsText = parts.reduce((acc, c) => acc + getText(c).length, 0)
-      const ld = linkDensity(cur)
-      if (parts.length >= cfgMinParts && partsText >= Math.min(totalText, cfgMinCombinedChars) && ld <= cfgMaxLD) {
-        return cur
-      }
-    }
-    cur = cur.parentElement
+function evaluateFragmentation(node, options = {}) {
+  const result = {
+    qualifies: false,
+    parts: [],
+    partsText: 0,
+    totalText: 0,
+    effectiveTotal: 0,
+    ratio: 0,
+    linkDensity: 0
   }
-  return null
-}
+  if (!node || !node.children || !node.children.length) return result
 
-function isFragmentedNode(node, options = {}) {
-  if (!node || !node.children) return false
+  const tagName = (node.tagName || '').toUpperCase()
+  if (!tagName || tagName === 'HTML' || tagName === 'BODY') return result
+
   const minLen = (options.contentDetection && options.contentDetection.minLength) || 400
   const maxLD = (options.contentDetection && options.contentDetection.maxLinkDensity) || 0.5
   const fragCfg = (options.contentDetection && options.contentDetection.fragment) || {}
@@ -344,8 +323,6 @@ function isFragmentedNode(node, options = {}) {
     ? fragCfg.maxLinkDensity
     : Math.max(maxLD, 0.65)
 
-  const parts = []
-  let partsText = 0
   for (const child of Array.from(node.children || [])) {
     if (!child || child.nodeType !== 1) continue
     let textLen = 0
@@ -353,22 +330,76 @@ function isFragmentedNode(node, options = {}) {
     if (textLen < cfgMinChildChars) continue
     const paras = paragraphCount(child)
     if (paras < 1) continue
-    parts.push({ child, textLen, paras })
-    partsText += textLen
+    result.parts.push({ child, textLen, paras })
+    result.partsText += textLen
   }
-  if (parts.length < cfgMinParts) return false
+
+  if (result.parts.length < cfgMinParts) return result
+
   let totalText = 0
   try { totalText = getText(node).length } catch { totalText = 0 }
-  const effectiveTotal = totalText > 0 ? totalText : partsText
-  if (partsText < Math.min(effectiveTotal, cfgMinCombinedChars)) return false
-  const sorted = parts.slice().sort((a, b) => (b.textLen || 0) - (a.textLen || 0))
+  result.totalText = totalText
+  const effectiveTotal = totalText > 0 ? totalText : result.partsText
+  result.effectiveTotal = effectiveTotal
+  if (result.partsText < Math.min(effectiveTotal, cfgMinCombinedChars)) return result
+
+  const sorted = result.parts.slice().sort((a, b) => (b.textLen || 0) - (a.textLen || 0))
   const largest = sorted[0] ? sorted[0].textLen : 0
-  const rest = Math.max(0, partsText - largest)
-  const ratio = partsText > 0 ? rest / partsText : 0
-  if (ratio < 0.35) return false
+  const rest = Math.max(0, result.partsText - largest)
+  const ratio = result.partsText > 0 ? rest / result.partsText : 0
+  result.ratio = ratio
+  if (ratio < 0.35) return result
+
   const ld = linkDensity(node)
-  if (ld > cfgMaxLD) return false
-  return true
+  result.linkDensity = ld
+  if (ld > cfgMaxLD) return result
+
+  result.qualifies = true
+  return result
+}
+
+// Heuristic: If content paragraphs are split across multiple sibling containers within
+// a higher-level container (e.g., ARTICLE), prefer that parent container to avoid fragmenting
+// the article body selection.
+function findFragmentedAncestor(node, options = {}, document) {
+  if (!node || !document) return null
+  const origin = node
+  const maxDepth = 12
+  let cur = node
+  for (let depth = 0; cur && cur.parentElement && depth < maxDepth; depth++) {
+    const parent = cur.parentElement
+    if (!parent) break
+    const analysis = evaluateFragmentation(parent, options)
+    if (analysis.qualifies) {
+      const includesOrigin = analysis.parts.some(part => {
+        try { return part.child && part.child.contains(origin) } catch { return false }
+      })
+      if (includesOrigin) return parent
+    }
+    cur = parent
+  }
+
+  const CONTAINERS = new Set(['ARTICLE','SECTION','MAIN'])
+  cur = node
+  while (cur && cur.parentElement) {
+    if (CONTAINERS.has(cur.tagName)) {
+      const analysis = evaluateFragmentation(cur, options)
+      if (analysis.qualifies) {
+        const includesOrigin = analysis.parts.some(part => {
+          try { return part.child && part.child.contains(origin) } catch { return false }
+        })
+        if (includesOrigin) return cur
+      }
+    }
+    cur = cur.parentElement
+  }
+  return null
+}
+
+function isFragmentedNode(node, options = {}) {
+  if (!node || !node.children) return false
+  const analysis = evaluateFragmentation(node, options)
+  return analysis.qualifies
 }
 
 function preferDirectParagraphContainer(node, options = {}) {
