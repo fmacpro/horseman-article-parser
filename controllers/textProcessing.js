@@ -9,7 +9,7 @@ const CTA_ATTR_KEYWORDS = [
   'related', 'recirc', 'recirculation', 'readmore', 'read-more', 'readnext', 'read-next', 'mostread', 'most-read',
   'mostpopular', 'most-popular', 'popular', 'trending', 'recommended', 'recommendation', 'outbrain', 'taboola',
   'share', 'social', 'follow', 'followus', 'follow-us', 'follow_btn', 'email-signup', 'email_signup', 'optin', 'opt-in',
-  'marketing', 'commerce', 'partner-link', 'affiliate'
+  'marketing', 'commerce', 'partner-link', 'affiliate', 'byline-block', 'metadata-block', 'topic-list'
 ]
 
 const CTA_TEXT_KEYWORDS = [
@@ -21,12 +21,13 @@ const CTA_TEXT_KEYWORDS = [
   'paid post', 'promo code'
 ]
 
-const ALWAYS_REMOVE_TAGS = new Set(['NAV', 'FOOTER'])
 const CAPTION_ATTR_KEYWORDS = [
   'caption', 'captiontext', 'caption-text', 'captioned', 'photo-caption', 'photocaption',
   'imagecaption', 'image-caption', 'caption-wrapper', 'credit', 'photo-credit', 'image-credit',
   'img-credit', 'photographer', 'photo_by', 'photo-by'
 ]
+
+const ALWAYS_REMOVE_TAGS = new Set(['NAV', 'FOOTER'])
 
 const sentenceSplitter = /[.!?]+/g
 
