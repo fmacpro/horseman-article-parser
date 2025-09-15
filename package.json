@@ -1,6 +1,6 @@
 {
   "name": "horseman-article-parser",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Web Page Inspection Tool. Sentiment Analysis, Keyword Extraction, Named Entity Recognition & Spell Check",
   "type": "module",
   "main": "index.js",
@@ -12,8 +12,7 @@
     "sample:single": "node scripts/single-sample-run.js",
     "sample:batch": "node scripts/batch-sample-run.js",
     "batch:crawl": "node scripts/batch-crawl.js",
-    "train:ranker": "node scripts/train-reranker.js",
-    "docs": "jsdoc2md index.js controllers/*.js helpers.js > APIDOC.md"
+    "train:ranker": "node scripts/train-reranker.js"
   },
   "repository": {
     "type": "git",
@@ -64,8 +63,7 @@
     "eslint-plugin-json": "^4.0.1",
     "eslint-plugin-n": "^17.21.3",
     "eslint-plugin-promise": "^7.2.1",
-    "jpeg-js": "^0.4.4",
-    "jsdoc-to-markdown": "^8.0.0"
+    "jpeg-js": "^0.4.4"
   },
   "overrides": {
     "puppeteer-extra-plugin-user-data-dir": "file:overrides/puppeteer-extra-plugin-user-data-dir"

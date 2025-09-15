@@ -19,7 +19,7 @@ import logger from './controllers/logger.js'
 import { autoDismissConsent, injectTcfApi, removeConsentArtifacts, removeAmpConsent, clearViewportObstructions, injectConsentNuke, injectConsentNukeEarly } from './controllers/consent.js'
 import { buildLiveBlogSummary } from './controllers/liveBlog.js'
 import { buildSummary } from './controllers/summary.js'
-import { getRawText, getFormattedText, getHtmlText, htmlCleaner } from './controllers/textProcessing.js'
+import { getRawText, getFormattedText, getHtmlText, htmlCleaner, stripNonArticleElements, sanitizeArticleContent } from './controllers/textProcessing.js'
 import { sanitizeDataUrl } from './controllers/utils.js'
 import { safeAwait, sleep } from './controllers/async.js'
 import { timeLeftFactory, waitForFrameStability, navigateWithFallback } from './controllers/navigation.js'
@@ -942,6 +942,13 @@ log('analyze', 'Evaluating meta tags')
 
   }
 
+  // Sanitize article body before absolutifying links
+  try {
+    content = sanitizeArticleContent(content)
+  } catch {
+    // ignore sanitization failures and fall back to original content
+  }
+
   // Turn relative links into absolute links & assign processed html
   article.processed.html = await absolutify(content, article.baseurl)
 
@@ -980,11 +987,22 @@ log('analyze', 'Evaluating meta tags')
 
   // Raw Text (text prepared for keyword analysis & named entity recongnition)
   article.processed.text.raw = await getRawText(article.processed.html)
+  let analysisInput = ''
+  try {
+    const sanitizedHtml = stripNonArticleElements(article.processed.html)
+    analysisInput = await getRawText(sanitizedHtml)
+  } catch {
+    analysisInput = ''
+  }
   const capForNlp = 20000
   let nlpInput = article.processed.text.raw
+  if (!analysisInput) analysisInput = nlpInput
   if (nlpInput.length > capForNlp) {
     nlpInput = nlpInput.slice(0, capForNlp)
     log('nlp', 'cap input', { chars: capForNlp })
+  }
+  if (analysisInput.length > capForNlp) {
+    analysisInput = analysisInput.slice(0, capForNlp)
   }
 
   try {
@@ -1174,7 +1192,7 @@ log('analyze', 'Evaluating meta tags')
     article.processed.text.summary = summaryText
     article.processed.text.sentences = sentences
   }
-  const cleanNlpInput = stripPunctuation(nlpInput)
+  const cleanAnalysisInput = stripPunctuation(analysisInput)
   // Prepare parallel analysis tasks
   const analysisTasks = []
 
@@ -1210,7 +1228,7 @@ log('analyze', 'Evaluating meta tags')
       try {
         log('analyze', 'Extracting named entities')
         if (timeLeft() < 1200) { log('analyze', 'Skipping NER due to low budget'); return }
-        const entities = entityParser(cleanNlpInput, pluginHints, timeLeft)
+        const entities = entityParser(cleanAnalysisInput, pluginHints, timeLeft)
         Object.assign(article, entities)
         try {
           const pc = Array.isArray(article.people) ? article.people.length : 0
@@ -1286,7 +1304,7 @@ log('analyze', 'Evaluating meta tags')
       if (timeLeft() > 500) jobs.push(keywordParser(article.title.text, options.retextkeywords).then(r => Object.assign(article.title, r)).catch(() => {}))
       if (timeLeft() > 500) jobs.push(keywordParser(article.meta.description.text, options.retextkeywords).then(r => Object.assign(article.meta.description, r)).catch(() => {}))
       if (timeLeft() > 600) jobs.push(
-          keywordParser(cleanNlpInput, options.retextkeywords).then(kw => {
+          keywordParser(cleanAnalysisInput, options.retextkeywords).then(kw => {
             Object.assign(article.processed, kw)
             try {
               const kc = Array.isArray(kw.keywords) ? kw.keywords.length : 0

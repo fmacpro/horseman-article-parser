@@ -394,8 +394,6 @@ Horseman automatically detects the article language and exposes ISO codes via `a
 
 Please feel free to fork the repo or open pull requests to the development branch. I've used [eslint](https://eslint.org/) for linting.
 
-[Module API Docs](https://github.com/fmacpro/horseman-article-parser/blob/development/APIDOC.md)
-
 Build the dependencies with:
 
 ```
@@ -432,8 +430,6 @@ Run quick tests and batches from this repo without writing code.
   - `npm run batch:crawl -- --urls-file scripts/data/urls.txt --out-file scripts/data/candidates_with_url.csv --start 0 --limit 200 --concurrency 1 --unique-hosts --progress-only`
 - train:ranker: Train reranker weights from a candidates CSV.
   - `npm run train:ranker -- <candidatesCsv>`
-- docs: Generate API docs to `APIDOC.md`.
-  - `npm run docs`
 
 ### Common arguments
 
