@@ -330,6 +330,115 @@ function findFragmentedAncestor(node, options = {}, document) {
   return null
 }
 
+function isFragmentedNode(node, options = {}) {
+  if (!node || !node.children) return false
+  const minLen = (options.contentDetection && options.contentDetection.minLength) || 400
+  const maxLD = (options.contentDetection && options.contentDetection.maxLinkDensity) || 0.5
+  const fragCfg = (options.contentDetection && options.contentDetection.fragment) || {}
+  const cfgMinParts = Number.isFinite(fragCfg.minParts) ? fragCfg.minParts : 2
+  const cfgMinChildChars = Number.isFinite(fragCfg.minChildChars) ? fragCfg.minChildChars : 150
+  const cfgMinCombinedChars = Number.isFinite(fragCfg.minCombinedChars)
+    ? fragCfg.minCombinedChars
+    : Math.max(minLen, 400)
+  const cfgMaxLD = (fragCfg.maxLinkDensity != null && Number.isFinite(fragCfg.maxLinkDensity))
+    ? fragCfg.maxLinkDensity
+    : Math.max(maxLD, 0.65)
+
+  const parts = []
+  let partsText = 0
+  for (const child of Array.from(node.children || [])) {
+    if (!child || child.nodeType !== 1) continue
+    let textLen = 0
+    try { textLen = getText(child).length } catch { textLen = 0 }
+    if (textLen < cfgMinChildChars) continue
+    const paras = paragraphCount(child)
+    if (paras < 1) continue
+    parts.push({ child, textLen, paras })
+    partsText += textLen
+  }
+  if (parts.length < cfgMinParts) return false
+  let totalText = 0
+  try { totalText = getText(node).length } catch { totalText = 0 }
+  const effectiveTotal = totalText > 0 ? totalText : partsText
+  if (partsText < Math.min(effectiveTotal, cfgMinCombinedChars)) return false
+  const sorted = parts.slice().sort((a, b) => (b.textLen || 0) - (a.textLen || 0))
+  const largest = sorted[0] ? sorted[0].textLen : 0
+  const rest = Math.max(0, partsText - largest)
+  const ratio = partsText > 0 ? rest / partsText : 0
+  if (ratio < 0.35) return false
+  const ld = linkDensity(node)
+  if (ld > cfgMaxLD) return false
+  return true
+}
+
+function preferDirectParagraphContainer(node, options = {}) {
+  if (!node || !node.children) return node
+  const maxLD = (options.contentDetection && options.contentDetection.maxLinkDensity) || 0.5
+  const fragCfg = (options.contentDetection && options.contentDetection.fragment) || {}
+  const cfgMinChildChars = Number.isFinite(fragCfg.minChildChars) ? fragCfg.minChildChars : 150
+  const visited = new Set()
+  let current = node
+  let fallback = containsSemantic(node) ? node : null
+  const maxSteps = 8
+
+  for (let depth = 0; depth < maxSteps; depth++) {
+    if (!current || visited.has(current)) break
+    visited.add(current)
+
+    if (containsSemantic(current)) fallback = current
+
+    const directP = countDirect(current, 'p')
+    if (directP >= 1) return current
+
+    if (!current.children || !current.children.length) break
+
+    if (isFragmentedNode(current, options)) break
+
+    const children = Array.from(current.children).filter(c => c && c.nodeType === 1)
+    if (!children.length) break
+
+    let totalText = 0
+    try { totalText = getText(current).length } catch { totalText = 0 }
+    const totalParas = paragraphCount(current)
+
+    const candidates = []
+    for (const child of children) {
+      let textLen = 0
+      try { textLen = getText(child).length } catch { textLen = 0 }
+      if (textLen < cfgMinChildChars) continue
+      const paras = paragraphCount(child)
+      if (paras < 1) continue
+      const ld = linkDensity(child)
+      if (ld > Math.max(maxLD, 0.7)) continue
+      candidates.push({ child, textLen, paras, ld, directP: countDirect(child, 'p') })
+    }
+
+    if (!candidates.length) break
+
+    candidates.sort((a, b) => (b.textLen || 0) - (a.textLen || 0))
+    const best = candidates[0]
+    const bestLenRatio = totalText > 0 ? best.textLen / totalText : 1
+    const bestParaRatio = totalParas > 0 ? best.paras / totalParas : (best.paras > 0 ? 1 : 0)
+
+    if (bestLenRatio < 0.45 && bestParaRatio < 0.7 && best.directP === 0) break
+
+    const second = candidates[1]
+    if (second) {
+      const secondLenRatio = totalText > 0 ? second.textLen / totalText : 0
+      if (secondLenRatio >= 0.35) break
+    }
+
+    if (isFragmentedNode(best.child, options)) break
+
+    if (containsSemantic(best.child)) fallback = best.child
+
+    current = best.child
+  }
+
+  if (countDirect(current, 'p') >= 1) return current
+  return fallback || current
+}
+
 function getXPath(node) {
   try {
     if (!node || !node.ownerDocument) return ''
@@ -674,6 +783,20 @@ export function detectContent(document, options = {}, seeds = {}) {
       }
     }
   }
+
+  // Prefer a direct paragraph container when available, while preserving fragmented articles.
+  try {
+    if (selected && selected.el) {
+      const refinedDirect = preferDirectParagraphContainer(selected.el, options)
+      if (refinedDirect && refinedDirect !== selected.el) {
+        const cleanDirect = stripBadContainers(refinedDirect)
+        if (cleanDirect && cleanDirect.innerHTML && cleanDirect.innerHTML.trim().length > 0) {
+          html = cleanDirect.innerHTML
+          selected = { el: refinedDirect }
+        }
+      }
+    }
+  } catch { /* ignore */ }
 
   // Descendant promotion: if selection is BODY, but BODY contains a strong
   // preferred content descendant, promote to that descendant.
