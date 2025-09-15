@@ -22,6 +22,11 @@ const CTA_TEXT_KEYWORDS = [
 ]
 
 const ALWAYS_REMOVE_TAGS = new Set(['NAV', 'FOOTER'])
+const CAPTION_ATTR_KEYWORDS = [
+  'caption', 'captiontext', 'caption-text', 'captioned', 'photo-caption', 'photocaption',
+  'imagecaption', 'image-caption', 'caption-wrapper', 'credit', 'photo-credit', 'image-credit',
+  'img-credit', 'photographer', 'photo_by', 'photo-by'
+]
 
 const sentenceSplitter = /[.!?]+/g
 
@@ -78,6 +83,231 @@ function collectAttributeSignals (node) {
     }
   } catch {}
   return signals.join(' ').toLowerCase()
+}
+
+function hasImageDescendant (node) {
+  if (!node || typeof node.querySelector !== 'function') return false
+  try {
+    return node.querySelector('img') !== null
+  } catch {}
+  return false
+}
+
+function isCaptionNode (node) {
+  if (!node || !node.tagName) return false
+  const tag = node.tagName.toUpperCase()
+  if (tag === 'FIGCAPTION') return true
+  if (tag === 'FIGURE') return false
+  const signals = collectAttributeSignals(node)
+  if (!signals) return false
+  for (const keyword of CAPTION_ATTR_KEYWORDS) {
+    if (!signals.includes(keyword)) continue
+    if (node.closest && typeof node.closest === 'function') {
+      try { if (node.closest('figure')) return true } catch {}
+    }
+    if (hasImageDescendant(node)) return true
+    const parent = node.parentElement
+    if (parent && hasImageDescendant(parent)) return true
+    const prev = node.previousElementSibling
+    if (prev && prev.tagName === 'IMG') return true
+    const next = node.nextElementSibling
+    if (next && next.tagName === 'IMG') return true
+  }
+  return false
+}
+
+function unwrapNodePreservingChildren (node) {
+  if (!node || !node.parentNode) return
+  const parent = node.parentNode
+  while (node.firstChild) {
+    parent.insertBefore(node.firstChild, node)
+  }
+  parent.removeChild(node)
+}
+
+function unwrapImagesInRoot (root, NodeFilter, { removeNode, preserveImages }) {
+  if (!root || typeof root.querySelectorAll !== 'function') return
+  const removable = []
+  const walker = root.ownerDocument?.createTreeWalker
+    ? root.ownerDocument.createTreeWalker(root, NodeFilter?.SHOW_ELEMENT || 1)
+    : null
+  if (walker) {
+    while (walker.nextNode()) {
+      const node = walker.currentNode
+      if (!node || node === root) continue
+      if (isCaptionNode(node)) removable.push(node)
+    }
+  }
+  for (const node of removable) removeNode(node)
+
+  for (const picture of Array.from(root.querySelectorAll('picture'))) {
+    const img = picture.querySelector('img')
+    if (img && picture.parentNode) {
+      picture.parentNode.insertBefore(img, picture)
+    }
+    removeNode(picture)
+  }
+
+  for (const anchor of Array.from(root.querySelectorAll('a'))) {
+    if (!anchor.parentNode) continue
+    if (!hasImageDescendant(anchor)) continue
+    if (hasMeaningfulText(anchor)) continue
+    unwrapNodePreservingChildren(anchor)
+  }
+
+  for (const img of Array.from(root.querySelectorAll('img'))) {
+    let parent = img.parentElement
+    while (parent && parent !== root && parent.children.length === 1 && !hasMeaningfulText(parent)) {
+      const grand = parent.parentNode
+      if (!grand) break
+      grand.insertBefore(img, parent)
+      removeNode(parent)
+      parent = img.parentElement
+    }
+  }
+
+  if (preserveImages) {
+    const nodes = []
+    const walker2 = root.ownerDocument?.createTreeWalker
+      ? root.ownerDocument.createTreeWalker(root, NodeFilter?.SHOW_ELEMENT || 1)
+      : null
+    if (walker2) {
+      while (walker2.nextNode()) nodes.push(walker2.currentNode)
+      nodes.sort((a, b) => nodeDepth(b) - nodeDepth(a))
+      for (const node of nodes) {
+        if (!node || node === root || !node.parentNode) continue
+        if (node.tagName === 'IMG') continue
+        const children = Array.from(node.children || [])
+        if (children.length === 0 && !hasMeaningfulText(node)) {
+          removeNode(node)
+          continue
+        }
+        if (!hasMeaningfulText(node)) {
+          const hasImgChild = children.some(child => child.tagName === 'IMG')
+          if (hasImgChild) {
+            unwrapNodePreservingChildren(node)
+          }
+        }
+      }
+    }
+  }
+}
+
+function transformArticleHtml (html, transformOptions = {}) {
+  if (typeof html !== 'string' || !html.trim()) return typeof html === 'string' ? html : ''
+  let dom
+  try {
+    dom = new JSDOM(`<body>${html}</body>`)
+  } catch {
+    try {
+      dom = new JSDOM(html)
+    } catch {
+      return html
+    }
+  }
+  const { document, NodeFilter } = dom.window
+  const root = document.body || document.documentElement
+  if (!root) {
+    dom.window.close()
+    return html
+  }
+
+  const options = {
+    preserveImages: false,
+    unwrapImages: false,
+    ...transformOptions
+  }
+
+  const removeNode = (node) => {
+    if (node && node.parentNode) {
+      node.parentNode.removeChild(node)
+    }
+  }
+
+  const staticSelectors = [
+    'script', 'style', 'noscript', 'template', 'iframe', 'canvas', 'svg',
+    'video', 'audio', 'track', 'map', 'object', 'embed'
+  ]
+  if (!options.preserveImages) {
+    staticSelectors.push('picture', 'source')
+  }
+  for (const sel of staticSelectors) {
+    for (const node of Array.from(root.querySelectorAll(sel))) removeNode(node)
+  }
+
+  const interactiveSelectors = [
+    'form', 'button', 'input', 'select', 'textarea', 'label', 'details', 'summary', 'dialog'
+  ]
+  for (const sel of interactiveSelectors) {
+    for (const node of Array.from(root.querySelectorAll(sel))) removeNode(node)
+  }
+
+  for (const node of Array.from(root.querySelectorAll('[role="button"], [role="link"], [role="menu"], [role="dialog"]'))) {
+    removeNode(node)
+  }
+
+  for (const anchor of Array.from(root.querySelectorAll('a'))) {
+    if (options.preserveImages) {
+      if (!anchor.parentNode) continue
+      if (hasImageDescendant(anchor) && !hasMeaningfulText(anchor)) {
+        unwrapNodePreservingChildren(anchor)
+        continue
+      }
+    }
+    if (!hasMeaningfulText(anchor)) removeNode(anchor)
+  }
+
+  for (const li of Array.from(root.querySelectorAll('li'))) {
+    if (!hasMeaningfulText(li)) removeNode(li)
+  }
+
+  if (!options.preserveImages) {
+    for (const figure of Array.from(root.querySelectorAll('figure'))) {
+      const caption = figure.querySelector('figcaption')
+      if (caption && !hasMeaningfulText(caption)) removeNode(caption)
+      if (!hasMeaningfulText(figure)) removeNode(figure)
+    }
+  }
+
+  const nodes = []
+  const walker = document.createTreeWalker(root, NodeFilter?.SHOW_ELEMENT || 1)
+  while (walker.nextNode()) nodes.push(walker.currentNode)
+  nodes.sort((a, b) => nodeDepth(b) - nodeDepth(a))
+
+  for (const node of nodes) {
+    if (!node || !node.parentNode) continue
+    if (node === root) continue
+    const tag = node.tagName
+    if (ALWAYS_REMOVE_TAGS.has(tag)) {
+      removeNode(node)
+      continue
+    }
+    if (options.preserveImages && tag === 'IMG') {
+      continue
+    }
+    const text = getMeaningfulText(node)
+    if (!text) {
+      if (options.preserveImages && hasImageDescendant(node)) continue
+      removeNode(node)
+      continue
+    }
+    const textLen = text.length
+    if (shouldRemoveByAttributes(node, textLen)) {
+      removeNode(node)
+      continue
+    }
+    if (shouldRemoveByText(node, text)) {
+      removeNode(node)
+    }
+  }
+
+  if (options.unwrapImages) {
+    unwrapImagesInRoot(root, NodeFilter, { removeNode, preserveImages: options.preserveImages })
+  }
+
+  const cleaned = root.innerHTML
+  dom.window.close()
+  return cleaned
 }
 
 function shouldRemoveByAttributes (node, textLen) {
@@ -205,92 +435,9 @@ export function htmlCleaner (html, options = {
 }
 
 export function stripNonArticleElements (html) {
-  if (typeof html !== 'string' || !html.trim()) return typeof html === 'string' ? html : ''
-  let dom
-  try {
-    dom = new JSDOM(`<body>${html}</body>`)
-  } catch {
-    try {
-      dom = new JSDOM(html)
-    } catch {
-      return html
-    }
-  }
-  const { document, NodeFilter } = dom.window
-  const root = document.body || document.documentElement
-  if (!root) {
-    dom.window.close()
-    return html
-  }
+  return transformArticleHtml(html, { preserveImages: false, unwrapImages: false })
+}
 
-  const removeNode = (node) => {
-    if (node && node.parentNode) {
-      node.parentNode.removeChild(node)
-    }
-  }
-
-  const staticSelectors = [
-    'script', 'style', 'noscript', 'template', 'iframe', 'canvas', 'svg', 'picture', 'source',
-    'video', 'audio', 'track', 'map', 'object', 'embed'
-  ]
-  for (const sel of staticSelectors) {
-    for (const node of Array.from(root.querySelectorAll(sel))) removeNode(node)
-  }
-
-  const interactiveSelectors = [
-    'form', 'button', 'input', 'select', 'textarea', 'label', 'details', 'summary', 'dialog'
-  ]
-  for (const sel of interactiveSelectors) {
-    for (const node of Array.from(root.querySelectorAll(sel))) removeNode(node)
-  }
-
-  for (const node of Array.from(root.querySelectorAll('[role="button"], [role="link"], [role="menu"], [role="dialog"]'))) {
-    removeNode(node)
-  }
-
-  for (const anchor of Array.from(root.querySelectorAll('a'))) {
-    if (!hasMeaningfulText(anchor)) removeNode(anchor)
-  }
-
-  for (const li of Array.from(root.querySelectorAll('li'))) {
-    if (!hasMeaningfulText(li)) removeNode(li)
-  }
-
-  for (const figure of Array.from(root.querySelectorAll('figure'))) {
-    const caption = figure.querySelector('figcaption')
-    if (caption && !hasMeaningfulText(caption)) removeNode(caption)
-    if (!hasMeaningfulText(figure)) removeNode(figure)
-  }
-
-  const nodes = []
-  const walker = document.createTreeWalker(root, NodeFilter?.SHOW_ELEMENT || 1)
-  while (walker.nextNode()) nodes.push(walker.currentNode)
-  nodes.sort((a, b) => nodeDepth(b) - nodeDepth(a))
-
-  for (const node of nodes) {
-    if (!node || !node.parentNode) continue
-    if (node === root) continue
-    const tag = node.tagName
-    if (ALWAYS_REMOVE_TAGS.has(tag)) {
-      removeNode(node)
-      continue
-    }
-    const text = getMeaningfulText(node)
-    if (!text) {
-      removeNode(node)
-      continue
-    }
-    const textLen = text.length
-    if (shouldRemoveByAttributes(node, textLen)) {
-      removeNode(node)
-      continue
-    }
-    if (shouldRemoveByText(node, text)) {
-      removeNode(node)
-    }
-  }
-
-  const cleaned = root.innerHTML
-  dom.window.close()
-  return cleaned
+export function sanitizeArticleContent (html) {
+  return transformArticleHtml(html, { preserveImages: true, unwrapImages: true })
 }
