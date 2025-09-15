@@ -31,6 +31,49 @@ const ALWAYS_REMOVE_TAGS = new Set(['NAV', 'FOOTER'])
 
 const sentenceSplitter = /[.!?]+/g
 
+const INLINE_TAGS = new Set([
+  'A', 'ABBR', 'ACRONYM', 'B', 'CITE', 'CODE', 'DEL', 'EM', 'I', 'INS', 'KBD', 'LABEL', 'MARK', 'Q', 'S', 'SAMP', 'SMALL',
+  'SPAN', 'STRONG', 'SUB', 'SUP', 'TIME', 'U', 'VAR'
+])
+
+function isTextNode (node) {
+  return node?.nodeType === node?.ownerDocument?.defaultView?.Node?.TEXT_NODE || node?.nodeType === 3
+}
+
+function isWhitespaceText (node) {
+  return isTextNode(node) && !String(node.textContent || '').trim()
+}
+
+function isInlineNode (node) {
+  if (!node) return false
+  if (isTextNode(node)) return true
+  if (node.nodeType !== 1 || typeof node.tagName !== 'string') return false
+  return INLINE_TAGS.has(node.tagName.toUpperCase())
+}
+
+function startsWithWhitespaceNode (node) {
+  if (!node) return false
+  const text = String(node.textContent || '')
+  if (!text) return false
+  return /^\s/.test(text)
+}
+
+function endsWithWhitespaceNode (node) {
+  if (!node) return false
+  const text = String(node.textContent || '')
+  if (!text) return false
+  return /\s$/.test(text)
+}
+
+function shouldInsertSpaceBetween (left, right) {
+  if (!left || !right) return false
+  if (isWhitespaceText(left) || isWhitespaceText(right)) return false
+  if (!isInlineNode(left) || !isInlineNode(right)) return false
+  if (endsWithWhitespaceNode(left)) return false
+  if (startsWithWhitespaceNode(right)) return false
+  return true
+}
+
 function normalizeWhitespace (text) {
   return String(text || '')
     .replace(/\s+/g, ' ')
@@ -117,12 +160,34 @@ function isCaptionNode (node) {
   return false
 }
 
-function unwrapNodePreservingChildren (node) {
+export function unwrapNodePreservingChildren (node) {
   if (!node || !node.parentNode) return
   const parent = node.parentNode
-  while (node.firstChild) {
-    parent.insertBefore(node.firstChild, node)
+  const doc = parent.ownerDocument || node.ownerDocument || node?.document || null
+  const children = Array.from(node.childNodes || [])
+  const prev = node.previousSibling
+  const next = node.nextSibling
+
+  const firstContent = children.find(child => !isWhitespaceText(child)) || null
+  const beforeTarget = firstContent || next
+  if (doc && shouldInsertSpaceBetween(prev, beforeTarget)) {
+    parent.insertBefore(doc.createTextNode(' '), node)
+  } else if (!firstContent && doc && shouldInsertSpaceBetween(prev, next)) {
+    parent.insertBefore(doc.createTextNode(' '), node)
   }
+
+  for (const child of children) {
+    parent.insertBefore(child, node)
+  }
+
+  const lastInserted = children.length ? children[children.length - 1] : node.previousSibling
+  const afterTarget = node.nextSibling
+  if (doc && shouldInsertSpaceBetween(lastInserted, afterTarget)) {
+    parent.insertBefore(doc.createTextNode(' '), afterTarget)
+  } else if (!children.length && doc && shouldInsertSpaceBetween(prev, afterTarget)) {
+    parent.insertBefore(doc.createTextNode(' '), afterTarget)
+  }
+
   parent.removeChild(node)
 }
 
