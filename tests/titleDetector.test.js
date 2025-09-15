@@ -32,3 +32,10 @@ test('detectTitle preserves hyphenated words', () => {
   const { window } = new JSDOM(html)
   assert.equal(detectTitle(window.document), 'Far-right London rally')
 })
+
+test('detectTitle keeps subtitles separated by colon', () => {
+  const fullTitle = 'PM: I would never have appointed Mandelson had I known full Epstein links'
+  const html = `<head><title>${fullTitle}</title></head><body></body>`
+  const { window } = new JSDOM(html)
+  assert.equal(detectTitle(window.document), fullTitle)
+})
