@@ -167,6 +167,10 @@ function cleanNameCandidate (part) {
     .trim()
 }
 
+function escapeRegex (str) {
+  return String(str || '').replace(/[\\^$*+?.()|[\]{}]/g, '\\$&')
+}
+
 function startsWithLowercaseContinuation (text) {
   if (typeof text !== 'string') return false
   const trimmed = text.replace(LEADING_JUNK_PATTERN, '')
@@ -186,11 +190,84 @@ function hasSentenceBoundaryBeforeWord (rawSegment, lastWord, hintSets) {
   return true
 }
 
+function trimCommaDelimitedTail (words, context, hintSets) {
+  if (!Array.isArray(words) || words.length < 3) return words
+  if (typeof context !== 'string' || !context) return words
+  for (let split = words.length - 1; split >= 2; split--) {
+    const prefixWords = words.slice(0, split)
+    const suffixWords = words.slice(split)
+    if (!prefixWords.length || !suffixWords.length) continue
+    const prefix = prefixWords.join(' ')
+    const suffix = suffixWords.join(' ')
+    const pattern = new RegExp(`${escapeRegex(prefix)}\\s*,\\s*${escapeRegex(suffix)}`, 'u')
+    if (!pattern.test(context)) continue
+    let suspicious = true
+    for (const word of suffixWords) {
+      if (!word) continue
+      if (likelySuffix(word, hintSets) || INITIAL_NAME_PART_PATTERN.test(word)) {
+        suspicious = false
+        break
+      }
+      if (likelyFirst(word, hintSets) || likelyLast(word, hintSets)) {
+        suspicious = false
+        break
+      }
+    }
+    if (!suspicious) continue
+    return prefixWords
+  }
+  return words
+}
+
 function trimTrailingNonNameWords (words, rawSegment, followingText, hintSets) {
   if (!Array.isArray(words)) return []
   const trimmed = words.slice()
   const raw = typeof rawSegment === 'string' ? rawSegment : ''
   const follow = typeof followingText === 'string' ? followingText : ''
+  const rawHasComma = raw.includes(',')
+
+  if (trimmed.length >= 2 && rawHasComma) {
+    let workingRaw = raw
+    while (trimmed.length > 1) {
+      const match = workingRaw.match(/,([^,]*)$/)
+      if (!match) break
+      const preceding = workingRaw.slice(0, match.index)
+      const trailingPart = match[1]
+      const trailingWords = String(trailingPart || '')
+        .split(/[\s\u00A0]+/)
+        .map(cleanNameCandidate)
+        .filter(Boolean)
+      if (!trailingWords.length) {
+        workingRaw = preceding
+        continue
+      }
+      const trailingContainsName = trailingWords.some(word => {
+        if (!word) return false
+        if (likelyFirst(word, hintSets) || likelyLast(word, hintSets)) return true
+        if (likelySuffix(word, hintSets) || INITIAL_NAME_PART_PATTERN.test(word)) return true
+        return false
+      })
+      if (trailingContainsName) {
+        workingRaw = preceding
+        continue
+      }
+      let removal = 0
+      const maxRemovable = Math.max(0, trimmed.length - 1)
+      while (removal < trailingWords.length && removal < maxRemovable) {
+        const candidate = trimmed[trimmed.length - 1 - removal]
+        if (typeof candidate !== 'string') break
+        if (likelySuffix(candidate, hintSets) || INITIAL_NAME_PART_PATTERN.test(candidate)) {
+          removal = 0
+          break
+        }
+        removal++
+      }
+      if (removal === 0) break
+      trimmed.splice(trimmed.length - removal, removal)
+      workingRaw = preceding
+    }
+  }
+
   const hasLowercaseTail = startsWithLowercaseContinuation(follow)
   if (trimmed.length >= 2 && raw) {
     let removalIndex = null
@@ -755,7 +832,7 @@ function extractPeopleFromSecondary (data, minConfidence = 0) {
   return out
 }
 
-function maybeSplitPerson (entity, rawText, hintSets, secondaryMap) {
+function maybeSplitPerson (entity, rawText, hintSets, secondaryMap, fullContext) {
   const raw = typeof rawText === 'string' ? rawText : ''
   let fallback = raw.trim()
   if (!fallback && typeof entity?.text === 'string') fallback = entity.text.trim()
@@ -774,13 +851,15 @@ function maybeSplitPerson (entity, rawText, hintSets, secondaryMap) {
   }
   const canonicalWords = String(canonical || '').split(/\s+/).map(cleanNameCandidate).filter(Boolean)
   const canonicalContext = canonical === sanitizedFallback ? fallback : canonical
-  const trimmedCanonicalWords = trimTrailingNonNameWords(canonicalWords, canonicalContext, '', hintSets)
+  let trimmedCanonicalWords = trimTrailingNonNameWords(canonicalWords, canonicalContext, '', hintSets)
+  trimmedCanonicalWords = trimCommaDelimitedTail(trimmedCanonicalWords, fullContext, hintSets)
   const canonicalCandidate = trimmedCanonicalWords.join(' ')
   let fallbackWords = sanitizedFallback
     .split(/\s+/)
     .map(cleanNameCandidate)
     .filter(Boolean)
   fallbackWords = trimTrailingNonNameWords(fallbackWords, raw, '', hintSets)
+  fallbackWords = trimCommaDelimitedTail(fallbackWords, fullContext, hintSets)
   const fallbackCandidate = fallbackWords.join(' ')
   const safeCanonical = (canonicalCandidate || fallbackCandidate || sanitizedFallback || fallback).trim()
 
@@ -883,7 +962,7 @@ export default async function entityParser (nlpInput, pluginHints = DEFAULT_HINT
   const compromisePeople = doc.people().json().flatMap(p => {
     const text = entityToString(p)
     if (!text) return []
-    return maybeSplitPerson(p, text, hintSets, secondaryMap)
+    return maybeSplitPerson(p, text, hintSets, secondaryMap, nlpInput)
   })
 
   let combinedPeople = compromisePeople
