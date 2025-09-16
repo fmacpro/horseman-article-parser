@@ -41,6 +41,8 @@ const NAME_LIST_CONTEXT_WORDS = [
   'supporters', 'support', 'engineer', 'engineers', 'researcher', 'researchers', 'scientist', 'scientists', 'leaders',
   'members', 'acknowledgements', 'acknowledgments', 'acknowledgement', 'acknowledgment', 'gratitude', 'credit', 'credits'
 ]
+const SENTENCE_STARTER_WORDS = new Set(['we', 'our', 'ours', 'the', 'this', 'that', 'these', 'those'])
+const LEADING_JUNK_PATTERN = new RegExp("^[\\s\\u00A0,;·•‧∙・、，|/&(){}\\[\\]<>\"'“”‘’—–-]+", 'u')
 const HONORIFIC_PREFIXES = new Set(['mr', 'mrs', 'ms', 'miss', 'dr', 'prof', 'sir', 'dame', 'rev', 'reverend', 'lord', 'lady'])
 
 export function normalizeEntity (w) {
@@ -164,6 +166,47 @@ function cleanNameCandidate (part) {
     .trim()
 }
 
+function startsWithLowercaseContinuation (text) {
+  if (typeof text !== 'string') return false
+  const trimmed = text.replace(LEADING_JUNK_PATTERN, '')
+  if (!trimmed) return false
+  return /^[\p{Ll}]/u.test(trimmed)
+}
+
+function hasSentenceBoundaryBeforeWord (rawSegment, lastWord, hintSets) {
+  if (typeof rawSegment !== 'string' || typeof lastWord !== 'string') return false
+  const match = rawSegment.match(/([.!?])["']?\s+([A-Z][\p{L}\p{M}'’.-]*)\s*$/u)
+  if (!match) return false
+  const nextWord = cleanNameCandidate(match[2])
+  if (!nextWord) return false
+  if (normalizeEntity(nextWord) !== normalizeEntity(lastWord)) return false
+  if (INITIAL_NAME_PART_PATTERN.test(nextWord)) return false
+  if (likelyFirst(nextWord, hintSets) || likelyLast(nextWord, hintSets) || likelySuffix(nextWord, hintSets)) return false
+  return true
+}
+
+function trimTrailingNonNameWords (words, rawSegment, followingText, hintSets) {
+  if (!Array.isArray(words)) return []
+  const trimmed = words.slice()
+  const raw = typeof rawSegment === 'string' ? rawSegment : ''
+  const follow = typeof followingText === 'string' ? followingText : ''
+  const hasLowercaseTail = startsWithLowercaseContinuation(follow)
+  while (trimmed.length >= 2) {
+    const lastWord = trimmed[trimmed.length - 1]
+    if (typeof lastWord !== 'string') break
+    const normalized = normalizeEntity(lastWord)
+    if (!normalized) break
+    const hasBoundary = hasSentenceBoundaryBeforeWord(raw, lastWord, hintSets)
+    const inSentenceStarters = SENTENCE_STARTER_WORDS.has(normalized)
+    const shouldDrop = (hasBoundary && inSentenceStarters) || (hasLowercaseTail && inSentenceStarters)
+    if (!shouldDrop) break
+    if (/-/.test(lastWord)) break
+    if (likelyFirst(lastWord, hintSets) || likelyLast(lastWord, hintSets) || INITIAL_NAME_PART_PATTERN.test(lastWord) || likelySuffix(lastWord, hintSets)) break
+    trimmed.pop()
+  }
+  return trimmed
+}
+
 function wordLooksSuspicious (word, hintSets) {
   const cleaned = cleanNameCandidate(word)
   if (!cleaned) return true
@@ -249,15 +292,24 @@ function extractNamesFromCapitalizedLists (text, seen, hintSets, keepSet, remova
   for (const match of text.matchAll(NAME_LIST_PATTERN)) {
     const block = match[1]
     if (!block) continue
-    const parts = block
-      .split(NAME_LIST_SPLIT_PATTERN)
-      .map(cleanNameCandidate)
-      .filter(Boolean)
-    if (parts.length < 2) continue
-    if (!hasListContext(text, match.index, parts.length)) continue
-    for (const candidate of parts) {
-      if (!candidate || !/\s/.test(candidate) || /\d/.test(candidate)) continue
-      const words = candidate.split(/\s+/).filter(Boolean)
+    const rawParts = block.split(NAME_LIST_SPLIT_PATTERN)
+    const cleanedParts = []
+    let offset = 0
+    for (const rawPart of rawParts) {
+      const start = block.indexOf(rawPart, offset)
+      offset = start === -1 ? offset : start + rawPart.length
+      const cleaned = cleanNameCandidate(rawPart)
+      if (!cleaned) continue
+      const following = start === -1 ? '' : block.slice(offset)
+      cleanedParts.push({ cleaned, raw: rawPart, following })
+    }
+    if (cleanedParts.length < 2) continue
+    if (!hasListContext(text, match.index, cleanedParts.length)) continue
+    for (const { cleaned, raw: rawPart, following } of cleanedParts) {
+      if (!cleaned || !/\s/.test(cleaned) || /\d/.test(cleaned)) continue
+      let words = cleaned.split(/\s+/).filter(Boolean)
+      if (words.length < 2) continue
+      words = trimTrailingNonNameWords(words, rawPart, following, hintSets)
       if (words.length < 2) continue
       if (words.some(word => wordLooksSuspicious(word, hintSets))) continue
       if (words.length >= 4) {
@@ -265,13 +317,17 @@ function extractNamesFromCapitalizedLists (text, seen, hintSets, keepSet, remova
         if (Array.isArray(splitRuns) && splitRuns.length >= 2) {
           let added = false
           for (const name of splitRuns) {
-            const normalized = normalizeEntity(name)
+            const nameWords = name.split(/\s+/).filter(Boolean)
+            const trimmedNameWords = trimTrailingNonNameWords(nameWords, name, '', hintSets)
+            if (trimmedNameWords.length < 2) continue
+            const trimmedName = trimmedNameWords.join(' ')
+            const normalized = normalizeEntity(trimmedName)
             if (!normalized) continue
             const tokens = normalized.split(' ').filter(Boolean)
             if (tokens.some(word => NAME_LIST_STOP_WORDS.has(word))) continue
             if (keepSet) keepSet.add(normalized)
             if (seen.has(normalized)) continue
-            names.push(name)
+            names.push(trimmedName)
             seen.add(normalized)
             added = true
           }
@@ -280,9 +336,11 @@ function extractNamesFromCapitalizedLists (text, seen, hintSets, keepSet, remova
       }
       const lowerWords = words.map(w => w.toLowerCase())
       if (lowerWords.some(w => NAME_LIST_STOP_WORDS.has(w))) continue
-      const normalized = normalizeEntity(candidate)
+      const candidateName = words.join(' ')
+      const normalized = normalizeEntity(candidateName)
       if (!normalized || seen.has(normalized)) continue
-      names.push(candidate)
+      if (keepSet) keepSet.add(normalized)
+      names.push(candidateName)
       seen.add(normalized)
     }
   }
@@ -295,13 +353,17 @@ function extractNamesFromCapitalizedLists (text, seen, hintSets, keepSet, remova
       const split = splitLikelyNameRuns(denseWords, hintSets)
       if (!split) continue
       for (const candidate of split) {
-        const normalized = normalizeEntity(candidate)
+        const candidateWords = candidate.split(/\s+/).filter(Boolean)
+        const trimmedCandidateWords = trimTrailingNonNameWords(candidateWords, candidate, '', hintSets)
+        if (trimmedCandidateWords.length < 2) continue
+        const trimmedCandidate = trimmedCandidateWords.join(' ')
+        const normalized = normalizeEntity(trimmedCandidate)
         if (!normalized) continue
         const tokens = normalized.split(' ').filter(Boolean)
         if (tokens.some(word => NAME_LIST_STOP_WORDS.has(word))) continue
         if (keepSet) keepSet.add(normalized)
         if (seen.has(normalized)) continue
-        names.push(candidate)
+        names.push(trimmedCandidate)
         seen.add(normalized)
       }
       if (removalSet) {
@@ -466,7 +528,10 @@ function splitNameListByConjunction (text, hintSets, secondaryMap) {
     })
     if (!filtered.length) continue
 
-    const split = splitNameWords(filtered, hintSets, secondaryMap)
+    const trimmed = trimTrailingNonNameWords(filtered, segment, '', hintSets)
+    if (!trimmed.length) continue
+
+    const split = splitNameWords(trimmed, hintSets, secondaryMap)
     if (Array.isArray(split) && split.length) {
       for (const name of split) {
         const key = normalizeEntity(name)
@@ -477,8 +542,8 @@ function splitNameListByConjunction (text, hintSets, secondaryMap) {
       continue
     }
 
-    if (filtered.length >= 2 && filtered.every(word => !wordLooksSuspicious(word, hintSets))) {
-      const candidate = capitalizeFirstLetter(filtered.join(' '))
+    if (trimmed.length >= 2 && trimmed.every(word => !wordLooksSuspicious(word, hintSets))) {
+      const candidate = capitalizeFirstLetter(trimmed.join(' '))
       const key = normalizeEntity(candidate)
       if (key && !seen.has(key)) {
         seen.add(key)
@@ -487,8 +552,8 @@ function splitNameListByConjunction (text, hintSets, secondaryMap) {
       continue
     }
 
-    if (filtered.length === 1) {
-      const [single] = filtered
+    if (trimmed.length === 1) {
+      const [single] = trimmed
       if (single && (likelyFirst(single, hintSets) || likelyLast(single, hintSets))) {
         const candidate = capitalizeFirstLetter(single)
         const key = normalizeEntity(candidate)
@@ -661,7 +726,16 @@ function maybeSplitPerson (entity, rawText, hintSets, secondaryMap) {
       canonical = /-/.test(entity.text) ? sanitizedFallback : joined
     }
   }
-  const safeCanonical = (canonical || sanitizedFallback || fallback).trim()
+  const canonicalWords = String(canonical || '').split(/\s+/).map(cleanNameCandidate).filter(Boolean)
+  const trimmedCanonicalWords = trimTrailingNonNameWords(canonicalWords, canonical, '', hintSets)
+  const canonicalCandidate = trimmedCanonicalWords.join(' ')
+  let fallbackWords = sanitizedFallback
+    .split(/\s+/)
+    .map(cleanNameCandidate)
+    .filter(Boolean)
+  fallbackWords = trimTrailingNonNameWords(fallbackWords, raw, '', hintSets)
+  const fallbackCandidate = fallbackWords.join(' ')
+  const safeCanonical = (canonicalCandidate || fallbackCandidate || sanitizedFallback || fallback).trim()
 
   const punctuationSplit = maybeSplitByPunctuationSeparators(sanitizedFallback)
   if (punctuationSplit) {
@@ -672,18 +746,20 @@ function maybeSplitPerson (entity, rawText, hintSets, secondaryMap) {
         .map(cleanNameCandidate)
         .filter(Boolean)
       if (!segmentWords.length) continue
-      const split = splitNameWords(segmentWords, hintSets, secondaryMap)
+      const trimmedSegmentWords = trimTrailingNonNameWords(segmentWords, segment, '', hintSets)
+      if (!trimmedSegmentWords.length) continue
+      const split = splitNameWords(trimmedSegmentWords, hintSets, secondaryMap)
       if (split?.length) {
         extracted.push(...split)
         continue
       }
-      if (segmentWords.length >= 2) {
-        const normalizedSegment = segmentWords.join(' ')
+      if (trimmedSegmentWords.length >= 2) {
+        const normalizedSegment = trimmedSegmentWords.join(' ')
         if (normalizedSegment) extracted.push(capitalizeFirstLetter(normalizedSegment))
         continue
       }
-      if (segmentWords.length === 1) {
-        const [single] = segmentWords
+      if (trimmedSegmentWords.length === 1) {
+        const [single] = trimmedSegmentWords
         if (likelyFirst(single, hintSets) || likelyLast(single, hintSets)) {
           extracted.push(capitalizeFirstLetter(single))
         }
@@ -698,10 +774,7 @@ function maybeSplitPerson (entity, rawText, hintSets, secondaryMap) {
     if (filteredSpacing.length >= 2) return filteredSpacing
   }
 
-  const words = sanitizedFallback
-    .split(/\s+/)
-    .map(cleanNameCandidate)
-    .filter(Boolean)
+  const words = fallbackWords
   if (words.length <= 1) return [safeCanonical]
 
   const split = splitNameWords(words, hintSets, secondaryMap)
