@@ -1,6 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import entityParser from '../controllers/entityParser.js'
+import { stripPunctuation } from '../helpers.js'
 import { loadNlpPlugins } from '../controllers/nlpPlugins.js'
 
 test('entityParser capitalizes extracted entities', async () => {
@@ -155,6 +156,88 @@ test('entityParser splits acknowledgement runs without punctuation', async () =>
     assert(res.people.includes(name), `${name} not found in ${JSON.stringify(res.people)}`)
   }
   assert(!res.people.some(name => /Kairouz Brendan McMahan/.test(name)))
+})
+
+test('entityParser removes concatenated acknowledgement blobs with conjunctions', async () => {
+  const input = `Thanks to Peter Kairouz Brendan McMahan Dan Ramage Mark Simborg Kimberly Schwede Borja Balle Zachary Charles Christopher A. Choquette-Choo Lynn Chua Prem Eruvbetine Badih Ghazi Steve He Yangsibo Huang Armand Joulin George Kaissis Pritish Kamath Ravi Kumar Daogao Liu Ruibo Liu Pasin Manurangsi Thomas Mesnard Andreas Terzis Tris Warkentin and Da Yu.`
+  const res = await entityParser(input, { first: [], last: [] }, () => 2000)
+  const expected = [
+    'Peter Kairouz',
+    'Brendan McMahan',
+    'Dan Ramage',
+    'Mark Simborg',
+    'Kimberly Schwede',
+    'Borja Balle',
+    'Zachary Charles',
+    'Christopher A Choquette-Choo',
+    'Lynn Chua',
+    'Prem Eruvbetine',
+    'Badih Ghazi',
+    'Steve He',
+    'Yangsibo Huang',
+    'Armand Joulin',
+    'George Kaissis',
+    'Pritish Kamath',
+    'Ravi Kumar',
+    'Daogao Liu',
+    'Ruibo Liu',
+    'Pasin Manurangsi',
+    'Thomas Mesnard',
+    'Andreas Terzis',
+    'Tris Warkentin',
+    'Da Yu'
+  ]
+  for (const name of expected) {
+    assert(res.people.includes(name), `${name} not found in ${JSON.stringify(res.people)}`)
+  }
+  assert(!res.people.some(name => /Peter Kairouz Brendan McMahan/.test(name)))
+})
+
+test('entityParser handles punctuation-stripped acknowledgement lists', async () => {
+  const raw = `We'd like to thank the entire Gemma and Google Privacy teams for their contributions and support throughout this project, in particular, Peter Kairouz, Brendan McMahan and Dan Ramage for feedback on the blog post, Mark Simborg and Kimberly Schwede for help with visualizations, and the teams at Google that helped with algorithm design, infrastructure implementation, and production maintenance. The following people directly contributed to the work presented here (ordered alphabetically): Borja Balle, Zachary Charles, Christopher A. Choquette-Choo, Lynn Chua, Prem Eruvbetine, Badih Ghazi, Steve He, Yangsibo Huang, Armand Joulin, George Kaissis, Pritish Kamath, Ravi Kumar, Daogao Liu, Ruibo Liu, Pasin Manurangsi, Thomas Mesnard, Andreas Terzis, Tris Warkentin, Da Yu, and Chiyuan Zhang.`
+  const sanitized = stripPunctuation(raw)
+  const res = await entityParser(sanitized, { first: [], last: [] }, () => 3000)
+  const expected = [
+    'Peter Kairouz',
+    'Brendan McMahan',
+    'Dan Ramage',
+    'Mark Simborg',
+    'Kimberly Schwede',
+    'Borja Balle',
+    'Zachary Charles',
+    'Christopher A Choquette-Choo',
+    'Lynn Chua',
+    'Prem Eruvbetine',
+    'Badih Ghazi',
+    'Steve He',
+    'Yangsibo Huang',
+    'Armand Joulin',
+    'George Kaissis',
+    'Pritish Kamath',
+    'Ravi Kumar',
+    'Daogao Liu',
+    'Ruibo Liu',
+    'Pasin Manurangsi',
+    'Thomas Mesnard',
+    'Andreas Terzis',
+    'Tris Warkentin',
+    'Da Yu',
+    'Chiyuan Zhang'
+  ]
+  for (const name of expected) {
+    assert(res.people.includes(name), `${name} not found in ${JSON.stringify(res.people)}`)
+  }
+  const unexpected = [
+    'Peter Kairouz Brendan McMahan',
+    'Zachary Charles Christopher',
+    'Choquette-Choo Lynn Chua',
+    'Choo Lynn Chua',
+    'Research Scientist',
+    'Google Research We'
+  ]
+  for (const name of unexpected) {
+    assert(!res.people.includes(name), `${name} should not be present in ${JSON.stringify(res.people)}`)
+  }
 })
 
 test('entityParser keeps dense acknowledgements together when surnames are unknown', async () => {
