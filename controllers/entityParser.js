@@ -9,6 +9,26 @@ const COMMON_LAST_SUFFIXES = [
   'berg', 'ford', 'well', 'wood', 'land', 'ton', 'dson', 'dsen', 'man', 'mann', 'vich', 'vych', 'wicz', 'witz', 'escu',
   'opoulos', 'ashvili', 'dottir'
 ]
+const LIST_CONJUNCTIONS = ['and', 'or', 'und', 'et', 'y', 'e']
+const LIST_CONJUNCTION_PATTERN = LIST_CONJUNCTIONS.join('|')
+const NAME_PATTERN = `[A-Z][\\p{L}\\p{M}'’.-]+(?:\\s+[A-Z][\\p{L}\\p{M}'’.-]+)+`
+const NAME_LIST_PATTERN = new RegExp(
+  `(${NAME_PATTERN}(?:\\s*(?:,|\\b(?:${LIST_CONJUNCTION_PATTERN})\\b)\\s*${NAME_PATTERN})+)`,
+  'gu'
+)
+const NAME_LIST_SPLIT_PATTERN = new RegExp(`\\s*(?:,|\\b(?:${LIST_CONJUNCTION_PATTERN})\\b)\\s*`, 'giu')
+const NAME_LIST_STOP_WORDS = new Set([
+  'and', 'or', 'und', 'et', 'y', 'e', 'team', 'teams', 'group', 'groups', 'committee', 'committees', 'department',
+  'departments', 'office', 'offices', 'project', 'projects', 'programme', 'programmes', 'program', 'programs', 'initiative',
+  'initiatives', 'model', 'models', 'privacy', 'compute', 'computing', 'data', 'budget', 'budgets', 'research', 'development',
+  'infrastructure', 'maintenance', 'support', 'gemma', 'vaultgemma', 'google', 'deepmind'
+])
+const PERSON_NAME_STOP_WORDS = new Set(['gemma', 'gemma 2', 'gemma2', 'vaultgemma', 'vaultgemma 1b', 'vaultgemma1b'])
+const NAME_LIST_CONTEXT_WORDS = [
+  'people', 'contributors', 'thanks', 'thank', 'team', 'teams', 'author', 'authors', 'colleague', 'colleagues',
+  'supporters', 'support', 'engineer', 'engineers', 'researcher', 'researchers', 'scientist', 'scientists', 'leaders',
+  'members', 'acknowledgements', 'acknowledgments', 'acknowledgement', 'acknowledgment', 'gratitude', 'credit', 'credits'
+]
 
 export function normalizeEntity (w) {
   if (typeof w !== 'string') return ''
@@ -93,8 +113,59 @@ function likelyFirst (word, hintSets) {
 function maybeSplitBySpacing (text) {
   if (typeof text !== 'string') return null
   if (!/[\s\u00A0]{2,}|[\r\n]/.test(text)) return null
-  const parts = text.split(/\s+/).map(s => s.trim()).filter(Boolean)
+  const parts = text
+    .split(/(?:\r?\n|\r|[\u00A0\s]{2,})+/)
+    .map(s => s.trim())
+    .filter(Boolean)
   return parts.length > 1 ? parts : null
+}
+
+function hasListContext (text, index, candidateCount) {
+  if (typeof text !== 'string') return false
+  if (candidateCount >= 3) return true
+  const start = Math.max(0, (typeof index === 'number' ? index : 0) - 120)
+  const context = text.slice(start, typeof index === 'number' ? index : 0).toLowerCase()
+  if (!context) return false
+  if (context.includes(':') || context.includes(';') || context.includes('(') || context.includes('–') || context.includes('—')) {
+    return true
+  }
+  return NAME_LIST_CONTEXT_WORDS.some(word => context.includes(word))
+}
+
+function cleanNameCandidate (part) {
+  if (typeof part !== 'string') return ''
+  return part
+    .replace(/^[^\p{L}\p{N}'’.-]+/gu, '')
+    .replace(/[^\p{L}\p{N}'’.-]+$/gu, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function extractNamesFromCapitalizedLists (text, seen) {
+  if (typeof text !== 'string') return []
+  const names = []
+  for (const match of text.matchAll(NAME_LIST_PATTERN)) {
+    const block = match[1]
+    if (!block) continue
+    const parts = block
+      .split(NAME_LIST_SPLIT_PATTERN)
+      .map(cleanNameCandidate)
+      .filter(Boolean)
+    if (parts.length < 2) continue
+    if (!hasListContext(text, match.index, parts.length)) continue
+    for (const candidate of parts) {
+      if (!candidate || !/\s/.test(candidate) || /\d/.test(candidate)) continue
+      const words = candidate.split(/\s+/).filter(Boolean)
+      if (words.length < 2) continue
+      const lowerWords = words.map(w => w.toLowerCase())
+      if (lowerWords.some(w => NAME_LIST_STOP_WORDS.has(w))) continue
+      const normalized = normalizeEntity(candidate)
+      if (!normalized || seen.has(normalized)) continue
+      names.push(candidate)
+      seen.add(normalized)
+    }
+  }
+  return names
 }
 
 function splitViaSecondary (words, secondaryMap) {
@@ -335,7 +406,25 @@ export default async function entityParser (nlpInput, pluginHints = DEFAULT_HINT
   let combinedPeople = compromisePeople
   if (secondaryPeople.length) combinedPeople = combinedPeople.concat(secondaryPeople)
 
+  const seenList = new Set(combinedPeople.map(name => normalizeEntity(name)).filter(Boolean))
+  const listNames = extractNamesFromCapitalizedLists(nlpInput, seenList)
+  if (listNames.length) combinedPeople = combinedPeople.concat(listNames)
+
   let people = dedupeEntities(combinedPeople, true)
+  const multiWordFirsts = new Set()
+  for (const name of people) {
+    const normalized = normalizeEntity(name)
+    const parts = normalized.split(' ').filter(Boolean)
+    if (parts.length > 1) multiWordFirsts.add(parts[0])
+  }
+  people = people.filter(name => {
+    const normalized = normalizeEntity(name)
+    if (!normalized) return false
+    if (PERSON_NAME_STOP_WORDS.has(normalized)) return false
+    if (/\d/.test(normalized)) return false
+    if (!/\s/.test(name) && multiWordFirsts.has(normalized)) return false
+    return true
+  })
   const seen = new Set(people.map(name => normalizeEntity(name)))
 
   if (hints.first.length && hints.last.length) {

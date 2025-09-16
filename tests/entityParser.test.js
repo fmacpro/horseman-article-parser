@@ -88,6 +88,24 @@ test('entityParser respects middle and suffix hints for complex names', async ()
   assert(res.people.some(name => /Ana María López/.test(name)))
 })
 
+test('entityParser extracts acknowledgement name lists', async () => {
+  const input = `Acknowledgements: Borja Balle, Zachary Charles, Christopher A. Choquette-Choo, Lynn Chua, Badih Ghazi, Da Yu, Chiyuan Zhang.`
+  const res = await entityParser(input, { first: [], last: [] }, () => 2000)
+  const expected = [
+    'Borja Balle',
+    'Zachary Charles',
+    'Christopher A Choquette-Choo',
+    'Lynn Chua',
+    'Badih Ghazi',
+    'Da Yu',
+    'Chiyuan Zhang'
+  ]
+  for (const name of expected) {
+    assert(res.people.includes(name))
+  }
+  assert(!res.people.includes('Christopher'))
+})
+
 test('loadNlpPlugins collects extended hints and secondary config', () => {
   const plugin = (_Doc, world) => {
     world.addWords({
