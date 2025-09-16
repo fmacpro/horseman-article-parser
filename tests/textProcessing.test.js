@@ -1,7 +1,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'fs'
-import { getRawText, getFormattedText, getHtmlText, htmlCleaner, stripNonArticleElements, sanitizeArticleContent } from '../controllers/textProcessing.js'
+import { getRawText, getFormattedText, getHtmlText, htmlCleaner, stripNonArticleElements, sanitizeArticleContent, unwrapNodePreservingChildren } from '../controllers/textProcessing.js'
+import { JSDOM } from 'jsdom'
 
 test('getRawText strips URLs', () => {
   const html = '<p>Visit <a href="http://example.com">http://example.com</a></p>'
@@ -117,4 +118,21 @@ test('sanitizeArticleContent removes CTA containers but keeps tabular data', () 
   assert.ok(!sanitized.includes('Subscribe now for updates'))
   assert.ok(sanitized.includes('<table'))
   assert.ok(sanitized.includes('<td>Foo</td>'))
+})
+
+test('unwrapNodePreservingChildren keeps spacing between inline siblings', () => {
+  const dom = new JSDOM('<p><span>John</span><span>Mary</span></p>')
+  const [firstSpan, secondSpan] = Array.from(dom.window.document.querySelectorAll('span'))
+  unwrapNodePreservingChildren(firstSpan)
+  assert.equal(dom.window.document.querySelector('p').textContent, 'John Mary')
+  unwrapNodePreservingChildren(secondSpan)
+  assert.equal(dom.window.document.querySelector('p').textContent, 'John Mary')
+})
+
+test('unwrapNodePreservingChildren inserts space around strong wrappers', () => {
+  const dom = new JSDOM('<p>Alpha<span><strong>Beta</strong></span><span>Gamma</span></p>')
+  const spans = Array.from(dom.window.document.querySelectorAll('span'))
+  unwrapNodePreservingChildren(spans[0])
+  unwrapNodePreservingChildren(spans[1])
+  assert.equal(dom.window.document.querySelector('p').textContent, 'Alpha Beta Gamma')
 })

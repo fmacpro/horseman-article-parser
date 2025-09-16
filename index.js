@@ -130,7 +130,7 @@ const articleParser = async function (browser, options, socket) {
   article.processed = {}
   article.processed.text = {}
   article.lighthouse = {}
-  const pluginHints = options.__pluginHints || { first: [], last: [] }
+  const pluginHints = options.__pluginHints || { first: [], middle: [], last: [], suffix: [], secondary: null }
 
   const log = (phase, msg, fields = {}) => {
     try {
@@ -1228,7 +1228,7 @@ log('analyze', 'Evaluating meta tags')
       try {
         log('analyze', 'Extracting named entities')
         if (timeLeft() < 1200) { log('analyze', 'Skipping NER due to low budget'); return }
-        const entities = entityParser(cleanAnalysisInput, pluginHints, timeLeft)
+        const entities = await entityParser(cleanAnalysisInput, pluginHints, timeLeft)
         Object.assign(article, entities)
         try {
           const pc = Array.isArray(article.people) ? article.people.length : 0

@@ -356,6 +356,31 @@ By tagging new words as `FirstName` and `LastName`, the parser records fallback 
 
 Check out the compromise plugin [docs](https://observablehq.com/@spencermountain/compromise-plugins) for more info.
 
+#### Extended name hints and secondary NER sources
+
+`loadNlpPlugins` also accepts additional hint buckets for middle names and suffixes. You can provide them directly via `options.nlp.hints` or through a Compromise plugin using `MiddleName`/`Suffix` tags. These extra hints help prevent false splits in names that include common middle initials or honorifics.
+
+```js
+const options = {
+  nlp: {
+    hints: {
+      first: ['José', 'Ana'],
+      middle: ['Luis', 'María'],
+      last: ['Rodríguez', 'López'],
+      suffix: ['Jr']
+    },
+    secondary: {
+      endpoint: 'https://ner.yourservice.example/people',
+      method: 'POST',
+      timeoutMs: 1500,
+      minConfidence: 0.65
+    }
+  }
+}
+```
+
+When `secondary` is configured the parser will send the article text to that endpoint (default payload `{ text: "…" }`) and merge any `PERSON` entities it returns with the Compromise results. Responses that include a simple `people` array or spaCy-style `ents` collections are supported. If the service is unreachable or errors, the parser automatically falls back to Compromise-only detection.
+
 ### Content Detection
 
 The detector is always enabled and uses a structured-data-first strategy, falling back to heuristic scoring:

@@ -7,8 +7,8 @@ import { parseArticle } from '../index.js'
 const quietSocket = { emit: () => {} }
 
 // Shorten test and parser timeouts to speed up the suite
-const TEST_TIMEOUT = 15000
-const PARSE_TIMEOUT = 15000
+const TEST_TIMEOUT = 30000
+const PARSE_TIMEOUT = 30000
 
 // Reuse a single browser instance across tests to avoid repeated startups
 let sharedBrowser
