@@ -36,6 +36,39 @@ const NAME_LIST_STOP_WORDS = new Set([
   'infrastructure', 'maintenance', 'support', 'gemma', 'vaultgemma', 'google', 'deepmind'
 ])
 const PERSON_NAME_STOP_WORDS = new Set(['gemma', 'gemma 2', 'gemma2', 'vaultgemma', 'vaultgemma 1b', 'vaultgemma1b'])
+const JOB_TITLE_PREPOSITIONS = new Set([
+  'at', 'for', 'with', 'from', 'by', 'via', 'in', 'on', 'to', 'into', 'onto', 'through', 'within', 'without', 'over', 'under',
+  'against', 'toward', 'towards', 'around', 'across', 'after', 'before', 'during', 'since', 'because', 'while', 'when', 'where',
+  'among', 'between', 'per', 'including', 'inside', 'outside', 'along', 'behind', 'beyond', 'upon', 'amid', 'amidst', 'amongst',
+  'beside', 'besides', 'concerning', 'regarding', 'about', 'according', 'off', 'of'
+])
+const JOB_TITLE_CONNECTORS = new Set(['and', '&', '+', 'plus', '/', '|'])
+const JOB_TITLE_CORE_WORDS = new Set([
+  'advisor', 'adviser', 'advocate', 'ambassador', 'analyst', 'architect', 'artist', 'associate', 'attorney', 'author', 'captain',
+  'ceo', 'chair', 'chairman', 'chairwoman', 'chairperson', 'chief', 'cofounder', 'co-founder', 'coo', 'cfo', 'cto', 'cmo', 'cio',
+  'commissioner', 'consultant', 'coordinator', 'councilmember', 'councilor', 'councillor', 'councilwoman', 'councilman',
+  'councilperson', 'creator', 'curator', 'dean', 'developer', 'designer', 'director', 'editor', 'educator', 'engineer',
+  'entrepreneur', 'executive', 'fellow', 'founder', 'founders', 'governor', 'head', 'instructor', 'investigator', 'investor',
+  'journalist', 'lawyer', 'lecturer', 'leader', 'lead', 'manager', 'minister', 'musician', 'nurse', 'officer', 'owner', 'partner',
+  'philanthropist', 'photographer', 'physician', 'pilot', 'planner', 'president', 'principal', 'producer', 'professor',
+  'programmer', 'psychologist', 'researcher', 'reporter', 'scientist', 'singer', 'specialist', 'strategist', 'student', 'surgeon',
+  'teacher', 'technician', 'technologist', 'trustee', 'vice', 'vp', 'svp', 'evp'
+])
+const JOB_TITLE_MODIFIER_WORDS = new Set([
+  'academic', 'acting', 'adjunct', 'administrative', 'administration', 'advanced', 'ai', 'analytics', 'applied', 'assistant',
+  'associate', 'business', 'capital', 'chief', 'client', 'clinical', 'commercial', 'communications', 'community', 'compliance',
+  'content', 'corporate', 'creative', 'customer', 'data', 'digital', 'economic', 'education', 'engineering', 'enterprise',
+  'environmental', 'equity', 'executive', 'financial', 'global', 'government', 'growth', 'health', 'human', 'impact', 'industrial',
+  'innovation', 'insights', 'institutional', 'interim', 'international', 'investment', 'legal', 'logistics', 'marketing',
+  'medical', 'national', 'operations', 'operational', 'partnership', 'people', 'performance', 'policy', 'portfolio', 'press',
+  'principal', 'private', 'product', 'production', 'program', 'project', 'public', 'quality', 'regional', 'reliability',
+  'research', 'resources', 'sales', 'senior', 'software', 'solution', 'solutions', 'strategic', 'strategy', 'support',
+  'sustainability', 'talent', 'tech', 'technical', 'technology', 'trade', 'training', 'transport', 'venture'
+])
+const NAME_PARTICLE_WORDS = new Set([
+  'al', 'ap', 'af', 'bin', 'ibn', 'de', 'del', 'della', 'der', 'di', 'dos', 'das', 'do', 'du', 'la', 'le', 'mac', 'mc', 'saint',
+  'santa', 'st', 'st.', 'van', 'von', 'ter', 'ten', 'ben', 'abu', 'el', 'da'
+])
 const NAME_LIST_CONTEXT_WORDS = [
   'people', 'contributors', 'thanks', 'thank', 'team', 'teams', 'author', 'authors', 'colleague', 'colleagues',
   'supporters', 'support', 'engineer', 'engineers', 'researcher', 'researchers', 'scientist', 'scientists', 'leaders',
@@ -219,6 +252,86 @@ function trimCommaDelimitedTail (words, context, hintSets) {
   return words
 }
 
+function shouldKeepAsNameWord (word, normalized, canonical, hintSets) {
+  if (typeof word !== 'string') return false
+  if (likelyFirst(word, hintSets) || likelyLast(word, hintSets)) return true
+  if (likelySuffix(word, hintSets) || INITIAL_NAME_PART_PATTERN.test(word)) return true
+  if (typeof canonical !== 'string') return false
+  if (NAME_PARTICLE_WORDS.has(canonical)) return true
+  return false
+}
+
+function findJobTailStart (words, normalizedWords, canonicalWords, startIndex, hintSets) {
+  if (!Array.isArray(words) || !Array.isArray(normalizedWords) || !Array.isArray(canonicalWords)) return null
+  let idx = Math.min(Math.max(startIndex, 0), words.length - 1)
+  let removalIndex = idx + 1
+  let removedAny = false
+
+  while (idx >= 2) {
+    const word = words[idx]
+    const normalized = normalizedWords[idx] || ''
+    const canonical = canonicalWords[idx] || ''
+
+    if (shouldKeepAsNameWord(word, normalized, canonical, hintSets)) {
+      removalIndex = idx + 1
+      break
+    }
+
+    if (
+      JOB_TITLE_CORE_WORDS.has(canonical) ||
+      JOB_TITLE_MODIFIER_WORDS.has(canonical) ||
+      JOB_TITLE_CONNECTORS.has(canonical) ||
+      JOB_TITLE_PREPOSITIONS.has(canonical) ||
+      canonical === 'the' ||
+      canonical === 'a' ||
+      canonical === 'an'
+    ) {
+      removalIndex = idx
+      removedAny = true
+      idx--
+      continue
+    }
+
+    if (!likelyFirst(word, hintSets) && !likelyLast(word, hintSets) && !likelySuffix(word, hintSets) && !INITIAL_NAME_PART_PATTERN.test(word)) {
+      removalIndex = idx
+      removedAny = true
+      idx--
+      continue
+    }
+
+    break
+  }
+
+  if (!removedAny) return null
+  if (removalIndex < 2) removalIndex = 2
+  if (removalIndex >= words.length) return null
+  return removalIndex
+}
+
+function detectJobTitleTail (words, hintSets) {
+  if (!Array.isArray(words) || words.length < 3) return null
+  const normalizedWords = words.map(word => normalizeEntity(word))
+  const canonicalWords = normalizedWords.map(value => (typeof value === 'string' ? value.replace(/-/g, '') : ''))
+
+  for (let i = 2; i < canonicalWords.length; i++) {
+    const canonical = canonicalWords[i]
+    if (!canonical) continue
+    if (!JOB_TITLE_PREPOSITIONS.has(canonical)) continue
+    const start = findJobTailStart(words, normalizedWords, canonicalWords, i, hintSets)
+    if (typeof start === 'number') return start
+  }
+
+  for (let i = canonicalWords.length - 1; i >= 2; i--) {
+    const canonical = canonicalWords[i]
+    if (!canonical) continue
+    if (!JOB_TITLE_CORE_WORDS.has(canonical) && !JOB_TITLE_MODIFIER_WORDS.has(canonical)) continue
+    const start = findJobTailStart(words, normalizedWords, canonicalWords, i, hintSets)
+    if (typeof start === 'number') return start
+  }
+
+  return null
+}
+
 function trimTrailingNonNameWords (words, rawSegment, followingText, hintSets) {
   if (!Array.isArray(words)) return []
   const trimmed = words.slice()
@@ -304,6 +417,13 @@ function trimTrailingNonNameWords (words, rawSegment, followingText, hintSets) {
     if (/-/.test(lastWord)) break
     if (likelyFirst(lastWord, hintSets) || likelyLast(lastWord, hintSets) || INITIAL_NAME_PART_PATTERN.test(lastWord) || likelySuffix(lastWord, hintSets)) break
     trimmed.pop()
+  }
+
+  if (trimmed.length >= 3) {
+    const jobStart = detectJobTitleTail(trimmed, hintSets)
+    if (typeof jobStart === 'number' && jobStart < trimmed.length) {
+      trimmed.splice(jobStart)
+    }
   }
   return trimmed
 }
