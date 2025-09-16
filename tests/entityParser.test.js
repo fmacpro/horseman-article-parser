@@ -107,6 +107,13 @@ test('entityParser extracts acknowledgement name lists', async () => {
   assert(!res.people.includes('Christopher'))
 })
 
+test('entityParser ignores trailing sentence openers in acknowledgement lists', async () => {
+  const raw = `This work is a collaborative effort with Wittawat Jitkrittum, Ankit Singh Rawat, Seungyeon Kim, Neha Gupta and Sanjiv Kumar. We are grateful to Ananda Theertha Suresh and Ziteng Sun for their insightful discussions.`
+  const res = await entityParser(raw, { first: [], last: [] }, () => 2000)
+  assert(res.people.includes('Sanjiv Kumar'))
+  assert(!res.people.some(name => /Sanjiv Kumar\s+We/i.test(name)))
+})
+
 test('entityParser splits acknowledgement lists separated by semicolons', async () => {
   const input = `Thanks to Zachary Charles; Christopher A. Choquette-Choo; Lynn Chua; Peter Kairouz.`
   const res = await entityParser(input, { first: [], last: [] }, () => 2000)
