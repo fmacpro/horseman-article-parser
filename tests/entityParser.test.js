@@ -52,6 +52,22 @@ test('entityParser trims comma-delimited role descriptors', async () => {
   assert(!res.people.some(name => /Tres Wong-Godfrey\s+Tech/i.test(name)))
 })
 
+test('entityParser trims inline role descriptors without punctuation cues', async () => {
+  const input = 'Speaker Tres Wong-Godfrey Tech Lead at Cisco Meraki shared updates with the crowd.'
+  const res = await entityParser(input, { first: [], last: [] }, () => 2000)
+  assert(res.people.includes('Tres Wong-Godfrey'))
+  assert(!res.people.some(name => /Tres Wong-Godfrey\s+Tech/i.test(name)))
+})
+
+test('entityParser removes trailing multi-word job titles', async () => {
+  const input = 'Our gratitude goes to Alice Johnson Senior Product Manager for Slack and Bob Smith Founder and CEO of Example Corp.'
+  const res = await entityParser(input, { first: [], last: [] }, () => 2000)
+  assert(res.people.includes('Alice Johnson'))
+  assert(res.people.includes('Bob Smith'))
+  assert(!res.people.some(name => /Alice Johnson\s+Senior/i.test(name)))
+  assert(!res.people.some(name => /Bob Smith\s+Founder/i.test(name)))
+})
+
 test("entityParser handles possessive places with trailing punctuation", async () => {
   const input = "He returned from New Zealand's."
   const res = await entityParser(input, { first: [], last: [] }, () => 2000)
