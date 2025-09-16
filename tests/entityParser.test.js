@@ -106,6 +106,42 @@ test('entityParser extracts acknowledgement name lists', async () => {
   assert(!res.people.includes('Christopher'))
 })
 
+test('entityParser splits acknowledgement runs without punctuation', async () => {
+  const input = `Thanks to Peter Kairouz Brendan McMahan Dan Ramage Mark Simborg Kimberly Schwede Borja Balle Zachary Charles Christopher A. Choquette-Choo Lynn Chua Prem Eruvbetine Badih Ghazi Steve He Yangsibo Huang Armand Joulin George Kaissis Pritish Kamath Ravi Kumar Daogao Liu Ruibo Liu Pasin Manurangsi Thomas Mesnard Andreas Terzis Tris Warkentin Da Yu Chiyuan Zhang.`
+  const res = await entityParser(input, { first: [], last: [] }, () => 2000)
+  const expected = [
+    'Peter Kairouz',
+    'Brendan McMahan',
+    'Dan Ramage',
+    'Mark Simborg',
+    'Kimberly Schwede',
+    'Borja Balle',
+    'Zachary Charles',
+    'Christopher A Choquette-Choo',
+    'Lynn Chua',
+    'Prem Eruvbetine',
+    'Badih Ghazi',
+    'Steve He',
+    'Yangsibo Huang',
+    'Armand Joulin',
+    'George Kaissis',
+    'Pritish Kamath',
+    'Ravi Kumar',
+    'Daogao Liu',
+    'Ruibo Liu',
+    'Pasin Manurangsi',
+    'Thomas Mesnard',
+    'Andreas Terzis',
+    'Tris Warkentin',
+    'Da Yu',
+    'Chiyuan Zhang'
+  ]
+  for (const name of expected) {
+    assert(res.people.includes(name), `${name} not found in ${JSON.stringify(res.people)}`)
+  }
+  assert(!res.people.some(name => /Kairouz Brendan McMahan/.test(name)))
+})
+
 test('loadNlpPlugins collects extended hints and secondary config', () => {
   const plugin = (_Doc, world) => {
     world.addWords({
