@@ -12,10 +12,13 @@ const COMMON_LAST_SUFFIXES = [
 const LIST_CONJUNCTIONS = ['and', 'or', 'und', 'et', 'y', 'e']
 const LIST_CONJUNCTION_PATTERN = LIST_CONJUNCTIONS.join('|')
 const NAME_PATTERN = `[A-Z][\\p{L}\\p{M}'’.-]+(?:\\s+[A-Z][\\p{L}\\p{M}'’.-]+)+`
+const GENERIC_NAME_PART_PATTERN = /^[\p{Lu}][\p{L}\p{M}'’.-]*$/u
+const INITIAL_NAME_PART_PATTERN = /^[\p{Lu}](?:[.’']|\.)?$/u
 const NAME_LIST_PATTERN = new RegExp(
   `(${NAME_PATTERN}(?:\\s*(?:,|\\b(?:${LIST_CONJUNCTION_PATTERN})\\b)\\s*${NAME_PATTERN})+)`,
   'gu'
 )
+const DENSE_NAME_SEQUENCE_PATTERN = new RegExp(`(${NAME_PATTERN}(?:\\s+${NAME_PATTERN}){1,})`, 'gu')
 const NAME_LIST_SPLIT_PATTERN = new RegExp(`\\s*(?:,|\\b(?:${LIST_CONJUNCTION_PATTERN})\\b)\\s*`, 'giu')
 const NAME_LIST_STOP_WORDS = new Set([
   'and', 'or', 'und', 'et', 'y', 'e', 'team', 'teams', 'group', 'groups', 'committee', 'committees', 'department',
@@ -141,7 +144,7 @@ function cleanNameCandidate (part) {
     .trim()
 }
 
-function extractNamesFromCapitalizedLists (text, seen) {
+function extractNamesFromCapitalizedLists (text, seen, hintSets, keepSet, removalSet) {
   if (typeof text !== 'string') return []
   const names = []
   for (const match of text.matchAll(NAME_LIST_PATTERN)) {
@@ -163,6 +166,46 @@ function extractNamesFromCapitalizedLists (text, seen) {
       if (!normalized || seen.has(normalized)) continue
       names.push(candidate)
       seen.add(normalized)
+    }
+  }
+  if (hintSets) {
+    for (const match of text.matchAll(DENSE_NAME_SEQUENCE_PATTERN)) {
+      const block = match[1]
+      if (!block) continue
+      const denseWords = block.split(/\s+/).map(cleanNameCandidate).filter(Boolean)
+      if (denseWords.length < 4) continue
+      const split = splitLikelyNameRuns(denseWords, hintSets)
+      if (!split) continue
+      for (const candidate of split) {
+        const normalized = normalizeEntity(candidate)
+        if (!normalized) continue
+        if (keepSet) keepSet.add(normalized)
+        if (seen.has(normalized)) continue
+        names.push(candidate)
+        seen.add(normalized)
+      }
+      if (removalSet) {
+        const normalizedWords = denseWords.map(word => normalizeEntity(word)).filter(Boolean)
+        for (const word of normalizedWords) {
+          if (word.includes('-')) {
+            for (const fragment of word.split('-')) {
+              if (!fragment) continue
+              if (keepSet?.has(fragment)) continue
+              removalSet.add(fragment)
+            }
+          }
+        }
+        const maxLength = 4
+        for (let start = 0; start < normalizedWords.length; start++) {
+          let phrase = ''
+          for (let end = start; end < Math.min(normalizedWords.length, start + maxLength); end++) {
+            phrase = phrase ? `${phrase} ${normalizedWords[end]}` : normalizedWords[end]
+            if (!phrase) continue
+            if (keepSet?.has(phrase)) continue
+            removalSet.add(phrase)
+          }
+        }
+      }
     }
   }
   return names
@@ -192,6 +235,84 @@ function attemptHeuristicSplit (words, hintSets) {
     return words.map(capitalizeFirstLetter)
   }
   return null
+}
+
+function scoreNameSegment (segment, hintSets) {
+  if (!Array.isArray(segment) || segment.length < 2 || segment.length > 4) return null
+  if (!segment.every(part => GENERIC_NAME_PART_PATTERN.test(part))) return null
+  const cleaned = segment.map(cleanNameCandidate).filter(Boolean)
+  if (cleaned.length !== segment.length) return null
+  const first = cleaned[0]
+  const last = cleaned[cleaned.length - 1]
+  if (!startsWithUpper(first) || !startsWithUpper(last)) return null
+  if (likelySuffix(first, hintSets)) return null
+  if (INITIAL_NAME_PART_PATTERN.test(last)) return null
+
+  const firstIsFirst = likelyFirst(first, hintSets)
+  const lastIsLast = likelyLast(last, hintSets)
+  if (!firstIsFirst && INITIAL_NAME_PART_PATTERN.test(first)) return null
+  if (!lastIsLast && !GENERIC_NAME_PART_PATTERN.test(last)) return null
+
+  let score = 0
+  score += firstIsFirst ? 2 : 1
+  score += lastIsLast ? 2 : 1
+
+  let hasMiddleInitial = false
+  for (let i = 1; i < cleaned.length - 1; i++) {
+    const word = cleaned[i]
+    if (!startsWithUpper(word)) return null
+    if (likelySuffix(word, hintSets)) {
+      score += 0.25
+      continue
+    }
+    if (INITIAL_NAME_PART_PATTERN.test(word)) {
+      hasMiddleInitial = true
+      score += 0.5
+      continue
+    }
+    if (likelyFirst(word, hintSets) || likelyLast(word, hintSets) || GENERIC_NAME_PART_PATTERN.test(word)) {
+      score += 0.25
+      continue
+    }
+    return null
+  }
+  if (hasMiddleInitial && cleaned.length < 3) return null
+  return { score, name: cleaned.join(' ') }
+}
+
+function splitLikelyNameRuns (words, hintSets) {
+  if (!Array.isArray(words) || words.length < 4) return null
+  if (!words.every(part => GENERIC_NAME_PART_PATTERN.test(part))) return null
+  const firstSignals = words.filter(word => likelyFirst(word, hintSets) || INITIAL_NAME_PART_PATTERN.test(word)).length
+  if (firstSignals < 3 && words.length < 6) return null
+
+  const dp = new Array(words.length + 1).fill(null)
+  dp[words.length] = { score: 0, names: [] }
+
+  for (let i = words.length - 1; i >= 0; i--) {
+    let best = null
+    for (let size = 2; size <= 4; size++) {
+      const end = i + size
+      if (end > words.length) break
+      const segment = scoreNameSegment(words.slice(i, end), hintSets)
+      if (!segment) continue
+      const next = dp[end]
+      if (!next) continue
+      const totalScore = segment.score + next.score
+      if (!best || totalScore > best.score) {
+        best = { score: totalScore, names: [segment.name, ...next.names] }
+      }
+    }
+    dp[i] = best
+  }
+
+  if (!dp[0] || dp[0].names.length < 2) return null
+  if (!dp[0].names.every(name => name.trim().split(/\s+/).length >= 2)) return null
+
+  return dp[0].names
+    .map(name => name.replace(/\s+/g, ' ').trim())
+    .map(name => name.replace(/[.]+$/g, ''))
+    .map(capitalizeFirstLetter)
 }
 
 function buildSecondaryMap (names) {
@@ -338,7 +459,7 @@ function maybeSplitPerson (entity, rawText, hintSets, secondaryMap) {
   const spacingSplit = maybeSplitBySpacing(raw)
   if (spacingSplit) return spacingSplit.map(capitalizeFirstLetter)
 
-  const words = fallback.split(/\s+/).filter(Boolean)
+  const words = sanitizedFallback.split(/\s+/).filter(Boolean)
   if (words.length <= 1) return [safeCanonical]
 
   const secondarySplit = splitViaSecondary(words, secondaryMap)
@@ -346,6 +467,9 @@ function maybeSplitPerson (entity, rawText, hintSets, secondaryMap) {
 
   const heuristicSplit = attemptHeuristicSplit(words, hintSets)
   if (heuristicSplit) return heuristicSplit
+
+  const denseSplit = splitLikelyNameRuns(words, hintSets)
+  if (denseSplit) return denseSplit
 
   return [safeCanonical]
 }
@@ -404,10 +528,21 @@ export default async function entityParser (nlpInput, pluginHints = DEFAULT_HINT
   })
 
   let combinedPeople = compromisePeople
+  const denseKeep = new Set()
+  const denseRemovals = new Set()
   if (secondaryPeople.length) combinedPeople = combinedPeople.concat(secondaryPeople)
 
   const seenList = new Set(combinedPeople.map(name => normalizeEntity(name)).filter(Boolean))
-  const listNames = extractNamesFromCapitalizedLists(nlpInput, seenList)
+  const listNames = extractNamesFromCapitalizedLists(nlpInput, seenList, hintSets, denseKeep, denseRemovals)
+  if (denseRemovals.size) {
+    combinedPeople = combinedPeople.filter(name => {
+      const key = normalizeEntity(name)
+      if (!key) return false
+      if (denseKeep.has(key)) return true
+      if (denseRemovals.has(key)) return false
+      return true
+    })
+  }
   if (listNames.length) combinedPeople = combinedPeople.concat(listNames)
 
   let people = dedupeEntities(combinedPeople, true)
