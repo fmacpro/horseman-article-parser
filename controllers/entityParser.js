@@ -11,7 +11,9 @@ const COMMON_LAST_SUFFIXES = [
 ]
 const LIST_CONJUNCTIONS = ['and', 'or', 'und', 'et', 'y', 'e']
 const LIST_CONJUNCTION_PATTERN = LIST_CONJUNCTIONS.join('|')
-const NAME_PATTERN = `[A-Z][\\p{L}\\p{M}'’.-]+(?:\\s+[A-Z][\\p{L}\\p{M}'’.-]+)+`
+const LIST_CONJUNCTION_SET = new Set(LIST_CONJUNCTIONS.map(word => word.toLowerCase()))
+const NAME_TOKEN_PATTERN = "[A-Z][\\p{L}\\p{M}'’.-]*"
+const NAME_PATTERN = `${NAME_TOKEN_PATTERN}(?:\\s+${NAME_TOKEN_PATTERN})+`
 const GENERIC_NAME_PART_PATTERN = /^[\p{Lu}][\p{L}\p{M}'’.-]*$/u
 const INITIAL_NAME_PART_PATTERN = /^[\p{Lu}](?:[.’']|\.)?$/u
 const ALL_UPPER_WORD_PATTERN = /^[\p{Lu}]+$/u
@@ -24,6 +26,7 @@ const NAME_LIST_PATTERN = new RegExp(
 )
 const DENSE_NAME_SEQUENCE_PATTERN = new RegExp(`(${NAME_PATTERN}(?:\\s+${NAME_PATTERN}){1,})`, 'gu')
 const NAME_LIST_SPLIT_PATTERN = new RegExp(`\\s*${NAME_LIST_SEPARATOR_PATTERN}\\s*`, 'giu')
+const LIST_CONJUNCTION_SPLIT_PATTERN = new RegExp(`\b(?:${LIST_CONJUNCTION_PATTERN})\b`, 'iu')
 const NAME_PUNCTUATION_SPLIT_PATTERN = new RegExp(`\\s*${NAME_LIST_PUNCTUATION_CLASS}+\\s*`, 'u')
 const HAS_NAME_PUNCTUATION_PATTERN = new RegExp(NAME_LIST_PUNCTUATION_CLASS, 'u')
 const NAME_LIST_STOP_WORDS = new Set([
@@ -257,6 +260,24 @@ function extractNamesFromCapitalizedLists (text, seen, hintSets, keepSet, remova
       const words = candidate.split(/\s+/).filter(Boolean)
       if (words.length < 2) continue
       if (words.some(word => wordLooksSuspicious(word, hintSets))) continue
+      if (words.length >= 4) {
+        const splitRuns = splitLikelyNameRuns(words, hintSets)
+        if (Array.isArray(splitRuns) && splitRuns.length >= 2) {
+          let added = false
+          for (const name of splitRuns) {
+            const normalized = normalizeEntity(name)
+            if (!normalized) continue
+            const tokens = normalized.split(' ').filter(Boolean)
+            if (tokens.some(word => NAME_LIST_STOP_WORDS.has(word))) continue
+            if (keepSet) keepSet.add(normalized)
+            if (seen.has(normalized)) continue
+            names.push(name)
+            seen.add(normalized)
+            added = true
+          }
+          if (added) continue
+        }
+      }
       const lowerWords = words.map(w => w.toLowerCase())
       if (lowerWords.some(w => NAME_LIST_STOP_WORDS.has(w))) continue
       const normalized = normalizeEntity(candidate)
@@ -276,6 +297,8 @@ function extractNamesFromCapitalizedLists (text, seen, hintSets, keepSet, remova
       for (const candidate of split) {
         const normalized = normalizeEntity(candidate)
         if (!normalized) continue
+        const tokens = normalized.split(' ').filter(Boolean)
+        if (tokens.some(word => NAME_LIST_STOP_WORDS.has(word))) continue
         if (keepSet) keepSet.add(normalized)
         if (seen.has(normalized)) continue
         names.push(candidate)
@@ -416,6 +439,68 @@ function splitLikelyNameRuns (words, hintSets) {
     .map(name => name.replace(/\s+/g, ' ').trim())
     .map(name => name.replace(/[.]+$/g, ''))
     .map(capitalizeFirstLetter)
+}
+
+function splitNameListByConjunction (text, hintSets, secondaryMap) {
+  if (typeof text !== 'string') return null
+  if (!LIST_CONJUNCTION_SPLIT_PATTERN.test(text)) return null
+  const segments = text
+    .split(LIST_CONJUNCTION_SPLIT_PATTERN)
+    .map(segment => segment.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+  if (segments.length < 2) return null
+
+  const results = []
+  const seen = new Set()
+
+  for (const segment of segments) {
+    const words = segment
+      .split(/\s+/)
+      .map(cleanNameCandidate)
+      .filter(Boolean)
+    if (!words.length) continue
+
+    const filtered = words.filter(word => {
+      const normalized = normalizeEntity(word)
+      return normalized && !LIST_CONJUNCTION_SET.has(normalized)
+    })
+    if (!filtered.length) continue
+
+    const split = splitNameWords(filtered, hintSets, secondaryMap)
+    if (Array.isArray(split) && split.length) {
+      for (const name of split) {
+        const key = normalizeEntity(name)
+        if (!key || seen.has(key)) continue
+        seen.add(key)
+        results.push(name)
+      }
+      continue
+    }
+
+    if (filtered.length >= 2 && filtered.every(word => !wordLooksSuspicious(word, hintSets))) {
+      const candidate = capitalizeFirstLetter(filtered.join(' '))
+      const key = normalizeEntity(candidate)
+      if (key && !seen.has(key)) {
+        seen.add(key)
+        results.push(candidate)
+      }
+      continue
+    }
+
+    if (filtered.length === 1) {
+      const [single] = filtered
+      if (single && (likelyFirst(single, hintSets) || likelyLast(single, hintSets))) {
+        const candidate = capitalizeFirstLetter(single)
+        const key = normalizeEntity(candidate)
+        if (key && !seen.has(key)) {
+          seen.add(key)
+          results.push(candidate)
+        }
+      }
+    }
+  }
+
+  return results.length >= 2 ? results : null
 }
 
 function splitNameWords (words, hintSets, secondaryMap) {
@@ -607,9 +692,6 @@ function maybeSplitPerson (entity, rawText, hintSets, secondaryMap) {
     if (extracted.length) return extracted
   }
 
-  const normalizedLower = raw.replace(/\s+/g, ' ').toLowerCase()
-  if (/\b(?:and|or|und|et|y|e)\b/.test(normalizedLower)) return [safeCanonical]
-
   const spacingSplit = maybeSplitBySpacing(raw)
   if (spacingSplit) {
     const filteredSpacing = filterLikelyNameParts(spacingSplit, hintSets)
@@ -624,6 +706,9 @@ function maybeSplitPerson (entity, rawText, hintSets, secondaryMap) {
 
   const split = splitNameWords(words, hintSets, secondaryMap)
   if (split) return split
+
+  const conjunctionSplit = splitNameListByConjunction(sanitizedFallback, hintSets, secondaryMap)
+  if (conjunctionSplit) return conjunctionSplit
 
   return [safeCanonical]
 }
@@ -733,6 +818,76 @@ export default async function entityParser (nlpInput, pluginHints = DEFAULT_HINT
   }
 
   people = dedupeEntities(people, true)
+  if (people.length > 1) {
+    const normalizedPeople = people
+      .map(name => {
+        const normalized = normalizeEntity(name).replace(/\s+/g, ' ').trim()
+        if (!normalized) return null
+        const tokens = normalized.split(' ').filter(Boolean)
+        return { original: name, normalized, tokens }
+      })
+      .filter(Boolean)
+
+    const normalizedCounts = new Map()
+    const normalizedSet = new Set()
+    const prefixSet = new Set()
+    const suffixSet = new Set()
+
+    for (const { normalized, tokens } of normalizedPeople) {
+      normalizedSet.add(normalized)
+      normalizedCounts.set(normalized, (normalizedCounts.get(normalized) || 0) + 1)
+      for (let i = 1; i < tokens.length; i++) {
+        const prefix = tokens.slice(0, i).join(' ')
+        const suffix = tokens.slice(i).join(' ')
+        if (prefix) prefixSet.add(prefix)
+        if (suffix) {
+          suffixSet.add(suffix)
+          const firstSuffix = tokens[i]
+          if (typeof firstSuffix === 'string' && firstSuffix.includes('-')) {
+            for (const fragment of firstSuffix.split('-')) {
+              if (fragment) suffixSet.add(fragment)
+            }
+          }
+        }
+      }
+    }
+
+    const filtered = []
+    const outputSet = new Set()
+
+    const containsStopWord = (tokens) => tokens.some(word => NAME_LIST_STOP_WORDS.has(word))
+
+    for (const { original, normalized, tokens } of normalizedPeople) {
+      normalizedCounts.set(normalized, (normalizedCounts.get(normalized) || 0) - 1)
+      if (!original || !tokens.length) continue
+      if (outputSet.has(normalized)) continue
+      if (containsStopWord(tokens)) continue
+
+      let skipOriginal = false
+      if (tokens.length >= 3) {
+        for (let splitIdx = 1; splitIdx < tokens.length; splitIdx++) {
+          const left = tokens.slice(0, splitIdx).join(' ')
+          const right = tokens.slice(splitIdx).join(' ')
+          if (!left || !right) continue
+
+          const leftReady = outputSet.has(left) || normalizedSet.has(left) || suffixSet.has(left) || (normalizedCounts.get(left) || 0) > 0
+          const rightReady = outputSet.has(right) || normalizedSet.has(right) || prefixSet.has(right) || (normalizedCounts.get(right) || 0) > 0
+
+          if (leftReady && rightReady) {
+            skipOriginal = true
+            break
+          }
+        }
+      }
+
+      if (skipOriginal) continue
+
+      filtered.push(original)
+      outputSet.add(normalized)
+    }
+
+    people = filtered
+  }
   result.people = people
 
   if (timeLeft() >= 1000) result.places = dedupeEntities(doc.places().json().map(entityToString))
