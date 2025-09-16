@@ -42,6 +42,7 @@ const NAME_LIST_CONTEXT_WORDS = [
   'members', 'acknowledgements', 'acknowledgments', 'acknowledgement', 'acknowledgment', 'gratitude', 'credit', 'credits'
 ]
 const SENTENCE_STARTER_WORDS = new Set(['we', 'our', 'ours', 'the', 'this', 'that', 'these', 'those'])
+const SENTENCE_BOUNDARY_FOLLOW_PATTERN = /([.!?]["']?\s+)([A-Z][\p{L}\p{M}'’.-]*)/gu
 const LEADING_JUNK_PATTERN = new RegExp("^[\\s\\u00A0,;·•‧∙・、，|/&(){}\\[\\]<>\"'“”‘’—–-]+", 'u')
 const HONORIFIC_PREFIXES = new Set(['mr', 'mrs', 'ms', 'miss', 'dr', 'prof', 'sir', 'dame', 'rev', 'reverend', 'lord', 'lady'])
 
@@ -191,6 +192,29 @@ function trimTrailingNonNameWords (words, rawSegment, followingText, hintSets) {
   const raw = typeof rawSegment === 'string' ? rawSegment : ''
   const follow = typeof followingText === 'string' ? followingText : ''
   const hasLowercaseTail = startsWithLowercaseContinuation(follow)
+  if (trimmed.length >= 2 && raw) {
+    let removalIndex = null
+    for (const match of raw.matchAll(SENTENCE_BOUNDARY_FOLLOW_PATTERN)) {
+      const nextWord = cleanNameCandidate(match[2])
+      if (!nextWord) continue
+      const normalizedNext = normalizeEntity(nextWord)
+      if (!normalizedNext) continue
+      if (!SENTENCE_STARTER_WORDS.has(normalizedNext)) continue
+      if (INITIAL_NAME_PART_PATTERN.test(nextWord)) continue
+      if (likelyFirst(nextWord, hintSets) || likelyLast(nextWord, hintSets) || likelySuffix(nextWord, hintSets)) continue
+      for (let i = trimmed.length - 1; i >= 0; i--) {
+        const candidate = cleanNameCandidate(trimmed[i])
+        if (!candidate) continue
+        if (normalizeEntity(candidate) === normalizedNext) {
+          removalIndex = removalIndex === null ? i : Math.max(removalIndex, i)
+          break
+        }
+      }
+    }
+    if (removalIndex !== null && removalIndex >= 0) {
+      trimmed.splice(removalIndex)
+    }
+  }
   while (trimmed.length >= 2) {
     const lastWord = trimmed[trimmed.length - 1]
     if (typeof lastWord !== 'string') break
@@ -205,6 +229,28 @@ function trimTrailingNonNameWords (words, rawSegment, followingText, hintSets) {
     trimmed.pop()
   }
   return trimmed
+}
+
+function trimSentenceStarterTail (name, hintSets) {
+  if (typeof name !== 'string') return name
+  const words = name.split(/\s+/).filter(Boolean)
+  if (words.length < 2) return name
+  const trimmed = words.slice()
+  let changed = false
+  while (trimmed.length >= 2) {
+    const lastWord = trimmed[trimmed.length - 1]
+    if (typeof lastWord !== 'string') break
+    const normalized = normalizeEntity(lastWord)
+    if (!normalized) break
+    if (!SENTENCE_STARTER_WORDS.has(normalized)) break
+    if (INITIAL_NAME_PART_PATTERN.test(lastWord)) break
+    if (likelyFirst(lastWord, hintSets) || likelyLast(lastWord, hintSets) || likelySuffix(lastWord, hintSets)) break
+    trimmed.pop()
+    changed = true
+  }
+  if (!changed) return name
+  if (trimmed.length === 0) return name
+  return trimmed.join(' ')
 }
 
 function wordLooksSuspicious (word, hintSets) {
@@ -727,7 +773,8 @@ function maybeSplitPerson (entity, rawText, hintSets, secondaryMap) {
     }
   }
   const canonicalWords = String(canonical || '').split(/\s+/).map(cleanNameCandidate).filter(Boolean)
-  const trimmedCanonicalWords = trimTrailingNonNameWords(canonicalWords, canonical, '', hintSets)
+  const canonicalContext = canonical === sanitizedFallback ? fallback : canonical
+  const trimmedCanonicalWords = trimTrailingNonNameWords(canonicalWords, canonicalContext, '', hintSets)
   const canonicalCandidate = trimmedCanonicalWords.join(' ')
   let fallbackWords = sanitizedFallback
     .split(/\s+/)
@@ -858,6 +905,7 @@ export default async function entityParser (nlpInput, pluginHints = DEFAULT_HINT
   if (listNames.length) combinedPeople = combinedPeople.concat(listNames)
 
   combinedPeople = mergeHonorificPairs(combinedPeople, hintSets)
+  combinedPeople = combinedPeople.map(name => trimSentenceStarterTail(name, hintSets))
 
   let people = dedupeEntities(combinedPeople, true)
   const multiWordFirsts = new Set()
