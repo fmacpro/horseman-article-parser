@@ -16,12 +16,16 @@ const GENERIC_NAME_PART_PATTERN = /^[\p{Lu}][\p{L}\p{M}'’.-]*$/u
 const INITIAL_NAME_PART_PATTERN = /^[\p{Lu}](?:[.’']|\.)?$/u
 const ALL_UPPER_WORD_PATTERN = /^[\p{Lu}]+$/u
 const TRAILING_UPPER_WORD_PATTERN = /[\p{Lu}](?![\p{Ll}])[\p{Lu}'’.-]*$/u
+const NAME_LIST_PUNCTUATION_CLASS = '[,;·•‧∙・、，|/&]'
+const NAME_LIST_SEPARATOR_PATTERN = `(?:${NAME_LIST_PUNCTUATION_CLASS}|\\b(?:${LIST_CONJUNCTION_PATTERN})\\b)`
 const NAME_LIST_PATTERN = new RegExp(
-  `(${NAME_PATTERN}(?:\\s*(?:,|\\b(?:${LIST_CONJUNCTION_PATTERN})\\b)\\s*${NAME_PATTERN})+)`,
+  `(${NAME_PATTERN}(?:\\s*${NAME_LIST_SEPARATOR_PATTERN}\\s*${NAME_PATTERN})+)`,
   'gu'
 )
 const DENSE_NAME_SEQUENCE_PATTERN = new RegExp(`(${NAME_PATTERN}(?:\\s+${NAME_PATTERN}){1,})`, 'gu')
-const NAME_LIST_SPLIT_PATTERN = new RegExp(`\\s*(?:,|\\b(?:${LIST_CONJUNCTION_PATTERN})\\b)\\s*`, 'giu')
+const NAME_LIST_SPLIT_PATTERN = new RegExp(`\\s*${NAME_LIST_SEPARATOR_PATTERN}\\s*`, 'giu')
+const NAME_PUNCTUATION_SPLIT_PATTERN = new RegExp(`\\s*${NAME_LIST_PUNCTUATION_CLASS}+\\s*`, 'u')
+const HAS_NAME_PUNCTUATION_PATTERN = new RegExp(NAME_LIST_PUNCTUATION_CLASS, 'u')
 const NAME_LIST_STOP_WORDS = new Set([
   'and', 'or', 'und', 'et', 'y', 'e', 'team', 'teams', 'group', 'groups', 'committee', 'committees', 'department',
   'departments', 'office', 'offices', 'project', 'projects', 'programme', 'programmes', 'program', 'programs', 'initiative',
@@ -122,6 +126,16 @@ function maybeSplitBySpacing (text) {
   const parts = text
     .split(/(?:\r?\n|\r|[\u00A0\s]{2,})+/)
     .map(s => s.trim())
+    .filter(Boolean)
+  return parts.length > 1 ? parts : null
+}
+
+function maybeSplitByPunctuationSeparators (text) {
+  if (typeof text !== 'string') return null
+  if (!HAS_NAME_PUNCTUATION_PATTERN.test(text)) return null
+  const parts = text
+    .split(NAME_PUNCTUATION_SPLIT_PATTERN)
+    .map(part => part.replace(/\s+/g, ' ').trim())
     .filter(Boolean)
   return parts.length > 1 ? parts : null
 }
@@ -404,6 +418,29 @@ function splitLikelyNameRuns (words, hintSets) {
     .map(capitalizeFirstLetter)
 }
 
+function splitNameWords (words, hintSets, secondaryMap) {
+  if (!Array.isArray(words)) return null
+  const sanitized = words.map(cleanNameCandidate).filter(Boolean)
+  if (sanitized.length <= 1) return null
+
+  let working = sanitized
+  if (working.length > 3) {
+    const trimmed = trimHonorificPrefixes(working)
+    if (trimmed.length >= 2) working = trimmed
+  }
+
+  const secondarySplit = splitViaSecondary(working, secondaryMap)
+  if (secondarySplit) return secondarySplit
+
+  const heuristicSplit = attemptHeuristicSplit(working, hintSets)
+  if (heuristicSplit) return heuristicSplit
+
+  const denseSplit = splitLikelyNameRuns(working, hintSets)
+  if (denseSplit) return denseSplit
+
+  return null
+}
+
 function buildSecondaryMap (names) {
   const map = new Map()
   for (const name of dedupeNameList(names)) {
@@ -541,6 +578,35 @@ function maybeSplitPerson (entity, rawText, hintSets, secondaryMap) {
   }
   const safeCanonical = (canonical || sanitizedFallback || fallback).trim()
 
+  const punctuationSplit = maybeSplitByPunctuationSeparators(sanitizedFallback)
+  if (punctuationSplit) {
+    const extracted = []
+    for (const segment of punctuationSplit) {
+      const segmentWords = segment
+        .split(/\s+/)
+        .map(cleanNameCandidate)
+        .filter(Boolean)
+      if (!segmentWords.length) continue
+      const split = splitNameWords(segmentWords, hintSets, secondaryMap)
+      if (split?.length) {
+        extracted.push(...split)
+        continue
+      }
+      if (segmentWords.length >= 2) {
+        const normalizedSegment = segmentWords.join(' ')
+        if (normalizedSegment) extracted.push(capitalizeFirstLetter(normalizedSegment))
+        continue
+      }
+      if (segmentWords.length === 1) {
+        const [single] = segmentWords
+        if (likelyFirst(single, hintSets) || likelyLast(single, hintSets)) {
+          extracted.push(capitalizeFirstLetter(single))
+        }
+      }
+    }
+    if (extracted.length) return extracted
+  }
+
   const normalizedLower = raw.replace(/\s+/g, ' ').toLowerCase()
   if (/\b(?:and|or|und|et|y|e)\b/.test(normalizedLower)) return [safeCanonical]
 
@@ -550,22 +616,14 @@ function maybeSplitPerson (entity, rawText, hintSets, secondaryMap) {
     if (filteredSpacing.length >= 2) return filteredSpacing
   }
 
-  let words = sanitizedFallback.split(/\s+/).filter(Boolean)
+  const words = sanitizedFallback
+    .split(/\s+/)
+    .map(cleanNameCandidate)
+    .filter(Boolean)
   if (words.length <= 1) return [safeCanonical]
 
-  if (words.length > 3) {
-    const trimmed = trimHonorificPrefixes(words)
-    if (trimmed.length >= 2) words = trimmed
-  }
-
-  const secondarySplit = splitViaSecondary(words, secondaryMap)
-  if (secondarySplit) return secondarySplit
-
-  const heuristicSplit = attemptHeuristicSplit(words, hintSets)
-  if (heuristicSplit) return heuristicSplit
-
-  const denseSplit = splitLikelyNameRuns(words, hintSets)
-  if (denseSplit) return denseSplit
+  const split = splitNameWords(words, hintSets, secondaryMap)
+  if (split) return split
 
   return [safeCanonical]
 }
