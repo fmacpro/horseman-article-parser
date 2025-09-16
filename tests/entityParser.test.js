@@ -142,6 +142,17 @@ test('entityParser splits acknowledgement runs without punctuation', async () =>
   assert(!res.people.some(name => /Kairouz Brendan McMahan/.test(name)))
 })
 
+test('entityParser keeps dense acknowledgements together when surnames are unknown', async () => {
+  const input = 'Thanks to John Qwerty Mary Asdf for their help.'
+  const res = await entityParser(input, { first: [], last: [] }, () => 2000)
+  assert(res.people.includes('John Qwerty'))
+  assert(res.people.includes('Mary Asdf'))
+  assert(!res.people.includes('John'))
+  assert(!res.people.includes('Qwerty'))
+  assert(!res.people.includes('Mary'))
+  assert(!res.people.includes('Asdf'))
+})
+
 test('loadNlpPlugins collects extended hints and secondary config', () => {
   const plugin = (_Doc, world) => {
     world.addWords({

@@ -34,6 +34,7 @@ const NAME_LIST_CONTEXT_WORDS = [
   'supporters', 'support', 'engineer', 'engineers', 'researcher', 'researchers', 'scientist', 'scientists', 'leaders',
   'members', 'acknowledgements', 'acknowledgments', 'acknowledgement', 'acknowledgment', 'gratitude', 'credit', 'credits'
 ]
+const HONORIFIC_PREFIXES = new Set(['mr', 'mrs', 'ms', 'miss', 'dr', 'prof', 'sir', 'dame', 'rev', 'reverend', 'lord', 'lady'])
 
 export function normalizeEntity (w) {
   if (typeof w !== 'string') return ''
@@ -180,6 +181,51 @@ function filterLikelyNameParts (parts, hintSets) {
   return filtered
 }
 
+function trimHonorificPrefixes (words) {
+  if (!Array.isArray(words)) return []
+  let start = 0
+  while (start < words.length - 1) {
+    const normalized = normalizeEntity(words[start])
+    if (!normalized) break
+    if (!HONORIFIC_PREFIXES.has(normalized)) break
+    start++
+  }
+  return start > 0 ? words.slice(start) : words.slice()
+}
+
+function mergeHonorificPairs (names, hintSets) {
+  if (!Array.isArray(names) || names.length < 2) return names
+  const merged = []
+  for (let i = 0; i < names.length; i++) {
+    const current = names[i]
+    const next = names[i + 1]
+    const combined = tryMergeHonorificPair(current, next, hintSets)
+    if (combined) {
+      merged.push(combined)
+      i++
+    } else if (typeof current === 'string') {
+      merged.push(current)
+    }
+  }
+  return merged
+}
+
+function tryMergeHonorificPair (current, next, hintSets) {
+  if (typeof current !== 'string' || typeof next !== 'string') return null
+  const currentWords = current.split(/\s+/).filter(Boolean)
+  const nextWords = next.split(/\s+/).filter(Boolean)
+  if (currentWords.length < 2 || nextWords.length < 2) return null
+  const prefix = normalizeEntity(currentWords[0])
+  if (!HONORIFIC_PREFIXES.has(prefix)) return null
+  const firstWord = currentWords[1]
+  if (!likelyFirst(firstWord, hintSets)) return null
+  const nextPrefix = normalizeEntity(nextWords[0])
+  if (HONORIFIC_PREFIXES.has(nextPrefix)) return null
+  const mergedName = `${currentWords.slice(1).join(' ')} ${next}`.replace(/\s+/g, ' ').trim()
+  if (!mergedName || mergedName.split(/\s+/).length < 2) return null
+  return capitalizeFirstLetter(mergedName)
+}
+
 function extractNamesFromCapitalizedLists (text, seen, hintSets, keepSet, removalSet) {
   if (typeof text !== 'string') return []
   const names = []
@@ -223,6 +269,10 @@ function extractNamesFromCapitalizedLists (text, seen, hintSets, keepSet, remova
       }
       if (removalSet) {
         const normalizedWords = denseWords.map(word => normalizeEntity(word)).filter(Boolean)
+        const normalizedBlock = normalizedWords.join(' ')
+        if (normalizedBlock && !keepSet?.has(normalizedBlock)) {
+          removalSet.add(normalizedBlock)
+        }
         for (const word of normalizedWords) {
           if (word.includes('-')) {
             for (const fragment of word.split('-')) {
@@ -264,6 +314,7 @@ function splitViaSecondary (words, secondaryMap) {
 function attemptHeuristicSplit (words, hintSets) {
   if (!Array.isArray(words) || words.length < 2) return null
   if (!words.every(startsWithUpper)) return null
+  if (words.length > 3) return null
   const suffixCount = words.filter(word => likelySuffix(word, hintSets)).length
   if (suffixCount) return null
   const firstCount = words.filter(word => likelyFirst(word, hintSets)).length
@@ -322,7 +373,7 @@ function splitLikelyNameRuns (words, hintSets) {
   if (!Array.isArray(words) || words.length < 4) return null
   if (!words.every(part => GENERIC_NAME_PART_PATTERN.test(part))) return null
   const firstSignals = words.filter(word => likelyFirst(word, hintSets) || INITIAL_NAME_PART_PATTERN.test(word)).length
-  if (firstSignals < 3 && words.length < 6) return null
+  if (firstSignals < 2 && words.length < 6) return null
 
   const dp = new Array(words.length + 1).fill(null)
   dp[words.length] = { score: 0, names: [] }
@@ -499,8 +550,13 @@ function maybeSplitPerson (entity, rawText, hintSets, secondaryMap) {
     if (filteredSpacing.length >= 2) return filteredSpacing
   }
 
-  const words = sanitizedFallback.split(/\s+/).filter(Boolean)
+  let words = sanitizedFallback.split(/\s+/).filter(Boolean)
   if (words.length <= 1) return [safeCanonical]
+
+  if (words.length > 3) {
+    const trimmed = trimHonorificPrefixes(words)
+    if (trimmed.length >= 2) words = trimmed
+  }
 
   const secondarySplit = splitViaSecondary(words, secondaryMap)
   if (secondarySplit) return secondarySplit
@@ -584,6 +640,8 @@ export default async function entityParser (nlpInput, pluginHints = DEFAULT_HINT
     })
   }
   if (listNames.length) combinedPeople = combinedPeople.concat(listNames)
+
+  combinedPeople = mergeHonorificPairs(combinedPeople, hintSets)
 
   let people = dedupeEntities(combinedPeople, true)
   const multiWordFirsts = new Set()
