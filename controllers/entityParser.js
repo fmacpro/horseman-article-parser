@@ -14,6 +14,8 @@ const LIST_CONJUNCTION_PATTERN = LIST_CONJUNCTIONS.join('|')
 const NAME_PATTERN = `[A-Z][\\p{L}\\p{M}'’.-]+(?:\\s+[A-Z][\\p{L}\\p{M}'’.-]+)+`
 const GENERIC_NAME_PART_PATTERN = /^[\p{Lu}][\p{L}\p{M}'’.-]*$/u
 const INITIAL_NAME_PART_PATTERN = /^[\p{Lu}](?:[.’']|\.)?$/u
+const ALL_UPPER_WORD_PATTERN = /^[\p{Lu}]+$/u
+const TRAILING_UPPER_WORD_PATTERN = /[\p{Lu}](?![\p{Ll}])[\p{Lu}'’.-]*$/u
 const NAME_LIST_PATTERN = new RegExp(
   `(${NAME_PATTERN}(?:\\s*(?:,|\\b(?:${LIST_CONJUNCTION_PATTERN})\\b)\\s*${NAME_PATTERN})+)`,
   'gu'
@@ -144,6 +146,40 @@ function cleanNameCandidate (part) {
     .trim()
 }
 
+function wordLooksSuspicious (word, hintSets) {
+  const cleaned = cleanNameCandidate(word)
+  if (!cleaned) return true
+  if (!GENERIC_NAME_PART_PATTERN.test(cleaned)) return true
+  if (INITIAL_NAME_PART_PATTERN.test(cleaned)) return false
+  if (likelySuffix(cleaned, hintSets)) return false
+  const hasTrailingUpper = TRAILING_UPPER_WORD_PATTERN.test(cleaned)
+  const isAllUpper = ALL_UPPER_WORD_PATTERN.test(cleaned)
+  if (!hasTrailingUpper && !isAllUpper) return false
+  if (likelyFirst(cleaned, hintSets) || likelyLast(cleaned, hintSets)) return false
+  return true
+}
+
+function filterLikelyNameParts (parts, hintSets) {
+  const filtered = []
+  for (const part of Array.isArray(parts) ? parts : []) {
+    if (typeof part !== 'string') continue
+    const cleanedPart = part.replace(/\s+/g, ' ').trim()
+    if (!cleanedPart) continue
+    const words = cleanedPart.split(/\s+/).filter(Boolean)
+    if (words.length < 2) continue
+    let suspicious = false
+    for (const word of words) {
+      if (wordLooksSuspicious(word, hintSets)) {
+        suspicious = true
+        break
+      }
+    }
+    if (suspicious) continue
+    filtered.push(capitalizeFirstLetter(cleanedPart))
+  }
+  return filtered
+}
+
 function extractNamesFromCapitalizedLists (text, seen, hintSets, keepSet, removalSet) {
   if (typeof text !== 'string') return []
   const names = []
@@ -160,6 +196,7 @@ function extractNamesFromCapitalizedLists (text, seen, hintSets, keepSet, remova
       if (!candidate || !/\s/.test(candidate) || /\d/.test(candidate)) continue
       const words = candidate.split(/\s+/).filter(Boolean)
       if (words.length < 2) continue
+      if (words.some(word => wordLooksSuspicious(word, hintSets))) continue
       const lowerWords = words.map(w => w.toLowerCase())
       if (lowerWords.some(w => NAME_LIST_STOP_WORDS.has(w))) continue
       const normalized = normalizeEntity(candidate)
@@ -242,6 +279,7 @@ function scoreNameSegment (segment, hintSets) {
   if (!segment.every(part => GENERIC_NAME_PART_PATTERN.test(part))) return null
   const cleaned = segment.map(cleanNameCandidate).filter(Boolean)
   if (cleaned.length !== segment.length) return null
+  if (cleaned.some(word => wordLooksSuspicious(word, hintSets))) return null
   const first = cleaned[0]
   const last = cleaned[cleaned.length - 1]
   if (!startsWithUpper(first) || !startsWithUpper(last)) return null
@@ -454,10 +492,12 @@ function maybeSplitPerson (entity, rawText, hintSets, secondaryMap) {
 
   const normalizedLower = raw.replace(/\s+/g, ' ').toLowerCase()
   if (/\b(?:and|or|und|et|y|e)\b/.test(normalizedLower)) return [safeCanonical]
-  if (/[\-/'’]/.test(fallback)) return [safeCanonical]
 
   const spacingSplit = maybeSplitBySpacing(raw)
-  if (spacingSplit) return spacingSplit.map(capitalizeFirstLetter)
+  if (spacingSplit) {
+    const filteredSpacing = filterLikelyNameParts(spacingSplit, hintSets)
+    if (filteredSpacing.length >= 2) return filteredSpacing
+  }
 
   const words = sanitizedFallback.split(/\s+/).filter(Boolean)
   if (words.length <= 1) return [safeCanonical]
