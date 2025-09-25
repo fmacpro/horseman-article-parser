@@ -1188,7 +1188,26 @@ log('analyze', 'Evaluating meta tags')
   // Excerpt
   article.excerpt = capitalizeFirstLetter(article.processed.text.raw.replace(/^(.{200}[^\s]*).*/, '$1'))
   if (options.enabled.includes('summary')) {
-    const { text: summaryText, sentences } = buildSummary(article.processed.text.raw)
+    const summaryKeywords = []
+    const metaSources = ['keywords', 'news_keywords', 'og:title', 'og:description', 'twitter:title', 'twitter:description']
+    for (const key of metaSources) {
+      const raw = article.meta?.[key]
+      if (!raw) continue
+      if (Array.isArray(raw)) {
+        for (const entry of raw) {
+          if (typeof entry === 'string') summaryKeywords.push(entry)
+          else if (typeof entry?.text === 'string') summaryKeywords.push(entry.text)
+        }
+        continue
+      }
+      if (typeof raw?.text === 'string') summaryKeywords.push(raw.text)
+      else if (typeof raw === 'string') summaryKeywords.push(raw)
+    }
+    const { text: summaryText, sentences } = buildSummary(article.processed.text.raw, {
+      title: article.title?.text || '',
+      metaDescription: article.meta?.description?.text || '',
+      keywords: summaryKeywords
+    })
     article.processed.text.summary = summaryText
     article.processed.text.sentences = sentences
   }
