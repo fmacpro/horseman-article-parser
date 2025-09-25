@@ -17,3 +17,9 @@ test('checkReadability counts single newline paragraphs', async () => {
   const res = await checkReadability(text)
   assert.equal(res.paragraphs, 2)
 })
+
+test('checkReadability handles abbreviations in sentences', async () => {
+  const text = 'Power in the U.K. is complicated. Another line continues.'
+  const res = await checkReadability(text)
+  assert.equal(res.sentences, 2)
+})
