@@ -1318,12 +1318,14 @@ log('analyze', 'Evaluating meta tags')
     log('analyze', 'Evaluating keywords and keyphrases')
     // Run keyword parsing jobs in parallel for speed
     try {
+      const keywordOptionsBase = options.retextkeywords ? { ...options.retextkeywords } : {}
+      const keywordOptions = { ...keywordOptionsBase, language: article.language }
       const jobs = []
-      if (timeLeft() > 500) jobs.push(keywordParser(article.meta.title.text, options.retextkeywords).then(r => Object.assign(article.meta.title, r)).catch(() => {}))
-      if (timeLeft() > 500) jobs.push(keywordParser(article.title.text, options.retextkeywords).then(r => Object.assign(article.title, r)).catch(() => {}))
-      if (timeLeft() > 500) jobs.push(keywordParser(article.meta.description.text, options.retextkeywords).then(r => Object.assign(article.meta.description, r)).catch(() => {}))
+      if (timeLeft() > 500) jobs.push(keywordParser(article.meta.title.text, keywordOptions).then(r => Object.assign(article.meta.title, r)).catch(() => {}))
+      if (timeLeft() > 500) jobs.push(keywordParser(article.title.text, keywordOptions).then(r => Object.assign(article.title, r)).catch(() => {}))
+      if (timeLeft() > 500) jobs.push(keywordParser(article.meta.description.text, keywordOptions).then(r => Object.assign(article.meta.description, r)).catch(() => {}))
       if (timeLeft() > 600) jobs.push(
-          keywordParser(cleanAnalysisInput, options.retextkeywords).then(kw => {
+          keywordParser(cleanAnalysisInput, keywordOptions).then(kw => {
             Object.assign(article.processed, kw)
             try {
               const kc = Array.isArray(kw.keywords) ? kw.keywords.length : 0

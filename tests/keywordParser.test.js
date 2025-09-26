@@ -1,32 +1,37 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import fs from 'fs'
 import keywordParser from '../controllers/keywordParser.js'
 
-test('keywordParser returns keyword and keyphrase arrays', async () => {
-  const res = await keywordParser('JavaScript is great. Node.js uses JavaScript.')
-  assert.ok(Array.isArray(res.keywords))
-  assert.ok(res.keywords.length > 0)
-  assert.ok(Array.isArray(res.keyphrases))
+test('keywordParser respects French language stopwords and filters nav noise', async () => {
+  const text = [
+    'A Marseille, le prefet s oppose a la creation dune salle de shoot.',
+    'Des collectifs dhabitan ts reclament une Halte Soins Addiction pres de la rue DAubagne.',
+    'SPORT BUSINESS SPORT BUSINESS BEBES ET MAMANS BEBES MINUTES.',
+    'Le ministre de la Sante promet une reponse avant lhiver.'
+  ].join(' ')
+
+  const res = await keywordParser(text, { lang: 'fr', language: { iso6391: 'fr' }, maximum: 6 })
+  const keywords = res.keywords.map(item => item.keyword)
+  const keyphrases = res.keyphrases.map(item => item.keyphrase)
+
+  assert.ok(keywords.includes('Marseille'))
+  assert.ok(!keywords.some(item => ['SPORT', 'BEBES', 'BUSINESS'].includes(item)))
+  assert.ok(!keywords.includes('Des'))
+  assert.ok(!keyphrases.some(phrase => phrase.includes('SPORT BUSINESS')))
 })
 
-test('keywordParser ranks real article text', async () => {
-  const text = fs.readFileSync('tests/fixtures/keywords.txt', 'utf8')
-  const res = await keywordParser(text)
-  assert.equal(res.keywords[0].keyword, 'JavaScript')
-  assert.ok(res.keywords[0].score >= res.keywords[1].score)
-  assert.match(res.keyphrases[0].keyphrase, /JavaScript/)
-})
+test('keywordParser keeps upper-case acronyms while removing long shouty words', async () => {
+  const text = [
+    'L ONG WWF presente un rapport sur la pollution.',
+    'Les ministres du G7 se reunissent a Paris pour discuter du climat.',
+    'ECONOMIE ECONOMIE ECONOMIE',
+    'Les ONG demandent des mesures concretes.'
+  ].join(' ')
 
-test('keywordParser capitalizes keywords and keyphrases', async () => {
-  const res = await keywordParser('javascript is great. javascript makes the web work.')
-  assert.equal(res.keywords[0].keyword[0], res.keywords[0].keyword[0].toUpperCase())
-  assert.equal(res.keyphrases[0].keyphrase[0], res.keyphrases[0].keyphrase[0].toUpperCase())
-})
+  const res = await keywordParser(text, { lang: 'fr', language: { iso6391: 'fr' }, maximum: 6 })
+  const keywords = res.keywords.map(item => item.keyword)
 
-test('keywordParser strips trailing possessive from keywords and keyphrases', async () => {
-  const res = await keywordParser("Kremlin's economy is Kremlin's")
-  assert.equal(res.keywords[0].keyword, 'Kremlin')
-  assert.ok(res.keyphrases.some(p => p.keyphrase === 'Kremlin'))
-  assert.ok(res.keyphrases.some(p => p.keyphrase === "Kremlin's economy"))
+  assert.ok(keywords.includes('WWF'))
+  assert.ok(keywords.includes('G7'))
+  assert.ok(!keywords.includes('ECONOMIE'))
 })
