@@ -88,6 +88,131 @@ export function normalizeEntity (w) {
     .toLowerCase()
 }
 
+
+const MULTI_WORD_COUNTRY_NAMES = new Set([
+  'United States',
+  'United States of America',
+  'United Kingdom',
+  'United Arab Emirates',
+  'New Zealand',
+  'New Caledonia',
+  'Papua New Guinea',
+  'Equatorial Guinea',
+  'Guinea Bissau',
+  'Guinea-Bissau',
+  'Czech Republic',
+  'Dominican Republic',
+  'Central African Republic',
+  'Democratic Republic of the Congo',
+  'Republic of the Congo',
+  'South Africa',
+  'South Korea',
+  'South Sudan',
+  'North Korea',
+  'Saudi Arabia',
+  'Costa Rica',
+  'Sierra Leone',
+  'Ivory Coast',
+  'Cote d\'Ivoire',
+  'El Salvador',
+  'San Marino',
+  'Sri Lanka',
+  'Trinidad and Tobago',
+  'Trinidad y Tobago',
+  'Antigua and Barbuda',
+  'Antigua y Barbuda',
+  'Bosnia and Herzegovina',
+  'Marshall Islands',
+  'Solomon Islands',
+  'Cabo Verde',
+  'Cape Verde',
+  'Saint Kitts and Nevis',
+  'Saint Lucia',
+  'Saint Vincent and the Grenadines',
+  'Federated States of Micronesia',
+  'Micronesia',
+  'Timor Leste',
+  'East Timor',
+  'Western Sahara',
+  'Puerto Rico',
+  'Hong Kong',
+  'Northern Ireland',
+  'American Samoa',
+  'French Polynesia',
+  'Cayman Islands',
+  'Faroe Islands',
+  'Cook Islands',
+  'Vatican City',
+  'Holy See',
+  'State of Palestine',
+  'Palestinian Territories',
+  'Sao Tome and Principe',
+  'Saint Barthelemy',
+  'Saint Pierre and Miquelon',
+  'Wallis and Futuna',
+  'Turks and Caicos Islands',
+  'British Virgin Islands',
+  'United States Virgin Islands',
+  'Isle of Man',
+  'Bonaire Sint Eustatius and Saba',
+  'Sint Maarten',
+  'Saint Martin'
+].map(name => normalizeEntity(name)))
+
+const MULTI_WORD_COUNTRY_PREFIXES = new Set()
+for (const name of MULTI_WORD_COUNTRY_NAMES) {
+  const tokens = name.split(' ').filter(Boolean)
+  for (let i = 1; i < tokens.length; i++) {
+    MULTI_WORD_COUNTRY_PREFIXES.add(tokens.slice(0, i).join(' '))
+  }
+}
+
+const KNOWN_PLACE_PHRASES = new Set(['white house', 'palestinian authority', 'hamas authority'].map(name => normalizeEntity(name)))
+
+const TRAILING_LOCATION_ABBREVIATIONS = new Set(['uk', 'us', 'usa', 'uae', 'eu', 'un'].map(name => normalizeEntity(name)))
+const KNOWN_ORGANIZATION_TAIL_PATTERNS = [
+  ['al', 'jazeera']
+]
+
+const PLACE_TAIL_STOP_WORDS = new Set([
+  'in',
+  'on',
+  'at',
+  'to',
+  'from',
+  'into',
+  'onto',
+  'against',
+  'towards',
+  'toward',
+  'versus',
+  'vs',
+  'amid',
+  'amidst',
+  'among',
+  'amongst',
+  'around',
+  'about',
+  'near',
+  'outside',
+  'inside',
+  'beyond',
+  'within',
+  'without',
+  'after',
+  'before',
+  'during',
+  'through',
+  'throughout',
+  'including',
+  'targeting',
+  'via',
+  'over',
+  'under'
+])
+
+const PLACE_PUNCTUATION_SPLIT_PATTERN = /[\u00B7\u2022,;\/|&]+/u
+const PLACE_CONJUNCTION_SPLIT_PATTERN = new RegExp('\\b(?:' + LIST_CONJUNCTION_PATTERN + '|vs|versus)\\b', 'iu')
 function dedupeNameList (values) {
   const seen = new Set()
   const out = []
@@ -952,6 +1077,388 @@ function extractPeopleFromSecondary (data, minConfidence = 0) {
   return out
 }
 
+
+function hasCountryTag (term) {
+  if (!term || !Array.isArray(term.terms)) return false
+  return term.terms.some(entry => Array.isArray(entry.tags) && entry.tags.includes('Country'))
+}
+
+function findNextCountryIndex (terms, startIndex) {
+  if (!Array.isArray(terms)) return null
+  for (let i = startIndex; i < terms.length; i++) {
+    if (hasCountryTag(terms[i])) return i
+  }
+  return null
+}
+
+function splitCountrySequence (text) {
+  if (typeof text !== 'string' || !text.trim()) return null
+  let termData = []
+  try {
+    termData = nlp(text).terms().json()
+  } catch {
+    return null
+  }
+  if (!Array.isArray(termData) || !termData.length) return null
+  const groups = []
+  let buffer = []
+  const flush = () => {
+    if (!buffer.length) return
+    const candidate = buffer.join(' ').trim()
+    if (candidate) groups.push(candidate)
+    buffer = []
+  }
+  for (let i = 0; i < termData.length; i++) {
+    const term = termData[i]
+    if (!hasCountryTag(term)) {
+      flush()
+      continue
+    }
+    buffer.push(term.text)
+    const normalizedBuffer = normalizeEntity(buffer.join(' '))
+    const nextIdx = findNextCountryIndex(termData, i + 1)
+    if (nextIdx === null) {
+      flush()
+      continue
+    }
+    const nextTerm = termData[nextIdx]
+    const normalizedWithNext = normalizeEntity([...buffer, nextTerm.text].join(' '))
+    if (normalizedWithNext && MULTI_WORD_COUNTRY_NAMES.has(normalizedWithNext)) {
+      continue
+    }
+    if (normalizedBuffer && MULTI_WORD_COUNTRY_PREFIXES.has(normalizedBuffer)) {
+      continue
+    }
+    flush()
+  }
+  flush()
+  return groups.length > 1 ? groups : null
+}
+
+function splitByPlaceConjunction (text) {
+  if (typeof text !== 'string') return []
+  const trimmed = text.trim()
+  if (!trimmed) return []
+  const normalized = normalizeEntity(trimmed)
+  if (normalized && MULTI_WORD_COUNTRY_NAMES.has(normalized)) return [trimmed]
+  if (!PLACE_CONJUNCTION_SPLIT_PATTERN.test(trimmed)) return [trimmed]
+  const parts = trimmed.split(PLACE_CONJUNCTION_SPLIT_PATTERN).map(part => part.trim()).filter(Boolean)
+  return parts.length ? parts : [trimmed]
+}
+
+function splitPlaceSegments (raw) {
+  if (typeof raw !== 'string') return []
+  const sanitized = raw.replace(/\s+/g, ' ').trim()
+  if (!sanitized) return []
+  const initialParts = sanitized.split(PLACE_PUNCTUATION_SPLIT_PATTERN).map(part => part.trim()).filter(Boolean)
+  const parts = initialParts.length ? initialParts : [sanitized]
+  const segments = []
+  for (const part of parts) {
+    const normalized = normalizeEntity(part)
+    if (!normalized) continue
+    if (MULTI_WORD_COUNTRY_NAMES.has(normalized)) {
+      segments.push(part)
+      continue
+    }
+    const conjunctionParts = splitByPlaceConjunction(part)
+    for (const chunk of conjunctionParts) {
+      const cleanedChunk = chunk.trim()
+      if (!cleanedChunk) continue
+      const normalizedChunk = normalizeEntity(cleanedChunk)
+      if (normalizedChunk && MULTI_WORD_COUNTRY_NAMES.has(normalizedChunk)) {
+        segments.push(cleanedChunk)
+        continue
+      }
+      const splitCountries = splitCountrySequence(cleanedChunk)
+      if (Array.isArray(splitCountries) && splitCountries.length) {
+        for (const name of splitCountries) {
+          const trimmedName = String(name || '').trim()
+          if (trimmedName) segments.push(trimmedName)
+        }
+        continue
+      }
+      segments.push(cleanedChunk)
+    }
+  }
+  return segments
+}
+
+function isLikelyNonPlaceTail (word, tagsSet) {
+  if (typeof word !== 'string') return false
+  const tags = tagsSet instanceof Set ? tagsSet : new Set(Array.isArray(tagsSet) ? tagsSet : [])
+  if (tags.has('Place') || tags.has('Country') || tags.has('City') || tags.has('Region')) return false
+  if (tags.has('Preposition') || tags.has('Conjunction') || tags.has('Determiner') || tags.has('Pronoun') || tags.has('Adverb')) return true
+  if (tags.has('Verb') || tags.has('Gerund') || tags.has('Infinitive')) return true
+  return false
+}
+
+function collectTermTags (text) {
+  if (typeof text !== 'string') return []
+  const trimmed = text.trim()
+  if (!trimmed) return []
+  try {
+    const doc = nlp(trimmed)
+    return doc.terms().json().map(item => {
+      const tagSet = new Set()
+      if (Array.isArray(item?.terms)) {
+        for (const term of item.terms) {
+          if (Array.isArray(term?.tags)) {
+            for (const tag of term.tags) tagSet.add(tag)
+          }
+        }
+      }
+      return tagSet
+    })
+  } catch {
+    return []
+  }
+}
+
+function wordLooksLikePerson (word, hintSets, tagsSet) {
+  if (typeof word !== 'string') return false
+  const normalized = normalizeEntity(word)
+  if (!normalized) return false
+  const tags = tagsSet instanceof Set ? tagsSet : new Set(Array.isArray(tagsSet) ? tagsSet : [])
+  if (tags.has('Place') || tags.has('Country') || tags.has('City') || tags.has('Region')) return false
+  if (tags.has('Person') || tags.has('FirstName') || tags.has('LastName') || tags.has('MaleName') || tags.has('FemaleName')) return true
+  if (hintSets) {
+    if (likelyFirst(word, hintSets) || likelyLast(word, hintSets) || likelySuffix(word, hintSets)) return true
+  }
+  try {
+    const doc = nlp(word)
+    if (doc.has('#Place') || doc.has('#Country') || doc.has('#City') || doc.has('#Region')) return false
+    if (doc.has('#Person') || doc.has('#LastName') || doc.has('#FirstName')) return true
+  } catch {}
+  return false
+}
+
+function trimPlaceTailWords (words, hintSets, tagsArray, personTokenSet) {
+  if (!Array.isArray(words)) return { words: [], tags: [], extras: [] }
+  const trimmed = words.slice()
+  const extras = []
+  let tags = Array.isArray(tagsArray) && tagsArray.length === trimmed.length
+    ? tagsArray.map(set => (set instanceof Set ? new Set(set) : new Set(Array.isArray(set) ? set : [])))
+    : collectTermTags(trimmed.join(' '))
+
+  const recalcTags = () => {
+    tags = collectTermTags(trimmed.join(' '))
+  }
+
+  const removeTail = (count, record = false) => {
+    if (!Number.isInteger(count) || count <= 0 || trimmed.length < count) return false
+    if (record) {
+      const segmentWords = trimmed.slice(trimmed.length - count)
+      const segment = segmentWords.join(' ').replace(/\s+/g, ' ').trim()
+      if (segment) extras.unshift(segment)
+    }
+    trimmed.splice(trimmed.length - count, count)
+    recalcTags()
+    return true
+  }
+
+  while (trimmed.length > 1) {
+    let handled = false
+    for (const pattern of KNOWN_ORGANIZATION_TAIL_PATTERNS) {
+      const len = pattern.length
+      if (trimmed.length <= len) continue
+      const tailWords = trimmed.slice(-len)
+      const normalizedTail = tailWords.map(word => normalizeEntity(word))
+      let match = true
+      for (let i = 0; i < len; i++) {
+        if (normalizedTail[i] !== pattern[i]) {
+          match = false
+          break
+        }
+      }
+      if (match) {
+        removeTail(len, true)
+        handled = true
+        break
+      }
+    }
+    if (handled) continue
+    const lastWord = trimmed[trimmed.length - 1]
+    const normalizedLast = normalizeEntity(lastWord)
+    if (trimmed.length > 1 && TRAILING_LOCATION_ABBREVIATIONS.has(normalizedLast)) {
+      removeTail(1, true)
+      continue
+    }
+    break
+  }
+
+  while (trimmed.length > 1) {
+    const idx = trimmed.length - 1
+    const word = trimmed[idx]
+    if (typeof word !== 'string') {
+      removeTail(1)
+      continue
+    }
+    const normalizedWord = normalizeEntity(word)
+    if (!normalizedWord) {
+      removeTail(1)
+      continue
+    }
+    const normalizedPhrase = normalizeEntity(trimmed.join(' '))
+    if (normalizedPhrase && (MULTI_WORD_COUNTRY_NAMES.has(normalizedPhrase) || KNOWN_PLACE_PHRASES.has(normalizedPhrase))) break
+    const tagSet = tags[idx] instanceof Set ? tags[idx] : new Set(Array.isArray(tags[idx]) ? tags[idx] : [])
+    if (PLACE_TAIL_STOP_WORDS.has(normalizedWord)) {
+      removeTail(1)
+      continue
+    }
+    if (personTokenSet && personTokenSet.has(normalizedWord)) {
+      removeTail(1)
+      continue
+    }
+    if (wordLooksLikePerson(word, hintSets, tagSet)) {
+      removeTail(1)
+      continue
+    }
+    if (isLikelyNonPlaceTail(word, tagSet)) {
+      removeTail(1)
+      continue
+    }
+    break
+  }
+
+  return { words: trimmed, tags, extras }
+}
+function cleanPlaceSegment (segment, hintSets, personTokenSet) {
+  if (typeof segment !== 'string') return null
+  const normalizedSpace = segment.replace(/\s+/g, ' ').trim()
+  if (!normalizedSpace) return null
+  const words = normalizedSpace.split(/\s+/)
+  const initialTags = collectTermTags(normalizedSpace)
+  const { words: trimmedWords, tags, extras } = trimPlaceTailWords(words, hintSets, initialTags, personTokenSet)
+  const cleaned = trimmedWords.join(' ').trim()
+  if (!cleaned && (!extras || !extras.length)) return null
+  const finalTags = cleaned ? tags : []
+  return { text: cleaned || null, tags: finalTags, extras }
+}
+function isValidPlaceCandidate (candidate, tagSets) {
+  if (typeof candidate !== 'string') return false
+  const trimmed = candidate.trim()
+  if (!trimmed) return false
+  const normalized = normalizeEntity(trimmed)
+  if (!normalized) return false
+  if (MULTI_WORD_COUNTRY_NAMES.has(normalized) || KNOWN_PLACE_PHRASES.has(normalized) || TRAILING_LOCATION_ABBREVIATIONS.has(normalized)) return true
+  try {
+    const doc = nlp(trimmed)
+    if (doc.has('#Place') || doc.has('#Country') || doc.has('#City') || doc.has('#Region')) return true
+  } catch {}
+  const tags = Array.isArray(tagSets) && tagSets.length ? tagSets : collectTermTags(trimmed)
+  if (tags.some(set => set instanceof Set && (set.has('Place') || set.has('Country') || set.has('City') || set.has('Region')))) return true
+  if (/\b(?:more|latest|live|update)\b/i.test(trimmed)) return false
+  const tokens = trimmed.split(/\s+/).filter(Boolean)
+  if (tokens.length === 1) return false
+  return true
+}
+function expandAndCleanPlaces (values, hintSets, personTokenSet) {
+  const out = []
+  for (const value of Array.isArray(values) ? values : []) {
+    if (typeof value !== 'string') continue
+    const baseSegments = splitPlaceSegments(value)
+    const queue = (Array.isArray(baseSegments) && baseSegments.length) ? [...baseSegments] : [value]
+    while (queue.length) {
+      const segment = queue.shift()
+      if (typeof segment !== 'string') continue
+      const cleaned = cleanPlaceSegment(segment, hintSets, personTokenSet)
+      if (!cleaned) continue
+      const { text, tags, extras } = cleaned
+      if (text && isValidPlaceCandidate(text, tags)) out.push(text)
+      if (Array.isArray(extras) && extras.length) {
+        for (const extra of extras) {
+          if (typeof extra === 'string' && extra.trim()) queue.unshift(extra)
+        }
+      }
+    }
+  }
+  return out
+}
+function cleanOrganizationValue (value) {
+  if (typeof value !== 'string') return { text: null, extras: [] }
+  let sanitized = value.replace(/\s+/g, ' ').trim()
+  if (!sanitized) return { text: null, extras: [] }
+  let words = sanitized.split(/\s+/)
+  const extras = []
+  let modified = true
+
+  while (modified && words.length > 0) {
+    modified = false
+    if (words.length > 1) {
+      const normalizedLast = normalizeEntity(words[words.length - 1])
+      if (TRAILING_LOCATION_ABBREVIATIONS.has(normalizedLast)) {
+        words = words.slice(0, -1)
+        modified = true
+        continue
+      }
+    }
+    for (const pattern of KNOWN_ORGANIZATION_TAIL_PATTERNS) {
+      const len = pattern.length
+      if (words.length <= len) continue
+      const tailWords = words.slice(-len)
+      const normalizedTail = tailWords.map(word => normalizeEntity(word))
+      let match = true
+      for (let i = 0; i < len; i++) {
+        if (normalizedTail[i] !== pattern[i]) {
+          match = false
+          break
+        }
+      }
+      if (match) {
+        extras.unshift(tailWords.join(' '))
+        words = words.slice(0, -len)
+        modified = true
+        break
+      }
+    }
+  }
+
+  const text = words.join(' ').trim()
+  return { text: text || null, extras }
+}
+
+function expandAndCleanOrgs (values) {
+  const out = []
+  for (const value of Array.isArray(values) ? values : []) {
+    if (typeof value !== 'string') continue
+    const queue = [value]
+    while (queue.length) {
+      const current = queue.shift()
+      if (typeof current !== 'string') continue
+      const cleaned = cleanOrganizationValue(current)
+      if (!cleaned) continue
+      if (cleaned.text) out.push(cleaned.text)
+      if (Array.isArray(cleaned.extras) && cleaned.extras.length) {
+        for (const extra of cleaned.extras) {
+          if (typeof extra === 'string' && extra.trim()) queue.unshift(extra)
+        }
+      }
+    }
+  }
+  return out
+}
+function buildPersonTokenSet (names) {
+  const tokens = new Set()
+  for (const name of Array.isArray(names) ? names : []) {
+    if (typeof name !== 'string') continue
+    const trimmed = name.trim()
+    if (!trimmed) continue
+    let skip = false
+    try {
+      const doc = nlp(trimmed)
+      if (doc.has('#Place') || doc.has('#Country') || doc.has('#City') || doc.has('#Region')) skip = true
+    } catch {}
+    if (skip) continue
+    const parts = trimmed.split(/\s+/).map(cleanNameCandidate).filter(Boolean)
+    for (const part of parts) {
+      const normalizedPart = normalizeEntity(part)
+      if (!normalizedPart) continue
+      tokens.add(normalizedPart)
+    }
+  }
+  return tokens
+}
+
 function maybeSplitPerson (entity, rawText, hintSets, secondaryMap, fullContext) {
   const raw = typeof rawText === 'string' ? rawText : ''
   let fallback = raw.trim()
@@ -1208,10 +1715,38 @@ export default async function entityParser (nlpInput, pluginHints = DEFAULT_HINT
 
     people = filtered
   }
-  result.people = people
+  const personTokenSet = buildPersonTokenSet(people)
+  let placeKeySet = null
+  if (timeLeft() >= 1000) {
+    const rawPlaces = doc.places().json().map(entityToString)
+    const expandedPlaces = expandAndCleanPlaces(rawPlaces, hintSets, personTokenSet)
+    const dedupedPlaces = dedupeEntities(expandedPlaces)
+    result.places = dedupedPlaces
+    if (dedupedPlaces.length) {
+      placeKeySet = new Set(dedupedPlaces.map(name => normalizeEntity(name)).filter(Boolean))
+    }
+  }
 
-  if (timeLeft() >= 1000) result.places = dedupeEntities(doc.places().json().map(entityToString))
-  if (timeLeft() >= 900) result.orgs = dedupeEntities(doc.organizations().json().map(entityToString))
+  if (placeKeySet) {
+    people = people.filter(name => {
+      const key = normalizeEntity(name)
+      return key && !placeKeySet.has(key)
+    })
+  }
+
+  result.people = people
+  if (timeLeft() >= 900) {
+    const rawOrgs = doc.organizations().json().map(entityToString)
+    const cleanedOrgs = expandAndCleanOrgs(rawOrgs)
+    result.orgs = dedupeEntities(cleanedOrgs)
+  }
   if (timeLeft() >= 800) result.topics = dedupeEntities(doc.topics().json().map(entityToString))
   return result
 }
+
+
+
+
+
+
+
