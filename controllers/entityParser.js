@@ -74,7 +74,8 @@ const NAME_LIST_CONTEXT_WORDS = [
   'supporters', 'support', 'engineer', 'engineers', 'researcher', 'researchers', 'scientist', 'scientists', 'leaders',
   'members', 'acknowledgements', 'acknowledgments', 'acknowledgement', 'acknowledgment', 'gratitude', 'credit', 'credits'
 ]
-const SENTENCE_STARTER_WORDS = new Set(['we', 'our', 'ours', 'the', 'this', 'that', 'these', 'those'])
+const SENTENCE_STARTER_WORDS = new Set(['we', 'our', 'ours', 'the', 'this', 'that', 'these', 'those', 'however'])
+const DISCOURSE_STARTER_WORDS = new Set(['however'])
 const SENTENCE_BOUNDARY_FOLLOW_PATTERN = /([.!?]["']?\s+)([A-Z][\p{L}\p{M}'’.-]*)/gu
 const LEADING_JUNK_PATTERN = new RegExp("^[\\s\\u00A0,;·•‧∙・、，|/&(){}\\[\\]<>\"'“”‘’—–-]+", 'u')
 const HONORIFIC_PREFIXES = new Set(['mr', 'mrs', 'ms', 'miss', 'dr', 'prof', 'sir', 'dame', 'rev', 'reverend', 'lord', 'lady'])
@@ -542,6 +543,17 @@ function trimTrailingNonNameWords (words, rawSegment, followingText, hintSets) {
     if (/-/.test(lastWord)) break
     if (likelyFirst(lastWord, hintSets) || likelyLast(lastWord, hintSets) || INITIAL_NAME_PART_PATTERN.test(lastWord) || likelySuffix(lastWord, hintSets)) break
     trimmed.pop()
+  }
+
+  while (trimmed.length >= 2) {
+    const firstWord = trimmed[0]
+    if (typeof firstWord !== 'string') break
+    const normalizedFirst = normalizeEntity(firstWord)
+    if (!normalizedFirst) break
+    if (!DISCOURSE_STARTER_WORDS.has(normalizedFirst)) break
+    if (INITIAL_NAME_PART_PATTERN.test(firstWord)) break
+    if (likelyFirst(firstWord, hintSets) || likelyLast(firstWord, hintSets) || likelySuffix(firstWord, hintSets)) break
+    trimmed.shift()
   }
 
   if (trimmed.length >= 3) {

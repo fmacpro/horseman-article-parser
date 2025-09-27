@@ -68,6 +68,13 @@ test('entityParser removes trailing multi-word job titles', async () => {
   assert(!res.people.some(name => /Bob Smith\s+Founder/i.test(name)))
 })
 
+test('entityParser removes discourse starters before people names', async () => {
+  const input = 'However Hannah Aldridge said the plan would help.'
+  const res = await entityParser(input, { first: [], last: [] }, () => 2000)
+  assert(res.people.includes('Hannah Aldridge'))
+  assert(!res.people.includes('However Hannah Aldridge'))
+})
+
 test("entityParser handles possessive places with trailing punctuation", async () => {
   const input = "He returned from New Zealand's."
   const res = await entityParser(input, { first: [], last: [] }, () => 2000)
@@ -303,3 +310,4 @@ test('loadNlpPlugins collects extended hints and secondary config', () => {
   assert.equal(hints.secondary.endpoint, 'https://ner.example/api')
   assert.equal(hints.secondary.method, 'post')
 })
+
