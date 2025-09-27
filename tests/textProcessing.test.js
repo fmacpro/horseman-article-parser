@@ -5,7 +5,7 @@ import { getRawText, getFormattedText, getHtmlText, htmlCleaner, stripNonArticle
 import { JSDOM } from 'jsdom'
 
 test('getRawText strips URLs', () => {
-  const html = '<p>Visit <a href="http://example.com">http://example.com</a></p>'
+  const html = '<p>Visit <a href=\"http://example.com\">http://example.com</a></p>'
   const text = getRawText(html)
   assert.equal(text.includes('http'), false)
 })
@@ -16,18 +16,48 @@ test('getRawText removes bracketed URLs', () => {
   assert.equal(text.includes('http'), false)
 })
 
+test('getRawText strips embedded data URIs from brackets', () => {
+  const html = '<p>Image [data:image/gif;base64,SGVsbG8=]</p>'
+  const text = getRawText(html)
+  assert.equal(text, 'Image')
+})
+
+test('getRawText inserts sentence breaks for uppercase paragraphs', () => {
+  const html = '<p>The teenager married too many times to count</p><p>By Nawal al-Maghafi</p>'
+  const text = getRawText(html)
+  assert.equal(text, 'The teenager married too many times to count. By Nawal al-Maghafi')
+})
+
+test('getRawText preserves flow for lowercase paragraph starts', () => {
+  const html = '<p>He said</p><p>that this is good</p>'
+  const text = getRawText(html)
+  assert.equal(text, 'He said that this is good')
+})
+
+test('getRawText removes image alts and captions', () => {
+  const html = '<p>Intro paragraph.</p><figure><img src=\"https://example.com/image.jpg\" alt=\"Sample alt text\"><figcaption>Caption text</figcaption></figure><p>Final paragraph.</p>'
+  const text = getRawText(html)
+  assert.equal(text, 'Intro paragraph. Final paragraph.')
+})
+
 test('getFormattedText adds title and uppercases headings', () => {
   const html = '<p>content</p>'
   const text = getFormattedText(html, 'Title', 'http://example.com')
-  assert.match(text, /^TITLE\n\ncontent/)
+  assert.equal(text, 'TITLE\n\ncontent')
 })
 
 test('getFormattedText preserves title case when option disabled', () => {
   const html = '<p>content</p>'
   const text = getFormattedText(html, 'Title', 'http://example.com', { uppercaseHeadings: false })
-  assert.match(text, /^Title\n\ncontent/)
+  assert.equal(text, 'Title\n\ncontent')
 })
 
+test('getFormattedText drops data URLs but keeps html links', () => {
+  const html = '<p>Read the <a href=\"https://example.com/story.html\">full story</a>.</p><p>Attachment [data:image/gif;base64,AAAA]</p>'
+  const text = getFormattedText(html, 'Title', 'https://example.com', { uppercaseHeadings: false, ignoreHref: false })
+  assert.ok(text.includes('https://example.com/story.html'))
+  assert.ok(!text.includes('data:image'))
+})
 test('getHtmlText wraps lines with spans', () => {
   const res = getHtmlText('line1\nline2')
   assert.equal(res.split('\n')[0], '<span>line1</span>')
@@ -136,3 +166,9 @@ test('unwrapNodePreservingChildren inserts space around strong wrappers', () => 
   unwrapNodePreservingChildren(spans[1])
   assert.equal(dom.window.document.querySelector('p').textContent, 'Alpha Beta Gamma')
 })
+
+
+
+
+
+

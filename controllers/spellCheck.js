@@ -1,16 +1,13 @@
+import { maskUrlsInText, isUrlLikeToken } from './urlSanitizer.js'
 import { retext } from 'retext'
 import spell from 'retext-spell'
 import dictionary from 'dictionary-en-gb'
 
 export default async function spellCheck (text, options) {
   // Pre-clean text: remove URLs before spellcheck (raw text already strips bracketed segments)
-  let input = text
-  // remove URLs (http/https/ftp), www.*, and domain-like strings
-  input = input.replace(/(?:https?:\/\/|ftp:\/\/)\S+/gi, ' ')
-  input = input.replace(/\bwww\.[^\s]+/gi, ' ')
-  input = input.replace(/\b[\w-]+(?:\.[\w-]+)+(?:\/\S*)?/gi, ' ')
-  // remove alphanumeric tokens like 123abc
-  input = input.replace(/[0-9]{1,}[a-zA-Z]{1,}/gi, ' ')
+  let input = maskUrlsInText(text)
+  // remove alphanumeric tokens like 123abc while preserving layout
+  input = input.replace(/[0-9]{1,}[a-zA-Z]{1,}/gi, match => ' '.repeat(match.length))
   // collapse spaces but preserve line breaks for accurate line numbers
   input = input.replace(/\r\n/g, '\n').replace(/[ \t]+/g, ' ')
 
@@ -27,15 +24,6 @@ export default async function spellCheck (text, options) {
   const includeEndPosition = !!tweaks.includeEndPosition
   const includeOffsets = !!tweaks.includeOffsets
 
-  const isUrlLike = (w) => {
-    if (!w || typeof w !== 'string') return false
-    const s = w.trim()
-    if (/^(?:https?:\/\/|www\.)/i.test(s)) return true
-    if (/^(?:https?|ftp)$/i.test(s)) return true
-    if (/^[\w-]+(?:\.[\w-]+)+$/.test(s) && /[A-Za-z]{2,}$/.test(s)) return true
-    if (/^(?:[A-Za-z0-9]+-){4,}[A-Za-z0-9]+$/.test(s)) return true
-    return false
-  }
 
   const file = await retext().use(spell, options).process(input)
   const items = file.messages
@@ -61,8 +49,9 @@ export default async function spellCheck (text, options) {
     })
     .filter((item) => {
       if (!ignoreUrlLike) return true
-      return !isUrlLike(String(item.word || ''))
+      return !isUrlLikeToken(String(item.word || ''))
     })
 
   return items
 }
+

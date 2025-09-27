@@ -2,6 +2,7 @@ import cleaner from 'clean-html'
 import { htmlToText } from 'html-to-text'
 import nlp from 'compromise'
 import { JSDOM } from 'jsdom'
+import { containsUrlLike, stripUrlsFromText, stripDataUrlsFromText } from './urlSanitizer.js'
 
 const CTA_ATTR_KEYWORDS = [
   'newsletter', 'subscribe', 'subscription', 'signup', 'sign-up', 'sign_up', 'calltoaction', 'call-to-action', 'cta',
@@ -424,6 +425,56 @@ function shouldRemoveByText (node, text) {
   return false
 }
 
+function stripImagesForRawText (html) {
+  if (typeof html !== 'string' || !html) return html
+  let dom
+  try {
+    dom = new JSDOM(`<body>${html}</body>`)
+  } catch {
+    try {
+      dom = new JSDOM(html)
+    } catch {
+      return html
+    }
+  }
+  const { document, NodeFilter } = dom.window
+  const root = document.body || document.documentElement
+  if (!root) {
+    dom.window.close()
+    return html
+  }
+  const toRemove = new Set()
+  const mark = (node) => {
+    if (node && node.parentNode) toRemove.add(node)
+  }
+
+  for (const node of Array.from(root.querySelectorAll('figure, picture'))) mark(node)
+
+  for (const img of Array.from(root.querySelectorAll('img'))) {
+    const figure = typeof img.closest === 'function' ? img.closest('figure') : null
+    if (figure) {
+      mark(figure)
+      continue
+    }
+    mark(img)
+    const parent = img.parentElement
+    if (parent && parent !== root && parent.children.length === 1 && !hasMeaningfulText(parent)) mark(parent)
+  }
+
+  const walker = document.createTreeWalker(root, NodeFilter?.SHOW_ELEMENT || 1)
+  while (walker.nextNode()) {
+    const node = walker.currentNode
+    if (isCaptionNode(node)) mark(node)
+  }
+
+  for (const node of toRemove) {
+    if (node && node.parentNode) node.parentNode.removeChild(node)
+  }
+
+  const cleaned = root.innerHTML
+  dom.window.close()
+  return cleaned
+}
 export function getRawText (html) {
   const options = {
     wordwrap: null,
@@ -434,31 +485,19 @@ export function getRawText (html) {
     uppercaseHeadings: false,
     unorderedListItemPrefix: ''
   }
-  let rawText = htmlToText(html, options)
+  const preppedHtml = stripImagesForRawText(html)
+  let rawText = htmlToText(preppedHtml, options)
   rawText = nlp(rawText).out('text')
-  const containsUrlLike = (s) => {
-    if (!s) return false
-    const str = String(s)
-    if (/(?:https?:\/\/|ftp:\/\/)/i.test(str)) return true
-    if (/\bwww\.[^\s\]]+/i.test(str)) return true
-    if (/\b[\w-]+(?:\.[\w-]+)+(?:\/[\w\-._~:/?#\[\]@!$&'()*+,;=%]*)?/i.test(str)) return true // eslint-disable-line no-useless-escape
-    return false
-  }
   rawText = rawText.replace(/\[[^\]]*\]/g, m => {
     const inner = m.slice(1, -1)
     return containsUrlLike(inner) ? ' ' : m
   })
-  const stripUrls = (s) => {
-    if (!s || typeof s !== 'string') return s
-    let out = s.replace(/(?:https?:\/\/|ftp:\/\/)[^\s]+/gi, ' ')
-    out = out.replace(/\bwww\.[^\s]+/gi, ' ')
-    out = out.replace(/\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:[a-z]{2,})(?:\/[\w\-._~:/?#\[\]@!$&'()*+,;=%]*)?/gi, ' ') // eslint-disable-line no-useless-escape
-    return out
-  }
-  rawText = stripUrls(rawText)
+  rawText = stripUrlsFromText(rawText)
+  rawText = rawText.replace(/\r\n/g, '\n')
+  rawText = rawText.replace(/(?<=[\p{L}\p{N}])\s*\n+\s*(?=["'(\u2018\u2019\u201c\u201d]*[\p{Lu}\p{N}])/gu, '. ')
+  rawText = rawText.replace(/\n+/g, ' ')
   return rawText.replace(/\s+/g, ' ').trim()
 }
-
 export function getFormattedText (html, title, baseurl, options = {
   wordwrap: 100,
   noLinkBrackets: true,
@@ -470,13 +509,14 @@ export function getFormattedText (html, title, baseurl, options = {
   if (typeof options.linkHrefBaseUrl === 'undefined') {
     options.linkHrefBaseUrl = baseurl
   }
-  const text = htmlToText(html, options)
+  let text = htmlToText(html, options)
+  text = text.replace(/\[[^\]]*\]/g, m => containsUrlLike(m, { dataOnly: true }) ? ' ' : m)
+  text = stripDataUrlsFromText(text)
   if (options.uppercaseHeadings === true) {
     title = title.toUpperCase()
   }
   return title + '\n\n' + text
 }
-
 export function getHtmlText (text) {
   const textArray = text.replace('\r\n', '\n').split('\n')
   const codeLength = textArray.length
@@ -507,3 +547,4 @@ export function stripNonArticleElements (html) {
 export function sanitizeArticleContent (html) {
   return transformArticleHtml(html, { preserveImages: true, unwrapImages: true })
 }
+
