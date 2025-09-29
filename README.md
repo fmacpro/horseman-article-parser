@@ -92,6 +92,7 @@ const options = {
       spelling: article.spelling,
       meta: article.meta,
       links: article.links,
+      structuredData: article.structuredData,
       lighthouse: article.lighthouse,
     };
 
@@ -102,6 +103,9 @@ const options = {
   }
 })();
 ```
+
+Structured JSON-LD article nodes (including the original schema objects) are exposed via `article.structuredData`.
+In-article structural elements such as tables, definition lists, and figures are normalised into `article.structuredData.body`.
 
 `parseArticle(options, <socket>)` accepts an optional socket for pipeing the response object, status messages and errors to a front end UI.
 

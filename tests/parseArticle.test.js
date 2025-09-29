@@ -368,3 +368,40 @@ test('parseArticle applies custom Compromise plugins', { timeout: TEST_TIMEOUT }
   const foundWith = Array.isArray(withPlugin.people) && withPlugin.people.includes('Rishi sunak')
   assert.equal(foundWith, true)
 })
+
+test('parseArticle exposes structured data payload', { timeout: TEST_TIMEOUT }, async (t) => {
+  const html = `<!doctype html><html><head>
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"NewsArticle","headline":"Structured Title","articleBody":"Structured body"}</script>
+  </head><body><article><p>Structured body</p><table><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody><tr><td>GDP</td><td>$1</td></tr><tr><td>Population</td><td>10M</td></tr></tbody></table></article></body></html>`
+  const dataUrl = 'data:text/html;base64,' + Buffer.from(html).toString('base64')
+  let article
+  try {
+    article = await parseArticle({
+      url: dataUrl,
+      enabled: ['readability'],
+      timeoutMs: PARSE_TIMEOUT,
+      contentWaitSelectors: ['article'],
+      contentWaitTimeoutMs: 1,
+      skipReadabilityWait: true,
+      puppeteer: { launch: { headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] } }
+    }, quietSocket)
+  } catch (err) {
+    t.skip('puppeteer unavailable: ' + err.message)
+    return
+  }
+  assert.ok(article.structuredData)
+  assert.equal(article.structuredData.headline, 'Structured Title')
+  assert.equal(article.structuredData.articleBody, 'Structured body')
+  assert.ok(Array.isArray(article.structuredData.articles))
+  assert.equal(article.structuredData.articles.length, 1)
+  assert.equal(article.structuredData.articles[0].headline, 'Structured Title')
+  assert.ok(article.structuredData.body)
+  assert.ok(Array.isArray(article.structuredData.body.tables))
+  assert.equal(article.structuredData.body.tables.length, 1)
+  const table = article.structuredData.body.tables[0]
+  assert.deepEqual(table.headers, ['Metric', 'Value'])
+  assert.equal(table.rowCount, 2)
+  assert.equal(table.rows[0].object.Metric, 'GDP')
+  assert.equal(table.rows[1].object.Value, '10M')
+  assert.ok(Array.isArray(article.structuredData.body.figures))
+})

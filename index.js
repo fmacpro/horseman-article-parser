@@ -7,7 +7,7 @@ import fs from 'fs'
 import Sentiment from 'sentiment'
 import absolutify from 'absolutify'
 import { JSDOM, VirtualConsole } from 'jsdom'
-import { extractStructuredData } from './controllers/structuredData.js'
+import { extractStructuredData, extractBodyStructuredData } from './controllers/structuredData.js'
 import { detectContent } from './controllers/contentDetector.js'
 import jquery from 'jquery'
 import { createRequire } from 'module'
@@ -881,6 +881,7 @@ log('analyze', 'Evaluating meta tags')
 
   // Derived Title & Content (structured-data aware detector always enabled)
   const sd = extractStructuredData(dom.window.document)
+  article.structuredData = sd
   const detected = detectContent(dom.window.document, options, sd)
   const { detectTitle } = await import('./controllers/titleDetector.js')
   article.title.text = detectTitle(dom.window.document, sd) || article.title.text
@@ -951,6 +952,17 @@ log('analyze', 'Evaluating meta tags')
 
   // Turn relative links into absolute links & assign processed html
   article.processed.html = await absolutify(content, article.baseurl)
+
+  try {
+    const bodyStructured = extractBodyStructuredData(article.processed.html)
+    if (!article.structuredData || typeof article.structuredData !== "object") {
+      article.structuredData = { headline: null, articleBody: null, articles: [], body: bodyStructured }
+    } else {
+      article.structuredData.body = bodyStructured
+    }
+  } catch (err) {
+    logger.warn('body structured data extraction failed', err)
+  }
 
   // Get in article links
   if (options.enabled.includes('links')) {
@@ -1145,9 +1157,13 @@ log('analyze', 'Evaluating meta tags')
           const vcR = new VirtualConsole(); vcR.sendTo(console, { omitJSDOMErrors: true })
           const domR = new JSDOM(freshHtml, { virtualConsole: vcR })
           const sdR = extractStructuredData(domR.window.document)
+          if (!article.structuredData || (!article.structuredData.articles?.length && (sdR.articles?.length || sdR.headline || sdR.articleBody))) {
+            article.structuredData = sdR
+          }
           const detR = detectContent(domR.window.document, options, sdR)
           const recovered = detR.html || (domR.window.document.body ? domR.window.document.body.innerHTML : freshHtml)
           article.processed.html = await absolutify(recovered, article.baseurl)
+          article.structuredData.body = extractBodyStructuredData(article.processed.html)
           article.processed.text.formatted = await getFormattedText(article.processed.html, article.title.text, article.baseurl, options.htmltotext)
           article.processed.text.html = await getHtmlText(article.processed.text.formatted)
           article.processed.text.raw = await getRawText(article.processed.html)

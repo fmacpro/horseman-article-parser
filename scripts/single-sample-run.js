@@ -114,6 +114,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
       spelling: article.spelling,
       meta: article.meta,
       links: article.links,
+      structuredData: article.structuredData,
       lighthouse: article.lighthouse,
       html: article.html
     }
