@@ -70,6 +70,7 @@ export function setDefaultOptions (options = {}) {
   }
   const opts = _.defaultsDeep({}, options, defaults)
   if (!opts.enabled.includes('links')) opts.enabled.push('links')
+  if (!opts.enabled.includes('images')) opts.enabled.push('images')
   return opts
 }
 

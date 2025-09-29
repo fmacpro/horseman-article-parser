@@ -125,6 +125,7 @@ const articleParser = async function (browser, options, socket) {
   article.meta = {}
   article.meta.title = {}
   article.links = []
+  article.images = []
   article.title = {}
   article.excerpt = ''
   article.processed = {}
@@ -944,6 +945,7 @@ log('analyze', 'Evaluating meta tags')
   }
 
   // Sanitize article body before absolutifying links
+  const rawHtmlForImages = content
   try {
     content = sanitizeArticleContent(content)
   } catch {
@@ -952,6 +954,8 @@ log('analyze', 'Evaluating meta tags')
 
   // Turn relative links into absolute links & assign processed html
   article.processed.html = await absolutify(content, article.baseurl)
+
+  refreshInArticleAssets(article.processed.html, rawHtmlForImages)
 
   try {
     const bodyStructured = extractBodyStructuredData(article.processed.html)
@@ -965,32 +969,221 @@ log('analyze', 'Evaluating meta tags')
   }
 
   // Get in article links
-  if (options.enabled.includes('links')) {
-    log('analyze', 'Evaluating in-article links')
 
-    const vc2 = new VirtualConsole()
-    vc2.sendTo(console, { omitJSDOMErrors: true })
-    const { window } = new JSDOM(article.processed.html, { virtualConsole: vc2 })
-    const $ = jquery(window)
 
-    const arr = window.$('a')
-    const links = []
-    let i = 0
 
-    const maxLinks = 1000
-    const limit = Math.min(arr.length, maxLinks)
-    for (i = 0; i < limit; i++) {
-      const href = ($(arr[i]).attr('href') || '').trim()
-      const text = ($(arr[i]).text() || '').replace(/\s+/g, ' ').trim()
-      const link = { href, text }
-      links.push(link)
-      if (i % 200 === 0 && timeLeft() < 800) { log('links', 'short circuit'); break }
+
+  function refreshInArticleAssets (processedHtml, rawHtml) {
+    const collectLinks = options.enabled.includes('links')
+    const collectImages = options.enabled.includes('images')
+    if (!collectLinks && !collectImages) return
+
+    let inArticleWindow = null
+    let inArticle$ = null
+
+    if ((collectLinks || collectImages) && processedHtml) {
+      try {
+        const vc2 = new VirtualConsole()
+        vc2.sendTo(console, { omitJSDOMErrors: true })
+        const inArticleDom = new JSDOM(processedHtml, { virtualConsole: vc2 })
+        inArticleWindow = inArticleDom.window
+        inArticle$ = jquery(inArticleWindow)
+      } catch (err) {
+        logger.warn('in-article dom creation failed', err)
+      }
     }
 
-    Object.assign(article.links, links)
-    try { log('analyze', 'In-article links extracted', { count: links.length }) } catch {}
-  }
+    if (collectLinks && inArticleWindow && inArticle$) {
+      log('analyze', 'Evaluating in-article links')
+      const arr = inArticleWindow.$('a')
+      const links = []
+      const maxLinks = 1000
+      const limit = Math.min(arr.length, maxLinks)
+      for (let i = 0; i < limit; i++) {
+        const $el = inArticle$(arr[i])
+        const href = ($el.attr('href') || '').trim()
+        const text = ($el.text() || '').replace(/\s+/g, ' ').trim()
+        if (!href && !text) continue
+        links.push({ href, text })
+        if (i % 200 === 0 && timeLeft() < 800) { log('links', 'short circuit'); break }
+      }
+      article.links = links
+      try { log('analyze', 'In-article links extracted', { count: links.length }) } catch {}
+    }
 
+    if (collectImages && inArticleWindow && inArticle$) {
+      log('analyze', 'Evaluating in-article images')
+      const doc = inArticleWindow.document
+      const captionSelectors = ['figcaption', '.caption', '.image-caption', '.media-caption', '.media__caption', '.wp-caption-text', '.gallery-caption', '[itemprop="caption"]']
+      const images = []
+      const nodes = doc ? Array.from(doc.querySelectorAll('img')) : []
+      const maxImages = 500
+      const limit = Math.min(nodes.length, maxImages)
+
+      const clean = (value) => {
+        if (value == null) return null
+        const trimmed = String(value).replace(/\s+/g, ' ').trim()
+        return trimmed || null
+      }
+      const parseDimension = (value) => {
+        if (value == null || value === '') return null
+        const num = Number(String(value).trim())
+        return Number.isFinite(num) ? num : null
+      }
+      const absolutifyUrl = (value) => {
+        const trimmed = clean(value)
+        if (!trimmed) return null
+        if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) return trimmed
+        try {
+          if (article.baseurl) return new URL(trimmed, article.baseurl).href
+          if (article.url) return new URL(trimmed, article.url).href
+        } catch {}
+        return trimmed
+      }
+
+      let rawDoc = null
+      let rawNodes = []
+      if (rawHtml && typeof rawHtml === 'string') {
+        try {
+          const vcRaw = new VirtualConsole()
+          vcRaw.sendTo(console, { omitJSDOMErrors: true })
+          const rawDom = new JSDOM(rawHtml, { virtualConsole: vcRaw })
+          rawDoc = rawDom.window.document
+          rawNodes = rawDoc ? Array.from(rawDoc.querySelectorAll('img')) : []
+        } catch (err) {
+          logger.warn('raw image dom creation failed', err)
+        }
+      }
+
+      const createCaptionFinder = (searchDoc) => {
+        if (!searchDoc) return () => null
+        return (imgEl) => {
+          if (!imgEl) return null
+          const pickText = (node) => clean(node && node.textContent)
+          const seen = new Set()
+          const visit = (node) => {
+            if (!node || seen.has(node)) return null
+            seen.add(node)
+            const text = pickText(node)
+            return text || null
+          }
+
+          const figure = typeof imgEl.closest === 'function' ? imgEl.closest('figure') : null
+          if (figure) {
+            for (const sel of ['figcaption', '.caption', '.wp-caption-text']) {
+              const candidate = figure.querySelector(sel)
+              const text = visit(candidate)
+              if (text) return text
+            }
+          }
+
+          const parent = imgEl.parentElement
+          if (parent) {
+            if (typeof parent.matches === 'function' && captionSelectors.some(sel => parent.matches(sel))) {
+              const text = visit(parent)
+              if (text) return text
+            }
+            for (const sel of captionSelectors) {
+              const candidate = parent.querySelector(sel)
+              if (!candidate) continue
+              const text = visit(candidate)
+              if (text) return text
+            }
+          }
+
+          const describedBy = clean(imgEl.getAttribute && imgEl.getAttribute('aria-describedby'))
+          if (describedBy && searchDoc) {
+            for (const id of describedBy.split(/\s+/)) {
+              const describedNode = searchDoc.getElementById(id)
+              const text = visit(describedNode)
+              if (text) return text
+            }
+          }
+
+          const next = imgEl.nextElementSibling
+          const text = visit(next)
+          return text || null
+        }
+      }
+
+      const captionFromSanitized = createCaptionFinder(doc)
+      const captionFromRaw = createCaptionFinder(rawDoc)
+      const dataSrcAttributes = ['data-src', 'data-lazy-src', 'data-lazy', 'data-original', 'data-default-src', 'data-hires', 'data-srcset']
+
+      for (let i = 0; i < limit; i++) {
+        const el = nodes[i]
+        const $img = inArticle$(el)
+        const rawEl = rawNodes[i] || null
+
+        let src = absolutifyUrl($img.attr('src'))
+        if (!src && rawEl) src = absolutifyUrl(rawEl.getAttribute('src'))
+
+        let dataSrc = null
+        for (const name of dataSrcAttributes) {
+          const val = absolutifyUrl($img.attr(name))
+          if (val) { dataSrc = val; break }
+        }
+        if (!dataSrc && rawEl) {
+          for (const name of dataSrcAttributes) {
+            const val = absolutifyUrl(rawEl.getAttribute(name))
+            if (val) { dataSrc = val; break }
+          }
+        }
+        if (!src && dataSrc) src = dataSrc
+        if (!src) continue
+
+        let alt = clean($img.attr('alt'))
+        if (!alt && rawEl) alt = clean(rawEl.getAttribute('alt'))
+
+        let title = clean($img.attr('title'))
+        if (!title && rawEl) title = clean(rawEl.getAttribute('title'))
+
+        let loading = clean($img.attr('loading'))
+        if (!loading && rawEl) loading = clean(rawEl.getAttribute('loading'))
+
+        let decoding = clean($img.attr('decoding'))
+        if (!decoding && rawEl) decoding = clean(rawEl.getAttribute('decoding'))
+
+        let srcset = clean($img.attr('srcset'))
+        if (!srcset && rawEl) srcset = clean(rawEl.getAttribute('srcset'))
+
+        let sizes = clean($img.attr('sizes'))
+        if (!sizes && rawEl) sizes = clean(rawEl.getAttribute('sizes'))
+
+        let width = parseDimension($img.attr('width'))
+        if (width == null && rawEl) width = parseDimension(rawEl.getAttribute('width'))
+
+        let height = parseDimension($img.attr('height'))
+        if (height == null && rawEl) height = parseDimension(rawEl.getAttribute('height'))
+
+        let caption = captionFromSanitized(el)
+        if (!caption && rawEl) caption = captionFromRaw(rawEl)
+
+        const image = { index: images.length, src }
+        if (alt) image.alt = alt
+        if (title) image.title = title
+        if (caption) image.caption = caption
+        if (width != null) image.width = width
+        if (height != null) image.height = height
+        if (loading) image.loading = loading
+        if (decoding) image.decoding = decoding
+        if (srcset) image.srcset = srcset
+        if (sizes) image.sizes = sizes
+        if (dataSrc) image.dataSrc = dataSrc
+
+        images.push(image)
+        if (i % 200 === 0 && timeLeft() < 800) { log('images', 'short circuit'); break }
+      }
+      article.images = images
+      try { log('analyze', 'In-article images extracted', { count: images.length }) } catch {}
+    } else if (collectImages) {
+      article.images = []
+    }
+
+    if (collectLinks && (!inArticleWindow || !inArticle$)) {
+      article.links = []
+    }
+  }
   // Formatted Text (including new lines and spacing for spell check)
   article.processed.text.formatted = await getFormattedText(article.processed.html, article.title.text, article.baseurl, options.htmltotext)
 
@@ -1163,6 +1356,7 @@ log('analyze', 'Evaluating meta tags')
           const detR = detectContent(domR.window.document, options, sdR)
           const recovered = detR.html || (domR.window.document.body ? domR.window.document.body.innerHTML : freshHtml)
           article.processed.html = await absolutify(recovered, article.baseurl)
+          refreshInArticleAssets(article.processed.html, recovered)
           article.structuredData.body = extractBodyStructuredData(article.processed.html)
           article.processed.text.formatted = await getFormattedText(article.processed.html, article.title.text, article.baseurl, options.htmltotext)
           article.processed.text.html = await getHtmlText(article.processed.text.formatted)

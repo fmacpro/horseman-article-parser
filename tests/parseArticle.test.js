@@ -405,3 +405,50 @@ test('parseArticle exposes structured data payload', { timeout: TEST_TIMEOUT }, 
   assert.equal(table.rows[1].object.Value, '10M')
   assert.ok(Array.isArray(article.structuredData.body.figures))
 })
+
+
+test('parseArticle extracts in-article images metadata', { timeout: TEST_TIMEOUT }, async (t) => {
+  const html = `<!doctype html><html><head><title>Images</title></head><body>
+    <article>
+      <figure>
+        <img src="https://example.com/chart.jpg" alt="Revenue chart" title="Quarterly revenue" width="640" height="480" loading="lazy" />
+        <figcaption>Figure 1. Quarterly revenue by quarter.</figcaption>
+      </figure>
+      <div class="image-wrapper">
+        <img data-src="https://example.com/lazy.jpg" alt="Lazy loaded" decoding="async" />
+        <p class="caption">Lazy image caption.</p>
+      </div>
+    </article>
+  </body></html>`
+  const dataUrl = 'data:text/html;base64,' + Buffer.from(html).toString('base64')
+  let article
+  try {
+    article = await parseArticle({
+      url: dataUrl,
+      enabled: ['images'],
+      timeoutMs: PARSE_TIMEOUT,
+      contentWaitSelectors: ['article'],
+      contentWaitTimeoutMs: 1,
+      skipReadabilityWait: true,
+      puppeteer: { launch: { headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] } }
+    }, quietSocket)
+  } catch (err) {
+    t.skip('puppeteer unavailable: ' + err.message)
+    return
+  }
+  assert.ok(Array.isArray(article.images))
+  assert.equal(article.images.length, 2)
+  const [first, second] = article.images
+  assert.equal(first.src, 'https://example.com/chart.jpg')
+  assert.equal(first.alt, 'Revenue chart')
+  assert.equal(first.title, 'Quarterly revenue')
+  assert.equal(first.caption, 'Figure 1. Quarterly revenue by quarter.')
+  assert.equal(first.loading, 'lazy')
+  assert.equal(first.index, 0)
+  assert.equal(second.src, 'https://example.com/lazy.jpg')
+  assert.equal(second.alt, 'Lazy loaded')
+  assert.equal(second.caption, 'Lazy image caption.')
+  assert.equal(second.decoding, 'async')
+  assert.equal(second.dataSrc, 'https://example.com/lazy.jpg')
+  assert.equal(second.index, 1)
+})

@@ -77,7 +77,7 @@ export async function run(urlsFile, outCsv = 'candidates_with_url.csv', start = 
     startedCount++
     const options = {
       url: normUrl,
-      enabled: ['links'],
+      enabled: ['links','images'],
       blockedResourceTypes: blockedResourceTypes,
       skippedResources: skippedResources,
       contentDetection: {

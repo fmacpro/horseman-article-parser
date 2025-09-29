@@ -1,6 +1,6 @@
 ﻿# Horseman Article Parser
 
-Horseman is a focused article scraping module for the open web. It loads pages (dynamic or AMP), detects the main story body, and returns clean, structured content ready for downstream use. Alongside text and title, it includes in-article links, metadata, sentiment, keywords/keyphrases, named entities, optional summaries, optional spelling suggestions, readability metrics and basic counts (characters, words, sentences, paragraphs), site icon, and Lighthouse signals. It also copes with live blogs, applies simple per-domain tweaks (headers/cookies/goto), and uses Puppeteer + stealth to reduce blocking. The parser now detects the article language and exposes ISO codes, with best-effort support for non-English content (features may fall back to English dictionaries when specific resources are missing).
+Horseman is a focused article scraping module for the open web. It loads pages (dynamic or AMP), detects the main story body, and returns clean, structured content ready for downstream use. Alongside text and title, it includes in-article links, images, metadata, sentiment, keywords/keyphrases, named entities, optional summaries, optional spelling suggestions, readability metrics and basic counts (characters, words, sentences, paragraphs), site icon, and Lighthouse signals. It also copes with live blogs, applies simple per-domain tweaks (headers/cookies/goto), and uses Puppeteer + stealth to reduce blocking. The parser now detects the article language and exposes ISO codes, with best-effort support for non-English content (features may fall back to English dictionaries when specific resources are missing).
 
 ## Table of Contents
 
@@ -47,6 +47,7 @@ const options = {
     "lighthouse",
     "screenshot",
     "links",
+    "images",
     "sentiment",
     "entities",
     "spelling",
@@ -92,6 +93,7 @@ const options = {
       spelling: article.spelling,
       meta: article.meta,
       links: article.links,
+      images: article.images,
       structuredData: article.structuredData,
       lighthouse: article.lighthouse,
     };
@@ -106,6 +108,7 @@ const options = {
 
 Structured JSON-LD article nodes (including the original schema objects) are exposed via `article.structuredData`.
 In-article structural elements such as tables, definition lists, and figures are normalised into `article.structuredData.body`.
+Body images (with captions, alt text, titles, and data-src fallbacks when present) are returned under `article.images` when the feature is enabled.
 
 `parseArticle(options, <socket>)` accepts an optional socket for pipeing the response object, status messages and errors to a front end UI.
 

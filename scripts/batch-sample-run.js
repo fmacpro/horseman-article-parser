@@ -118,7 +118,7 @@ export function buildOptions(url, timeoutMs, base = {}) {
   return {
     url,
     timeoutMs,
-    enabled: ['links','sentiment','entities','spelling','keywords','siteicon','readability'],
+    enabled: ['links','images','sentiment','entities','spelling','keywords','siteicon','readability'],
     blockedResourceTypes: base.blockedResourceTypes || ['media','font','stylesheet'],
     noInterception: !!base.noInterception,
     puppeteer: {
