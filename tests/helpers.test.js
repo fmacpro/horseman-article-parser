@@ -4,7 +4,7 @@ import { setDefaultOptions, capitalizeFirstLetter, toTitleCase, stripPunctuation
 
 test('setDefaultOptions applies defaults', () => {
   const opts = setDefaultOptions()
-  assert.deepEqual(opts.enabled, ['links'])
+  assert.deepEqual(opts.enabled, ['links', 'images'])
   assert.equal(opts.timeoutMs, 40000)
   assert.equal(opts.puppeteer.launch.headless, true)
 })
@@ -22,7 +22,7 @@ test('setDefaultOptions deeply merges nested structures', () => {
     enabled: ['links'],
     puppeteer: { launch: { args: ['--no-sandbox'] } }
   })
-  assert.deepEqual(opts.enabled, ['links'])
+  assert.deepEqual(opts.enabled, ['links', 'images'])
   assert.equal(opts.puppeteer.launch.headless, true)
   assert.ok(opts.puppeteer.launch.args.includes('--no-sandbox'))
   assert.equal(opts.puppeteer.goto.waitUntil, 'domcontentloaded')
