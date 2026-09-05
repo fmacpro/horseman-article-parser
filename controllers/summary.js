@@ -262,7 +262,7 @@ function buildKeywordTokens (keywords) {
   if (!keywords) return new Set()
   const values = []
   if (Array.isArray(keywords)) values.push(...keywords)
-  else if (typeof keywords === 'string') values.push(...keywords.split(/[;,\|]/))
+  else if (typeof keywords === 'string') values.push(...keywords.split(/[;,|]/))
   else if (typeof keywords?.text === 'string') values.push(keywords.text)
   const tokens = new Set()
   for (const value of values) {
@@ -275,7 +275,7 @@ function toTokenSet (value) {
   if (!value || typeof value !== 'string') return new Set()
   return new Set(value
     .toLowerCase()
-    .replace(/[^a-z0-9%\.\-\s]/g, ' ')
+    .replace(/[^a-z0-9%.\-\s]/g, ' ')
     .split(/\s+/)
     .filter(Boolean)
   )

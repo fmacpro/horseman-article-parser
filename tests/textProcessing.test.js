@@ -5,7 +5,7 @@ import { getRawText, getFormattedText, getHtmlText, htmlCleaner, stripNonArticle
 import { JSDOM } from 'jsdom'
 
 test('getRawText strips URLs', () => {
-  const html = '<p>Visit <a href=\"http://example.com\">http://example.com</a></p>'
+  const html = '<p>Visit <a href="http://example.com">http://example.com</a></p>'
   const text = getRawText(html)
   assert.equal(text.includes('http'), false)
 })
@@ -35,7 +35,7 @@ test('getRawText preserves flow for lowercase paragraph starts', () => {
 })
 
 test('getRawText removes image alts and captions', () => {
-  const html = '<p>Intro paragraph.</p><figure><img src=\"https://example.com/image.jpg\" alt=\"Sample alt text\"><figcaption>Caption text</figcaption></figure><p>Final paragraph.</p>'
+  const html = '<p>Intro paragraph.</p><figure><img src="https://example.com/image.jpg" alt="Sample alt text"><figcaption>Caption text</figcaption></figure><p>Final paragraph.</p>'
   const text = getRawText(html)
   assert.equal(text, 'Intro paragraph. Final paragraph.')
 })
@@ -53,7 +53,7 @@ test('getFormattedText preserves title case when option disabled', () => {
 })
 
 test('getFormattedText drops data URLs but keeps html links', () => {
-  const html = '<p>Read the <a href=\"https://example.com/story.html\">full story</a>.</p><p>Attachment [data:image/gif;base64,AAAA]</p>'
+  const html = '<p>Read the <a href="https://example.com/story.html">full story</a>.</p><p>Attachment [data:image/gif;base64,AAAA]</p>'
   const text = getFormattedText(html, 'Title', 'https://example.com', { uppercaseHeadings: false, ignoreHref: false })
   assert.ok(text.includes('https://example.com/story.html'))
   assert.ok(!text.includes('data:image'))

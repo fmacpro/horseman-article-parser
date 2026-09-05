@@ -212,7 +212,7 @@ const PLACE_TAIL_STOP_WORDS = new Set([
   'under'
 ])
 
-const PLACE_PUNCTUATION_SPLIT_PATTERN = /[\u00B7\u2022,;\/|&]+/u
+const PLACE_PUNCTUATION_SPLIT_PATTERN = /[\u00B7\u2022,;/|&]+/u
 const PLACE_CONJUNCTION_SPLIT_PATTERN = new RegExp('\\b(?:' + LIST_CONJUNCTION_PATTERN + '|vs|versus)\\b', 'iu')
 function dedupeNameList (values) {
   const seen = new Set()

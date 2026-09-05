@@ -158,7 +158,7 @@ const articleParser = async function (browser, options, socket) {
   }
   const t0 = Date.now()
   const elapsed = () => Date.now() - t0
-  log('parse', 'start x', { url: options.url, timeout_ms: options.timeoutMs || '' })
+  log('parse', 'start', { url: options.url, timeout_ms: options.timeoutMs || '' })
   const page = await browser.newPage()
   await page.setViewport({
     width: 570,

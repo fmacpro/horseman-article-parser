@@ -44,7 +44,7 @@ export default async function checkReadability (text) {
         sentences += sentenceCountForParagraph
       }
     }
-  } catch (error) {
+  } catch {
     // Fall back to heuristic splitting below if parsing fails.
   }
 
